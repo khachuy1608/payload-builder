@@ -134,6 +134,26 @@ Object.assign(PRESETS, {
     P('framed', 'Khung viền', {}, { desktop: { width: '100%', padding: '8px', backgroundColor: '#ffffff', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-md)' } }),
     P('autoplay', 'Tự phát (tắt tiếng)', { autoplay: true, controls: false }, { desktop: { width: '100%' } }),
   ],
+  map: [
+    P('card', 'Bo góc', { height: '360' }, { desktop: { width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden' } }),
+    P('tall', 'Cao, vệ tinh', { height: '520', maptype: 'satellite' }, { desktop: { width: '100%' } }),
+    P('framed', 'Khung viền', { height: '320' }, { desktop: { width: '100%', padding: '8px', backgroundColor: '#ffffff', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-md)' } }),
+  ],
+  embed: [
+    P('full', 'Toàn chiều rộng', { height: '400' }, { desktop: { width: '100%' } }),
+    P('tall', 'Cao', { height: '720' }, { desktop: { width: '100%' } }),
+    P('card', 'Trong thẻ', { height: '400' }, { desktop: { width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-md)' } }),
+  ],
+  htmlEmbed: [
+    P('small', 'Thấp (widget)', { height: '120' }, { desktop: { width: '100%' } }),
+    P('medium', 'Vừa', { height: '320' }, { desktop: { width: '100%' } }),
+    P('no-script', 'Không chạy script', { scripts: false }, { desktop: { width: '100%' } }),
+  ],
+  video: [
+    P('wide', '16:9 bo góc', { aspect: '16/9', controls: true }, { desktop: { width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden' } }),
+    P('bg', 'Nền tự phát (loop, tắt tiếng)', { autoplay: true, loop: true, muted: true, controls: false }, { desktop: { width: '100%' } }),
+    P('portrait', 'Dọc 9:16', { aspect: '9/16' }, { desktop: { width: '100%', maxWidth: '360px', margin: '0 auto', borderRadius: 'var(--radius-lg)', overflow: 'hidden' } }),
+  ],
   languageSwitcher: [
     P('links', 'VI | EN', { variant: 'links', showLabel: false }, { desktop: { display: 'inline-flex', gap: '6px', alignItems: 'center', fontSize: '14px' } }),
     P('names', 'Tên đầy đủ', { variant: 'links', showLabel: true }, { desktop: { display: 'inline-flex', gap: '8px', alignItems: 'center' } }),

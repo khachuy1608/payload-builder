@@ -13,7 +13,11 @@ import {
   Heading as HeadingIcon,
   Image as ImageIcon,
   ChevronsDown,
+  Code2,
+  Film,
+  Frame,
   Languages,
+  MapPin,
   ScrollText,
   LayoutTemplate,
   Minus,
@@ -26,7 +30,7 @@ import {
 import { FEEDBACK_BLOCKS } from './blocks/defs/feedback'
 import { FORM_BLOCKS } from './blocks/defs/forms'
 import { LAYOUT_BLOCKS } from './blocks/defs/layout'
-import { Icon, ICON_OPTIONS, num, parseYouTubeId, safeHref, srcSetOf } from './blocks/helpers'
+import { bool, Icon, num, parseYouTubeId, safeHref, srcSetOf } from './blocks/helpers'
 import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
@@ -230,7 +234,7 @@ const BLOCK_LIST: BlockDefinition[] = [
       { type: 'text', prop: 'text', label: 'Chữ trên nút' },
       { type: 'url', prop: 'href', label: 'Liên kết', placeholder: 'https:// hoặc /duong-dan' },
       { type: 'toggle', prop: 'newTab', label: 'Mở tab mới' },
-      { type: 'select', prop: 'icon', label: 'Icon', options: ICON_OPTIONS },
+      { type: 'icon', prop: 'icon', label: 'Icon' },
       { type: 'select', prop: 'iconPosition', label: 'Vị trí icon', options: [{ value: 'left', label: 'Trước chữ' }, { value: 'right', label: 'Sau chữ' }, { value: 'only', label: 'Chỉ icon (ẩn chữ)' }] },
       { type: 'number', prop: 'iconSize', label: 'Cỡ icon (px)', min: 10, max: 64 },
       { type: 'custom', component: 'textStyle' },
@@ -454,6 +458,110 @@ const BLOCK_LIST: BlockDefinition[] = [
             </span>
           ))}
         </nav>
+      )
+    },
+  },
+  {
+    type: 'map',
+    label: 'Google Maps',
+    category: 'media',
+    icon: MapPin,
+    defaults: () => ({ props: { query: 'Hồ Hoàn Kiếm, Hà Nội', zoom: '15', height: '360', maptype: 'roadmap' }, styles: { desktop: { width: '100%', borderRadius: 'var(--radius-md)', overflow: 'hidden' } } }),
+    contentControls: [
+      { type: 'text', prop: 'query', label: 'Địa chỉ hoặc tên địa điểm', help: 'Dùng bản đồ nhúng công khai của Google (không cần API key).' },
+      { type: 'number', prop: 'zoom', label: 'Mức zoom (1–20)', min: 1, max: 20 },
+      { type: 'number', prop: 'height', label: 'Chiều cao (px)', min: 120, max: 1200 },
+      { type: 'select', prop: 'maptype', label: 'Kiểu bản đồ', options: [{ value: 'roadmap', label: 'Đường phố' }, { value: 'satellite', label: 'Vệ tinh' }] },
+    ],
+    styleGroups: ['size', 'spacing', 'border', 'effects', 'position'],
+    Render: ({ node, attrs, mode }) => {
+      const q = text(node.props.query).trim()
+      if (!q) return mode === 'editor' ? <Placeholder attrs={attrs} label="Nhập địa chỉ ở panel bên phải" icon={MapPin} /> : null
+      const zoom = Math.max(1, Math.min(20, num(node.props.zoom, 15)))
+      const src = `https://www.google.com/maps?q=${encodeURIComponent(q)}&z=${zoom}&t=${text(node.props.maptype) === 'satellite' ? 'k' : 'm'}&output=embed&hl=vi`
+      return (
+        <div {...attrs} className={`${attrs.className} b-map`}>
+          <iframe src={src} title={`Bản đồ: ${q}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen style={{ width: '100%', height: Math.max(120, num(node.props.height, 360)), border: 0, display: 'block' }} />
+        </div>
+      )
+    },
+  },
+  {
+    type: 'embed',
+    label: 'Nhúng iframe',
+    category: 'media',
+    icon: Frame,
+    defaults: () => ({ props: { url: '', height: '400', title: 'Nội dung nhúng', allowFullscreen: true }, styles: { desktop: { width: '100%' } } }),
+    contentControls: [
+      { type: 'url', prop: 'url', label: 'URL (https)', placeholder: 'https://…', help: 'Nhúng trang/ứng dụng ngoài (Google Form, Spotify, Figma, Calendly…). Chỉ nhận https.' },
+      { type: 'number', prop: 'height', label: 'Chiều cao (px)', min: 100, max: 2000 },
+      { type: 'text', prop: 'title', label: 'Tiêu đề (a11y)' },
+      { type: 'toggle', prop: 'allowFullscreen', label: 'Cho phép toàn màn hình' },
+    ],
+    styleGroups: ['size', 'spacing', 'border', 'effects', 'position'],
+    Render: ({ node, attrs, mode }) => {
+      const url = text(node.props.url).trim()
+      if (!/^https:\/\/[^\s"'<>]+$/.test(url)) return mode === 'editor' ? <Placeholder attrs={attrs} label="Nhập URL https cần nhúng" icon={Frame} /> : null
+      return (
+        <div {...attrs} className={`${attrs.className} b-embed`}>
+          <iframe src={url} title={text(node.props.title, 'Nội dung nhúng')} loading="lazy" allowFullScreen={bool(node.props.allowFullscreen, true)} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation" style={{ width: '100%', height: Math.max(100, num(node.props.height, 400)), border: 0, display: 'block' }} />
+        </div>
+      )
+    },
+  },
+  {
+    type: 'htmlEmbed',
+    label: 'Mã HTML',
+    category: 'media',
+    icon: Code2,
+    defaults: () => ({ props: { html: '<div style="font-family:sans-serif;padding:24px;text-align:center;background:#f1f5f9;border-radius:12px">Dán mã nhúng (widget, script của bên thứ ba) ở panel bên phải</div>', height: '200', scripts: true }, styles: { desktop: { width: '100%' } } }),
+    contentControls: [
+      { type: 'code', prop: 'html', label: 'Mã HTML / script nhúng', help: 'Chạy trong iframe sandbox tách biệt (không truy cập được trang chính). Muốn HTML hiển thị trực tiếp trong trang, dùng block Rich content.' },
+      { type: 'number', prop: 'height', label: 'Chiều cao (px)', min: 40, max: 2000 },
+      { type: 'toggle', prop: 'scripts', label: 'Cho phép chạy script' },
+    ],
+    styleGroups: ['size', 'spacing', 'border', 'effects', 'position'],
+    Render: ({ node, attrs, mode }) => {
+      const html = text(node.props.html)
+      if (!html.trim()) return mode === 'editor' ? <Placeholder attrs={attrs} label="Dán mã HTML ở panel bên phải" icon={Code2} /> : null
+      const sandbox = bool(node.props.scripts, true) ? 'allow-scripts allow-popups allow-forms' : 'allow-popups'
+      const doc = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0}</style></head><body>${html}</body></html>`
+      return (
+        <div {...attrs} className={`${attrs.className} b-html-embed`}>
+          <iframe srcDoc={doc} title="Mã nhúng" loading="lazy" sandbox={sandbox} style={{ width: '100%', height: Math.max(40, num(node.props.height, 200)), border: 0, display: 'block' }} />
+        </div>
+      )
+    },
+  },
+  {
+    type: 'video',
+    label: 'Video',
+    category: 'media',
+    icon: Film,
+    defaults: () => ({ props: { media: null, url: '', poster: null, controls: true, autoplay: false, loop: false, muted: false, aspect: '16/9' }, styles: { desktop: { width: '100%', borderRadius: 'var(--radius-md)', overflow: 'hidden' } } }),
+    contentControls: [
+      { type: 'media', prop: 'media', label: 'Video từ thư viện (mp4/webm)' },
+      { type: 'url', prop: 'url', label: 'Hoặc URL video (https)', placeholder: 'https://…/video.mp4' },
+      { type: 'media', prop: 'poster', label: 'Ảnh bìa (poster)' },
+      { type: 'select', prop: 'aspect', label: 'Tỉ lệ', options: [{ value: '16/9', label: '16:9' }, { value: '4/3', label: '4:3' }, { value: '1/1', label: '1:1' }, { value: '9/16', label: '9:16 (dọc)' }, { value: 'auto', label: 'Theo video' }] },
+      { type: 'toggle', prop: 'controls', label: 'Hiện nút điều khiển' },
+      { type: 'toggle', prop: 'autoplay', label: 'Tự phát (sẽ tắt tiếng)' },
+      { type: 'toggle', prop: 'loop', label: 'Lặp lại' },
+      { type: 'toggle', prop: 'muted', label: 'Tắt tiếng' },
+    ],
+    styleGroups: ['size', 'spacing', 'border', 'effects', 'position'],
+    Render: ({ node, attrs, mode }) => {
+      const media = node.props.media && typeof node.props.media === 'object' ? (node.props.media as MediaValue) : null
+      const url = text(node.props.url).trim()
+      const src = media?.url || (/^https:\/\/[^\s"'<>]+$/.test(url) ? url : '')
+      if (!src) return mode === 'editor' ? <Placeholder attrs={attrs} label="Chọn video từ thư viện hoặc nhập URL" icon={Film} /> : null
+      const poster = node.props.poster && typeof node.props.poster === 'object' ? (node.props.poster as MediaValue).url : undefined
+      const autoplay = bool(node.props.autoplay)
+      const aspect = text(node.props.aspect, '16/9')
+      return (
+        <div {...attrs} className={`${attrs.className} b-video`}>
+          <video src={src} poster={poster} controls={bool(node.props.controls, true)} autoPlay={autoplay} loop={bool(node.props.loop)} muted={autoplay || bool(node.props.muted)} playsInline preload={autoplay ? 'auto' : 'metadata'} style={{ width: '100%', display: 'block', ...(aspect !== 'auto' ? { aspectRatio: aspect, objectFit: 'cover' } : {}) }} />
+        </div>
       )
     },
   },

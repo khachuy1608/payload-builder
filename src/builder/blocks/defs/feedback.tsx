@@ -472,7 +472,7 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
     icon: Inbox,
     defaults: () => ({ props: { icon: 'inboxEmpty', title: 'Chưa có dự án nào', text: 'Tạo dự án đầu tiên để bắt đầu theo dõi công việc của bạn.', buttonText: 'Dự án mới', buttonHref: '#' }, styles: { desktop: { padding: '48px 24px', textAlign: 'center' } } }),
     contentControls: [
-      { type: 'select', prop: 'icon', label: 'Icon', options: ['inboxEmpty', 'search', 'inbox', 'user', 'chat', 'grid'].map((v) => ({ value: v, label: v })) },
+      { type: 'icon', prop: 'icon', label: 'Icon' },
       { type: 'text', prop: 'title', label: 'Tiêu đề' },
       { type: 'textarea', prop: 'text', label: 'Mô tả' },
       { type: 'text', prop: 'buttonText', label: 'Nút hành động (trống = ẩn)' },

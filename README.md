@@ -158,6 +158,13 @@ npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redir
 npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
 ```
 
+## Tiện ích nhỏ (đợt 6)
+
+- **Form:** email thông báo mỗi bài gửi tới *Email nhận thông báo* trong Cài đặt site (reply-to là email người gửi nếu có; cần `SMTP_*`, không có thì in ra console). Xuất CSV: `/api/builder/form-submissions.csv?form=<tên>&from=&to=` (nhân sự CMS). Trường **Tệp đính kèm** (ảnh/PDF/tài liệu ≤ 10MB, collection `form-uploads`, khách tải lên được, chỉ nhân sự đọc). **Form nhiều bước:** thêm trường loại “Bước mới” làm mốc; trang thật tự gom thành các bước với thanh tiến trình, Tiếp tục / Quay lại và kiểm tra bắt buộc từng bước.
+- **Block nhúng** (nhóm Media): **Google Maps** (địa chỉ, zoom, vệ tinh – không cần API key), **Nhúng iframe** (chỉ https, sandbox), **Mã HTML** (widget/script bên thứ ba chạy trong iframe sandbox tách biệt), **Video** (file mp4/webm từ thư viện hoặc URL, poster, tỉ lệ, tự phát/lặp/tắt tiếng).
+- **Bộ chọn icon** có tìm kiếm với hơn 110 icon (giao diện, thương mại, mạng xã hội…) cho Button, Empty State; icon render SVG inline, không tải font/thư viện ngoài.
+- **Editor:** hộp **Phím tắt** (phím `?`, nút ⌨ hoặc menu chuột phải trên trang), **tour hướng dẫn** lần đầu mở (xem lại từ hộp phím tắt), **chế độ tối** (nút 🌙, nhớ theo trình duyệt).
+
 ## Hiệu năng & kỹ thuật (đợt 5)
 
 - **Render & cache:** trang công khai render động mỗi request nhưng toàn bộ dữ liệu (nội dung, block, theme, bản ghi) lấy từ cache theo tag `pages` → chi phí chỉ là render React (vài chục ms). Không dùng ISR vì trang phụ thuộc query (`?page`, `?q`, `?take`) và cookie người dùng (Next báo `DYNAMIC_SERVER_USAGE` khi route ISR đọc `searchParams`). Build không chạm DB.

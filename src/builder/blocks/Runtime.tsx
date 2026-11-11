@@ -544,6 +544,9 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
       if (!form.matches('[data-form]')) return
       e.preventDefault()
       const msg = form.querySelector<HTMLElement>('.b-form-msg')!
+      // form nhiều bước: chỉ gửi khi đang ở bước cuối (nút Tiếp tục xử lý ở onClick)
+      const activeStep = form.querySelector<HTMLElement>('.b-form-stepbox.is-active')
+      if (activeStep && activeStep.nextElementSibling?.classList.contains('b-form-stepbox')) return
       let valid = true
       form.querySelectorAll<HTMLElement>('[data-field]').forEach((f) => {
         const inputs = [...f.querySelectorAll<HTMLInputElement>('input, select, textarea')]
@@ -577,6 +580,18 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
       if (btn) btn.disabled = true
       msg.hidden = true
       try {
+        // trường Tệp: tải lên form-uploads trước, lưu đường dẫn file vào data
+        for (const input of form.querySelectorAll<HTMLInputElement>('input[type=file][data-file-upload]')) {
+          const file = input.files?.[0]
+          if (!file) continue
+          const up = new FormData()
+          up.append('file', file)
+          up.append('_payload', JSON.stringify({ form: form.dataset.form }))
+          const r = await fetch('/api/form-uploads', { method: 'POST', body: up })
+          if (!r.ok) throw new Error('upload')
+          const docUp = (await r.json()).doc as { url?: string; filename?: string }
+          data[input.name] = docUp.url || `/api/form-uploads/file/${docUp.filename}`
+        }
         const action = form.dataset.formAction
         const res = action
           ? await fetch(action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
@@ -586,14 +601,101 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
         msg.classList.remove('is-error')
         msg.hidden = false
         form.reset()
-      } catch {
-        msg.textContent = 'Gửi thất bại, vui lòng thử lại.'
+      } catch (err) {
+        msg.textContent = (err as Error).message === 'upload' ? 'Không tải được file đính kèm (tối đa 10MB, đúng định dạng).' : 'Gửi thất bại, vui lòng thử lại.'
         msg.classList.add('is-error')
         msg.hidden = false
       } finally {
         if (btn) btn.disabled = false
       }
     }
+
+    // ---------- Form nhiều bước: gom các trường sau mỗi mốc "Bước mới" vào một bước, nút Tiếp tục / Quay lại ----------
+    const validateScope = (scope: HTMLElement): boolean => {
+      let valid = true
+      scope.querySelectorAll<HTMLElement>('[data-field]').forEach((f) => {
+        const inputs = [...f.querySelectorAll<HTMLInputElement>('input, select, textarea')]
+        const filled = inputs.some((i) => (i.type === 'checkbox' || i.type === 'radio' ? i.checked : i.type === 'file' ? !!i.files?.length : i.value.trim() !== ''))
+        const ok = !f.hasAttribute('data-required') || filled
+        f.classList.toggle('is-error', !ok)
+        const err = f.querySelector<HTMLElement>('[data-field-error]')
+        if (err) err.hidden = ok
+        if (!ok) valid = false
+      })
+      return valid
+    }
+    const showStep = (form: HTMLFormElement, i: number) => {
+      const boxes = [...form.querySelectorAll<HTMLElement>('.b-form-stepbox')]
+      boxes.forEach((b, j) => b.classList.toggle('is-active', j === i))
+      form.querySelectorAll<HTMLElement>('.b-form-steps li').forEach((li, j) => {
+        li.classList.toggle('is-active', j === i)
+        li.classList.toggle('is-done', j < i)
+      })
+      const last = i === boxes.length - 1
+      const actions = form.querySelector<HTMLElement>('.b-form-actions')
+      if (actions) {
+        actions.querySelector<HTMLElement>('.b-form-submit')!.hidden = !last
+        actions.querySelector<HTMLElement>('[data-step-next]')!.hidden = last
+        actions.querySelector<HTMLElement>('[data-step-prev]')!.hidden = i === 0
+      }
+    }
+    if (!editor)
+      root.querySelectorAll<HTMLFormElement>('form[data-form]').forEach((form) => {
+        const markers = [...form.querySelectorAll<HTMLElement>('[data-form-step]')]
+        if (!markers.length || form.dataset.multistep) return
+        form.dataset.multistep = ''
+        // các trường trước mốc đầu tiên thuộc bước 1 (tên mặc định)
+        const titles: string[] = []
+        const boxes: HTMLElement[] = []
+        let box: HTMLElement | null = null
+        const open = (title: string) => {
+          box = doc.createElement('fieldset')
+          box.className = 'b-form-stepbox'
+          boxes.push(box)
+          titles.push(title)
+        }
+        const kids = [...form.children].filter((c) => !c.matches('.b-form-actions, .b-form-msg, .b-form-hp, .cf-turnstile'))
+        for (const el of kids) {
+          if (el.matches('[data-form-step]')) {
+            open((el as HTMLElement).dataset.formStep || `Bước ${titles.length + 1}`)
+            el.remove()
+            continue
+          }
+          if (!box) open('Bước 1')
+          box!.append(el)
+        }
+        const nav = doc.createElement('ol')
+        nav.className = 'b-form-steps'
+        nav.innerHTML = titles.map((t) => `<li><span>${t.replace(/[<>&]/g, '')}</span></li>`).join('')
+        form.prepend(nav)
+        const actions = form.querySelector('.b-form-actions')!
+        boxes.forEach((b) => form.insertBefore(b, actions))
+        const prev = doc.createElement('button')
+        prev.type = 'button'
+        prev.className = 'b-button b-button--ghost'
+        prev.textContent = 'Quay lại'
+        prev.setAttribute('data-step-prev', '')
+        const next = doc.createElement('button')
+        next.type = 'button'
+        next.className = 'b-button'
+        next.textContent = 'Tiếp tục'
+        next.setAttribute('data-step-next', '')
+        actions.prepend(prev, next)
+        let i = 0
+        showStep(form, 0)
+        next.addEventListener('click', () => {
+          if (!validateScope(boxes[i])) {
+            boxes[i].querySelector<HTMLElement>('.is-error input, .is-error select, .is-error textarea')?.focus()
+            return
+          }
+          i = Math.min(boxes.length - 1, i + 1)
+          showStep(form, i)
+        })
+        prev.addEventListener('click', () => {
+          i = Math.max(0, i - 1)
+          showStep(form, i)
+        })
+      })
     const onLangChange = (e: Event) => {
       const sel = e.target as HTMLSelectElement
       if (sel.matches('[data-lang-switch]') && sel.value && !editor) win.location.href = sel.value

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUp, BookmarkPlus, ClipboardPaste, Copy, CopyPlus, Database, EyeOff, ExternalLink, Group, Settings2, Trash2, Ungroup, Unlink } from 'lucide-react'
+import { ArrowUp, BookmarkPlus, ClipboardPaste, Copy, CopyPlus, Database, EyeOff, ExternalLink, Group, Keyboard, Settings2, Trash2, Ungroup, Unlink } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { canContain, canSaveAsBlock, getSchema } from '@/builder/schema'
 import { SITE_PART_LABELS, sitePartOf } from '@/builder/siteParts'
@@ -85,6 +85,7 @@ export function ContextMenu() {
     ? [
         { label: 'Dán', icon: ClipboardPaste, shortcut: 'Ctrl+V', disabled: !clipboard, run: act(() => s().paste()) },
         { label: 'Cài đặt trang', icon: Settings2, run: act(() => s().select('root')) },
+        { label: 'Phím tắt…', icon: Keyboard, shortcut: '?', run: act(() => s().openShortcuts(true)) },
       ]
     : [
         { label: 'Chọn phần tử cha', icon: ArrowUp, disabled: !parent, run: act(() => parent && s().select(parent.id)) },

@@ -14,6 +14,7 @@ import { LeftPanel } from './LeftPanel'
 import { RightPanel } from './RightPanel'
 import { SaveBlockDialog } from './SaveBlockDialog'
 import { TemplateDialog } from './TemplateDialog'
+import { ShortcutsDialog, TourOverlay } from './HelpDialogs'
 import { ThemeDialog } from './ThemeDialog'
 import { LockBanner, useDocumentLock } from './LockBanner'
 import { handleShortcut } from './shortcuts'
@@ -86,6 +87,18 @@ export function Editor({ initial }: { initial: EditorInitial }) {
   const themeDialog = useEditor((s) => s.themeDialog)
   const historyDialog = useEditor((s) => s.historyDialog)
   const templateDialog = useEditor((s) => s.templateDialog)
+  const shortcutsDialog = useEditor((s) => s.shortcutsDialog)
+  // giao diện sáng/tối đã lưu + tour lần đầu
+  useEffect(() => {
+    const s = useEditor.getState()
+    try {
+      const saved = localStorage.getItem('ed-theme')
+      if (saved === 'dark' || saved === 'light') s.setUiTheme(saved)
+      if (!localStorage.getItem('ed-tour-done') && s.kind === 'page' && s.root.children?.length) s.startTour()
+    } catch {
+      /* ignore */
+    }
+  }, [])
   // trang mới (trống) -> gợi ý chọn mẫu
   useEffect(() => {
     const s = useEditor.getState()
@@ -105,6 +118,8 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       {themeDialog && <ThemeDialog />}
       {historyDialog && <HistoryDialog />}
       {templateDialog && <TemplateDialog />}
+      {shortcutsDialog && <ShortcutsDialog />}
+      <TourOverlay />
       <ContextMenu />
       <Toasts />
     </div>

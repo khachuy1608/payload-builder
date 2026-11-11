@@ -166,6 +166,11 @@ export interface EditorState {
   role: Role
   /** Ngôn ngữ đang sửa (Payload localization) */
   locale: string
+  /** Giao diện editor sáng/tối */
+  uiTheme: 'light' | 'dark'
+  shortcutsDialog: boolean
+  /** Bước tour hướng dẫn đang hiện (null = tắt) */
+  tour: number | null
   /** Người khác đang mở cùng tài liệu */
   presence: PresenceUser[]
   comments: CommentDoc[]
@@ -218,6 +223,11 @@ export interface EditorActions {
     role?: Role
     locale?: string
   }): void
+  setUiTheme(theme: 'light' | 'dark'): void
+  openShortcuts(open: boolean): void
+  startTour(): void
+  setTour(step: number): void
+  endTour(): void
   setPresence(list: PresenceUser[]): void
   setComments(list: CommentDoc[]): void
   setLayout(patch: Partial<PageLayout>): void
@@ -404,6 +414,9 @@ export const useEditor = create<Store>()(
       publishMenu: false,
       role: 'editor',
       locale: 'vi',
+      uiTheme: 'light',
+      shortcutsDialog: false,
+      tour: null,
       presence: [],
       comments: [],
       selectedId: null,
@@ -662,6 +675,40 @@ export const useEditor = create<Store>()(
         set((s) => {
           s.lock = lock
         }),
+      setUiTheme: (theme) => {
+        set((s) => {
+          s.uiTheme = theme
+        })
+        try {
+          document.documentElement.dataset.edTheme = theme
+          localStorage.setItem('ed-theme', theme)
+        } catch {
+          /* SSR / private mode */
+        }
+      },
+      openShortcuts: (open) =>
+        set((s) => {
+          s.shortcutsDialog = open
+        }),
+      startTour: () =>
+        set((s) => {
+          s.tour = 0
+          s.shortcutsDialog = false
+        }),
+      setTour: (step) =>
+        set((s) => {
+          s.tour = step
+        }),
+      endTour: () => {
+        set((s) => {
+          s.tour = null
+        })
+        try {
+          localStorage.setItem('ed-tour-done', '1')
+        } catch {
+          /* ignore */
+        }
+      },
       setPresence: (list) =>
         set((s) => {
           s.presence = list

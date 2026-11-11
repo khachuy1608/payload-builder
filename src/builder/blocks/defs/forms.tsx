@@ -27,6 +27,8 @@ const FIELD_TYPES = [
   { value: 'date', label: 'Date Picker' },
   { value: 'time', label: 'Time Field' },
   { value: 'datetime', label: 'Ngày & giờ' },
+  { value: 'file', label: 'Tệp đính kèm (ảnh, PDF, tài liệu ≤ 10MB)' },
+  { value: 'step', label: '— Bước mới (form nhiều bước) —' },
 ]
 
 const slug = (v: unknown) => text(v).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
@@ -51,7 +53,7 @@ export const FORM_BLOCKS: BlockDefinition[] = [
       { type: 'text', prop: 'name', label: 'Tên form (để lọc bài gửi trong admin)' },
       { type: 'text', prop: 'submitText', label: 'Chữ nút gửi' },
       { type: 'textarea', prop: 'successMessage', label: 'Thông báo sau khi gửi' },
-      { type: 'url', prop: 'action', label: 'Gửi tới URL khác (tuỳ chọn)', help: 'Để trống: lưu vào Form submissions của site (xem ở admin).' },
+      { type: 'url', prop: 'action', label: 'Gửi tới URL khác (tuỳ chọn)', help: 'Để trống: lưu vào Form submissions của site (xem ở admin). Thêm trường “Bước mới” để chia form thành nhiều bước; trường “Tệp đính kèm” tự tải file lên trước khi gửi. Email thông báo đặt ở Cài đặt site; xuất CSV ở /api/builder/form-submissions.csv.' },
       { type: 'custom', component: 'children' },
     ],
     styleGroups: ['layout', 'size', 'spacing', 'background', 'border', 'effects', 'position', 'child'],
@@ -86,6 +88,7 @@ export const FORM_BLOCKS: BlockDefinition[] = [
       { type: 'toggle', prop: 'required', label: 'Bắt buộc (*)' },
       { type: 'toggle', prop: 'showError', label: 'Xem thử trạng thái lỗi' },
       { type: 'toggle', prop: 'resizable', label: 'Cho kéo đổi cỡ (textarea)' },
+      { type: 'text', prop: 'accept', label: 'Loại file chấp nhận (trường Tệp)', placeholder: 'image/*,.pdf' },
       { type: 'list', prop: 'options', label: 'Lựa chọn (select, radio, checkbox, combobox…)', itemLabel: 'Lựa chọn', fields: [{ key: 'label', label: 'Nhãn', type: 'text' }] },
     ],
     styleGroups: ['typography', 'size', 'spacing', 'effects', 'child'],
@@ -114,6 +117,27 @@ export const FORM_BLOCKS: BlockDefinition[] = [
           </span>
         </>
       )
+      // mốc bước của form nhiều bước: Runtime gom các trường sau mốc này vào một bước
+      if (type === 'step') {
+        return (
+          <div {...attrs} className={`${attrs.className} b-form-step`} data-form-step={label || 'Bước'}>
+            <span className="b-form-step-label">{label || 'Bước mới'}</span>
+          </div>
+        )
+      }
+      if (type === 'file') {
+        const accept = text(node.props.accept) || 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip'
+        return (
+          <div {...attrs} className={`${attrs.className} b-field${showError ? ' is-error' : ''}`} data-field="" data-required={required || undefined}>
+            <label className="b-field-label" htmlFor={id}>
+              {label}
+              {star}
+            </label>
+            <input id={id} name={name} type="file" className="b-input b-input--file" accept={accept} required={required} data-file-upload="" aria-describedby={help ? `${id}-help` : undefined} />
+            {foot}
+          </div>
+        )
+      }
       // nhóm checkbox / radio / switch
       if (type === 'checkbox' || type === 'radio') {
         const list = opts.length ? opts : [label]

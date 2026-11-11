@@ -24,6 +24,8 @@ export type ContentControl =
   | { type: 'media'; prop: string; label: string }
   | { type: 'number'; prop: string; label: string; min?: number; max?: number; step?: number; help?: string }
   | { type: 'color'; prop: string; label: string }
+  /** Bộ chọn icon có tìm kiếm (toàn bộ ICONS) */
+  | { type: 'icon'; prop: string; label: string; help?: string }
   /** Danh sách mục lặp lại: mỗi mục là object với các trường `fields` */
   | { type: 'list'; prop: string; label: string; itemLabel?: string; fields: ListField[]; max?: number; help?: string }
   | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' | 'children' | 'data' | 'textStyle' }

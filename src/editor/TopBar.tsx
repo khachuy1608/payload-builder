@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, ChevronDown, ExternalLink, History, LayoutTemplate, Loader2, Monitor, Redo2, Smartphone, Tablet, Undo2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ExternalLink, History, Keyboard, LayoutTemplate, Loader2, Monitor, Moon, Redo2, Smartphone, Sun, Tablet, Undo2 } from 'lucide-react'
 import { PublishMenu } from './PublishMenu'
 import type { Device } from '@/builder/types'
 import { LOCALES } from '@/lib/locale'
@@ -51,6 +51,7 @@ export function TopBar() {
         <DeviceSwitch device={device} />
         <div className="ed-top-right">
           <LocaleSwitch />
+          <UiTools />
           <UndoRedo canUndo={canUndo} canRedo={canRedo} />
           <button className="ed-btn ed-btn--primary" onClick={() => saveBlock()} disabled={saving || readOnly} title={readOnly ? 'Chỉ chủ sở hữu mới lưu được' : 'Ctrl+S'}>
             {saving && <Loader2 size={15} className="ed-spin" />} Lưu block
@@ -97,6 +98,7 @@ export function TopBar() {
 
       <div className="ed-top-right">
         <LocaleSwitch />
+        <UiTools />
         <UndoRedo canUndo={canUndo} canRedo={canRedo} />
         <button className="ed-icon-btn" title="Mẫu trang" onClick={() => useEditor.getState().openTemplateDialog(true)}>
           <LayoutTemplate size={17} />
@@ -121,6 +123,21 @@ export function TopBar() {
         </div>
       </div>
     </header>
+  )
+}
+
+/** Phím tắt + chế độ sáng/tối của editor */
+function UiTools() {
+  const uiTheme = useEditor((s) => s.uiTheme)
+  return (
+    <>
+      <button className="ed-icon-btn" title="Phím tắt (?)" onClick={() => useEditor.getState().openShortcuts(true)}>
+        <Keyboard size={17} />
+      </button>
+      <button className="ed-icon-btn" title={uiTheme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'} data-ui-theme={uiTheme} onClick={() => useEditor.getState().setUiTheme(uiTheme === 'dark' ? 'light' : 'dark')}>
+        {uiTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+      </button>
+    </>
   )
 }
 

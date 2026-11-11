@@ -15,6 +15,7 @@ import { SITE_PART_LABELS, type SitePart, sitePartOf } from '@/builder/siteParts
 import { findNode, genId, getAncestors } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
+import { Icon, ICON_LABELS, ICONS } from '@/builder/blocks/helpers'
 import { nodeLabel } from './labels'
 import { MediaPicker } from './MediaPicker'
 import { PresetGallery } from './PresetGallery'
@@ -145,6 +146,12 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
             placeholder={control.placeholder}
             onChange={(e) => update(e.target.value)}
           />
+        </Field>
+      )
+    case 'icon':
+      return (
+        <Field label={control.label} help={control.help}>
+          <IconPicker value={String(node.props[control.prop] ?? '')} onChange={(v) => update(v, false)} />
         </Field>
       )
     case 'select':
@@ -533,6 +540,40 @@ function TemplatePicker({ node }: { node: BuilderNode }) {
         </button>
       </div>
       <span className="ed-help">Hoặc chọn một phần tử bất kỳ trên trang rồi bấm nút <b>🗄 Lặp theo dữ liệu</b> trên thanh công cụ / menu chuột phải.</span>
+    </div>
+  )
+}
+
+/** Bộ chọn icon: ô tìm kiếm + lưới toàn bộ icon của helpers.ICONS */
+function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const all = Object.keys(ICONS)
+  const needle = q.trim().toLowerCase()
+  const list = needle ? all.filter((k) => k.toLowerCase().includes(needle) || (ICON_LABELS[k] ?? '').toLowerCase().includes(needle)) : all
+  return (
+    <div className="ed-iconpicker">
+      <button type="button" className="ed-input ed-iconpicker-current" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {value ? <Icon name={value} size={16} /> : null}
+        <span>{value ? (ICON_LABELS[value] ?? value) : 'Không có icon'}</span>
+        <ChevronDown size={14} />
+      </button>
+      {open && (
+        <div className="ed-iconpicker-pop">
+          <input className="ed-input" placeholder="Tìm icon… (ví dụ: mũi tên, giỏ, facebook)" value={q} autoFocus onChange={(e) => setQ(e.target.value)} />
+          <div className="ed-icon-grid">
+            <button type="button" className={`ed-icon-cell${!value ? ' is-active' : ''}`} title="Không có icon" onClick={() => (onChange(''), setOpen(false))}>
+              <X size={16} />
+            </button>
+            {list.map((k) => (
+              <button key={k} type="button" className={`ed-icon-cell${value === k ? ' is-active' : ''}`} title={`${ICON_LABELS[k] ?? k} (${k})`} data-icon={k} onClick={() => (onChange(k), setOpen(false))}>
+                <Icon name={k} size={18} />
+              </button>
+            ))}
+          </div>
+          <span className="ed-help">{list.length} / {all.length} icon</span>
+        </div>
+      )}
     </div>
   )
 }

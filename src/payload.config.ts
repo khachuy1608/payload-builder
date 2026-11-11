@@ -9,6 +9,7 @@ import { Comments } from './collections/Comments'
 import { CONTENT_COLLECTIONS } from './collections/content'
 import { Bookings, Customers } from './collections/Customers'
 import { FormSubmissions } from './collections/FormSubmissions'
+import { FormUploads } from './collections/FormUploads'
 import { Media } from './collections/Media'
 import { MyBlocks } from './collections/MyBlocks'
 import { Pages } from './collections/Pages'
@@ -20,6 +21,7 @@ import { Users } from './collections/Users'
 import { isStaffUser } from './lib/access'
 import { DEFAULT_LOCALE, LOCALES } from './lib/locale'
 import { getSources } from './lib/data'
+import { formExportEndpoint } from './lib/formExport'
 import { presenceEndpoints } from './lib/presence'
 import { scheduleEndpoints } from './lib/schedule'
 import { migrations } from './migrations'
@@ -34,7 +36,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' – Page Builder' },
   },
-  collections: [Pages, MyBlocks, Themes, StylePresets, Comments, FormSubmissions, Redirects, Media, Users, Customers, Bookings, ...CONTENT_COLLECTIONS],
+  collections: [Pages, MyBlocks, Themes, StylePresets, Comments, FormSubmissions, FormUploads, Redirects, Media, Users, Customers, Bookings, ...CONTENT_COLLECTIONS],
   editor: lexicalEditor(),
   // Đa ngôn ngữ: trường localized có bản riêng cho từng ngôn ngữ, thiếu thì fallback về mặc định
   localization: { locales: LOCALES.map((l) => ({ code: l.code, label: l.label })), defaultLocale: DEFAULT_LOCALE, fallback: true },
@@ -49,6 +51,7 @@ export default buildConfig({
   endpoints: [
     ...scheduleEndpoints,
     ...presenceEndpoints,
+    formExportEndpoint,
     {
       // Health check cho load balancer / giám sát: kiểm tra kết nối DB
       path: '/health',

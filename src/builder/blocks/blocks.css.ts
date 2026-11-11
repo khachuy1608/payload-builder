@@ -326,6 +326,10 @@ textarea.b-input{resize:none}
 .b-multi-chips{display:flex;flex-wrap:wrap;gap:6px}
 .b-multi-chips span{font-size:12px;padding:4px 8px;border-radius:999px;background:var(--color-surface)}
 .b-form-actions{display:flex;gap:8px}
+.b-form-step{padding:8px 0;border-top:1px dashed var(--color-border)}.b-form-step-label{font-size:12px;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:.04em}
+.b-form-stepbox{display:none;border:0;padding:0;margin:0;min-width:0}.b-form-stepbox.is-active{display:flex;flex-direction:column;gap:14px}
+.b-form-steps{display:flex;gap:8px;list-style:none;margin:0 0 8px;padding:0;counter-reset:step}.b-form-steps li{flex:1;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--color-muted);counter-increment:step}.b-form-steps li::before{content:counter(step);width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface);border:1px solid var(--color-border);font-size:12px;font-weight:600}.b-form-steps li.is-active{color:var(--color-text);font-weight:600}.b-form-steps li.is-active::before,.b-form-steps li.is-done::before{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
+.b-input--file{padding:8px}[hidden]{display:none!important}
 .b-form-submit{background:var(--color-primary);color:#fff;padding:11px 22px;cursor:pointer}
 .b-form-submit[disabled]{opacity:.6}
 .b-signin{display:flex;flex-direction:column;gap:14px}

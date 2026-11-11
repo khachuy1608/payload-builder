@@ -74,6 +74,7 @@ export interface Config {
     'style-presets': StylePreset;
     comments: Comment;
     'form-submissions': FormSubmission;
+    'form-uploads': FormUpload;
     redirects: Redirect;
     media: Media;
     users: User;
@@ -100,6 +101,7 @@ export interface Config {
     'style-presets': StylePresetsSelect<false> | StylePresetsSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
+    'form-uploads': FormUploadsSelect<false> | FormUploadsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -534,6 +536,27 @@ export interface FormSubmission {
   createdAt: string;
 }
 /**
+ * File do khách tải lên qua block Form.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "form-uploads".
+ */
+export interface FormUpload {
+  id: number;
+  form?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -945,6 +968,10 @@ export interface PayloadLockedDocument {
         value: number | FormSubmission;
       } | null)
     | ({
+        relationTo: 'form-uploads';
+        value: number | FormUpload;
+      } | null)
+    | ({
         relationTo: 'redirects';
         value: number | Redirect;
       } | null)
@@ -1207,6 +1234,24 @@ export interface FormSubmissionsSelect<T extends boolean = true> {
   data?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "form-uploads_select".
+ */
+export interface FormUploadsSelect<T extends boolean = true> {
+  form?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

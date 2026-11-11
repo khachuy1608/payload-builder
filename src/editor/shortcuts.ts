@@ -44,5 +44,8 @@ export function handleShortcut(e: KeyboardEvent) {
     s.remove(s.selectedId)
   } else if (key === 'escape') {
     s.select(null)
+  } else if ((e.key === '?' && !mod) || (mod && e.key === '/')) {
+    e.preventDefault()
+    s.openShortcuts(!s.shortcutsDialog)
   }
 }

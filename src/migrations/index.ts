@@ -13,6 +13,7 @@ import * as migration_20261111_141528_phase2_tokens from './20261111_141528_phas
 import * as migration_20261111_143107_phase3_content from './20261111_143107_phase3_content';
 import * as migration_20261111_144735_phase4_i18n from './20261111_144735_phase4_i18n';
 import * as migration_20261111_150000_phase5_theme_contrast from './20261111_150000_phase5_theme_contrast';
+import * as migration_20261111_152607_phase6_form_uploads from './20261111_152607_phase6_form_uploads';
 
 export const migrations = [
   {
@@ -83,11 +84,16 @@ export const migrations = [
   {
     up: migration_20261111_144735_phase4_i18n.up,
     down: migration_20261111_144735_phase4_i18n.down,
-    name: '20261111_144735_phase4_i18n'
+    name: '20261111_144735_phase4_i18n',
   },
   {
     up: migration_20261111_150000_phase5_theme_contrast.up,
     down: migration_20261111_150000_phase5_theme_contrast.down,
     name: '20261111_150000_phase5_theme_contrast',
+  },
+  {
+    up: migration_20261111_152607_phase6_form_uploads.up,
+    down: migration_20261111_152607_phase6_form_uploads.down,
+    name: '20261111_152607_phase6_form_uploads'
   },
 ];

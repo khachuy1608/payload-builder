@@ -50,6 +50,24 @@ export const FormSubmissions: CollectionConfig = {
     { name: 'data', label: 'Dữ liệu', type: 'json', required: true },
   ],
   hooks: {
+    afterChange: [
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return doc
+        // thông báo email tới địa chỉ trong Cài đặt site (nếu có) – lỗi email không làm hỏng việc lưu bài gửi
+        try {
+          const settings = await req.payload.findGlobal({ slug: 'site-settings', depth: 0, overrideAccess: true })
+          const to = String(settings?.notifyEmail ?? '').trim()
+          if (!to) return doc
+          const data = (doc.data ?? {}) as Record<string, unknown>
+          const rows = Object.entries(data).map(([k, v]) => `<tr><td style="padding:4px 8px;border:1px solid #ddd"><b>${k}</b></td><td style="padding:4px 8px;border:1px solid #ddd">${String(Array.isArray(v) ? v.join(', ') : v).replace(/[<>]/g, '')}</td></tr>`).join('')
+          const replyTo = typeof data.email === 'string' && /^[^\s@]+@[^\s@]+$/.test(data.email) ? data.email : undefined
+          await req.payload.sendEmail({ to, replyTo, subject: `[${doc.form}] Bài gửi mới từ ${doc.page || 'website'}`, html: `<p>Form <b>${doc.form}</b> vừa nhận bài gửi mới (${doc.page || ''}).</p><table style="border-collapse:collapse">${rows}</table>` })
+        } catch (err) {
+          req.payload.logger.warn({ err }, 'Không gửi được email thông báo form')
+        }
+        return doc
+      },
+    ],
     beforeValidate: [
       async ({ data, req, operation }) => {
         if (!data) return data
