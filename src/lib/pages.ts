@@ -3,6 +3,7 @@ import { draftMode } from 'next/headers'
 import { getPayload } from 'payload'
 import { cache } from 'react'
 import { normalizeContent } from '../builder/validate'
+import { loadBlocksForContent } from './blocks'
 
 /**
  * Lấy trang theo slug cho front-end.
@@ -25,5 +26,8 @@ export const getPageBySlug = cache(async (slug: string) => {
   })
   const doc = result.docs[0]
   if (!doc) return null
-  return { title: doc.title, slug: doc.slug, content: normalizeContent(doc.content), draft }
+  const content = normalizeContent(doc.content)
+  // cây gốc của các My Block liên kết mà trang dùng (kể cả lồng nhau)
+  const blocks = await loadBlocksForContent(payload, content)
+  return { title: doc.title, slug: doc.slug, content, blocks, draft }
 })

@@ -27,6 +27,8 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   button: { isContainer: false },
   youtube: { isContainer: false },
   divider: { isContainer: false },
+  /** My Block dạng liên kết: triển khai thành cây thật lúc render (xem ./refs.ts). Không hiện ở panel Phần tử. */
+  blockRef: { isContainer: false, hidden: true },
 }
 
 export function getSchema(type: string): BlockSchema | undefined {
@@ -42,6 +44,12 @@ export function canContain(parentType: string, childType: string): boolean {
   if (parent.allowedChildren && !parent.allowedChildren.includes(childType)) return false
   if (child.allowedParents && !child.allowedParents.includes(parentType)) return false
   return true
+}
+
+/** Phần tử có thể lưu thành My Block không (root, tab và chính blockRef thì không) */
+export function canSaveAsBlock(type: string): boolean {
+  const schema = BLOCK_SCHEMAS[type]
+  return !!schema && type !== 'root' && type !== 'blockRef' && !schema.allowedParents
 }
 
 export const MAX_DEPTH = 32

@@ -7,6 +7,7 @@
  */
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { canContain } from '@/builder/schema'
 import {
@@ -19,9 +20,31 @@ import {
   moveNode,
   removeNode,
 } from '@/builder/tree'
-import type { BuilderNode, Device, DropTarget, StyleBucket, StyleState } from '@/builder/types'
+import type { BuilderNode, Device, DropTarget, MediaValue, StyleBucket, StyleState } from '@/builder/types'
 
-export type DragPayload = { kind: 'new'; blockType: string } | { kind: 'move'; nodeId: string }
+export type DragPayload =
+  | { kind: 'new'; blockType: string }
+  | { kind: 'move'; nodeId: string }
+  /** Kéo một My Block từ thư viện. blockType = 'blockRef' (liên kết) hoặc type gốc của block (bản sao) – để kiểm tra chỗ thả */
+  | { kind: 'block'; blockId: string; linked: boolean; blockType: string }
+
+/** Editor đang sửa một trang hay bản gốc của một My Block */
+export type EditorKind = 'page' | 'block'
+export type BlockScope = 'private' | 'shared'
+export type InsertMode = 'copy' | 'linked'
+
+/** Một My Block trong thư viện (đã chuẩn hoá từ doc của collection my-blocks) */
+export interface MyBlock {
+  id: string
+  name: string
+  scope: BlockScope
+  owner: string | null
+  tree: BuilderNode
+  thumbnail: MediaValue | null
+  updatedAt: string
+}
+
+export const blockLookup = (blocks: Record<string, MyBlock>): BlockLookup => (id) => blocks[id]?.tree
 
 export interface Rect {
   x: number
@@ -48,18 +71,34 @@ const HISTORY_LIMIT = 100
 const COALESCE_MS = 800
 
 export interface EditorState {
+  kind: EditorKind
+  /** id trang (kind = page) hoặc id block (kind = block) */
   pageId: string
   title: string
   slug: string
   status: SaveStatus
+  /** Phạm vi của block đang sửa (kind = block) */
+  scope: BlockScope
+  /** Block của người khác: chỉ xem */
+  readOnly: boolean
+  userId: string | null
   root: BuilderNode
+
+  /** Thư viện My Blocks (mọi block đọc được), key = id */
+  blocks: Record<string, MyBlock>
+  blocksStatus: 'idle' | 'loading' | 'ready' | 'error'
+  /** Block được trang tham chiếu nhưng không tải được (đã xoá…) */
+  missingBlocks: Record<string, true>
+  insertMode: InsertMode
+  /** Đang mở hộp thoại "Lưu thành My Block" cho node này */
+  saveBlockFor: string | null
 
   selectedId: string | null
   hoveredId: string | null
   editingId: string | null
   device: Device
   styleState: StyleState
-  leftTab: 'elements' | 'navigator'
+  leftTab: 'elements' | 'navigator' | 'blocks'
 
   past: BuilderNode[]
   future: BuilderNode[]
@@ -76,14 +115,39 @@ export interface EditorState {
 }
 
 export interface EditorActions {
-  init(data: { pageId: string; title: string; slug: string; status: SaveStatus; root: BuilderNode }): void
+  init(data: {
+    kind: EditorKind
+    pageId: string
+    title: string
+    slug: string
+    status: SaveStatus
+    root: BuilderNode
+    scope?: BlockScope
+    readOnly?: boolean
+    userId: string | null
+  }): void
   select(id: string | null): void
   hover(id: string | null): void
   setEditing(id: string | null): void
   setDevice(device: Device): void
   setStyleState(state: StyleState): void
   setLeftTab(tab: EditorState['leftTab']): void
-  setMeta(patch: { title?: string; slug?: string }): void
+  setMeta(patch: { title?: string; slug?: string; scope?: BlockScope }): void
+
+  // ----- My Blocks -----
+  setBlocks(list: MyBlock[]): void
+  setBlocksStatus(status: EditorState['blocksStatus']): void
+  upsertBlock(block: MyBlock): void
+  removeBlock(id: string): void
+  markMissingBlock(id: string): void
+  setInsertMode(mode: InsertMode): void
+  openSaveBlock(id: string | null): void
+  /** Chèn My Block từ thư viện: bản sao độc lập hoặc node blockRef liên kết */
+  insertMyBlock(blockId: string, linked: boolean, target?: DropTarget): string | null
+  /** Thay node (giữ vị trí) bằng node khác – dùng khi thay phần tử bằng liên kết tới block vừa lưu */
+  replaceNode(id: string, node: BuilderNode): boolean
+  /** Tách blockRef thành bản sao độc lập */
+  detach(id: string): void
 
   insertBlock(type: string, target?: DropTarget): string | null
   insertNode(node: BuilderNode, target: DropTarget): boolean
@@ -116,7 +180,7 @@ let toastSeq = 0
 export function canDropAt(root: BuilderNode, target: DropTarget, drag: DragPayload): boolean {
   const parent = findNode(root, target.parentId)
   if (!parent) return false
-  if (drag.kind === 'new') return canContain(parent.type, drag.blockType)
+  if (drag.kind === 'new' || drag.kind === 'block') return canContain(parent.type, drag.blockType)
   const moving = findNode(root, drag.nodeId)
   if (!moving || moving.type === 'root') return false
   if (isInSubtree(root, drag.nodeId, target.parentId)) return false
@@ -169,11 +233,20 @@ export const useEditor = create<Store>()(
     }
 
     return {
+      kind: 'page',
       pageId: '',
       title: '',
       slug: '',
       status: 'draft',
+      scope: 'private',
+      readOnly: false,
+      userId: null,
       root: { id: 'root', type: 'root', props: {}, styles: {}, children: [] },
+      blocks: {},
+      blocksStatus: 'idle',
+      missingBlocks: {},
+      insertMode: 'copy',
+      saveBlockFor: null,
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -193,15 +266,20 @@ export const useEditor = create<Store>()(
 
       init: (data) =>
         set((s) => {
+          s.kind = data.kind
           s.pageId = data.pageId
           s.title = data.title
           s.slug = data.slug
           s.status = data.status
+          s.scope = data.scope ?? 'private'
+          s.readOnly = data.readOnly ?? false
+          s.userId = data.userId
           s.root = data.root
           s.past = []
           s.future = []
           s.dirty = false
           s.selectedId = null
+          s.saveBlockFor = null
         }),
 
       select: (id) =>
@@ -234,8 +312,97 @@ export const useEditor = create<Store>()(
         set((s) => {
           if (patch.title !== undefined) s.title = patch.title
           if (patch.slug !== undefined) s.slug = patch.slug
+          if (patch.scope !== undefined) s.scope = patch.scope
           s.dirty = true
         }),
+
+      // ----- My Blocks -----
+      setBlocks: (list) =>
+        set((s) => {
+          // giữ nguyên object của block chưa đổi để cache triển khai (resolveRefs) và memo của canvas còn hiệu lực
+          s.blocks = Object.fromEntries(list.map((b) => [b.id, s.blocks[b.id]?.updatedAt === b.updatedAt ? s.blocks[b.id] : b]))
+          for (const id of Object.keys(s.missingBlocks)) if (s.blocks[id]) delete s.missingBlocks[id]
+          s.blocksStatus = 'ready'
+        }),
+      setBlocksStatus: (status) =>
+        set((s) => {
+          s.blocksStatus = status
+        }),
+      upsertBlock: (block) =>
+        set((s) => {
+          s.blocks[block.id] = block
+          delete s.missingBlocks[block.id]
+        }),
+      removeBlock: (id) =>
+        set((s) => {
+          delete s.blocks[id]
+        }),
+      markMissingBlock: (id) =>
+        set((s) => {
+          s.missingBlocks[id] = true
+        }),
+      setInsertMode: (mode) =>
+        set((s) => {
+          s.insertMode = mode
+        }),
+      openSaveBlock: (id) =>
+        set((s) => {
+          s.saveBlockFor = id
+        }),
+
+      insertMyBlock: (blockId, linked, target) => {
+        const state = get()
+        const block = state.blocks[blockId]
+        if (!block) {
+          get().toast('error', 'Block chưa tải xong hoặc không còn tồn tại.')
+          return null
+        }
+        // đang sửa bản gốc của block X: không được chèn X hay block nào dẫn tới X (vòng lặp)
+        if (state.kind === 'block' && state.pageId && (blockId === state.pageId || reachesBlock(block.tree, state.pageId, blockLookup(state.blocks)))) {
+          get().toast('error', 'Không thể chèn: block này tham chiếu tới chính block đang sửa (vòng lặp).')
+          return null
+        }
+        const node: BuilderNode = linked
+          ? { id: genId(), type: BLOCK_REF_TYPE, props: { blockId, name: block.name }, styles: {} }
+          : cloneWithNewIds(block.tree)
+        const t = target ?? defaultTarget(state.root, state.selectedId, node.type)
+        if (!t || !canDropAt(state.root, t, { kind: 'new', blockType: node.type })) {
+          get().toast('error', 'Không thể đặt block ở vị trí này.')
+          return null
+        }
+        commit((root) => insertNode(root, t, node))
+        set((s) => {
+          s.selectedId = node.id
+        })
+        return node.id
+      },
+
+      replaceNode: (id, node) => {
+        const loc = findParent(get().root, id)
+        if (!loc || !canContain(loc.parent.type, node.type)) return false
+        commit((root) => {
+          const parent = findNode(root, loc.parent.id)
+          if (parent?.children) parent.children.splice(loc.index, 1, node)
+        })
+        set((s) => {
+          s.selectedId = node.id
+        })
+        return true
+      },
+
+      detach: (id) => {
+        const state = get()
+        const node = findNode(state.root, id)
+        const blockId = node ? refBlockId(node) : null
+        const tree = blockId ? state.blocks[blockId]?.tree : null
+        if (!node || !tree) {
+          get().toast('error', 'Chưa tải được bản gốc của block nên không thể tách.')
+          return
+        }
+        // triển khai một cấp rồi cấp id mới: block lồng bên trong vẫn là liên kết
+        const copy = cloneWithNewIds(expandRef(node, tree))
+        if (get().replaceNode(id, copy)) get().toast('info', 'Đã tách khỏi block gốc. Phần tử này giờ độc lập.')
+      },
 
       insertBlock: (type, target) => {
         const state = get()
@@ -388,6 +555,7 @@ export const useEditor = create<Store>()(
         if (drag && drop) {
           const target = { parentId: drop.parentId, index: drop.index }
           if (drag.kind === 'new') get().insertBlock(drag.blockType, target)
+          else if (drag.kind === 'block') get().insertMyBlock(drag.blockId, drag.linked, target)
           else if (get().move(drag.nodeId, target))
             set((s) => {
               s.selectedId = drag.nodeId

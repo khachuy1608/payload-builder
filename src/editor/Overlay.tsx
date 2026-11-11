@@ -4,10 +4,11 @@
  * Lớp phủ vẽ phía trên iframe: viền hover, viền chọn + thanh công cụ, vạch chỉ vị trí thả.
  * Toạ độ đọc bằng getBoundingClientRect trong iframe mỗi frame (rAF) nên luôn đúng khi cuộn/đổi layout.
  */
-import { ArrowUp, Copy, GripVertical, Trash2 } from 'lucide-react'
+import { ArrowUp, BookmarkPlus, Copy, GripVertical, Trash2, Unlink } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { getBlock } from '@/builder/registry'
+import { canSaveAsBlock } from '@/builder/schema'
 import { findNode, findParent } from '@/builder/tree'
+import { nodeLabel } from './labels'
 import { type Rect, useEditor } from './store'
 
 interface Boxes {
@@ -47,20 +48,22 @@ export function Overlay({ doc }: { doc: Document }) {
   }, [doc, hoveredId, selectedId])
 
   const selectedNode = selectedId ? findNode(root, selectedId) : null
-  const def = selectedNode ? getBlock(selectedNode.type) : undefined
   const hoverNode = hoveredId && hoveredId !== selectedId ? findNode(root, hoveredId) : null
   const s = useEditor.getState()
 
   return (
     <div className="ed-overlay">
       {boxes.hover && hoverNode && !drag && (
-        <div className="ed-box ed-box--hover" style={rectStyle(boxes.hover)}>
-          <span className="ed-box-tag">{getBlock(hoverNode.type)?.label}</span>
+        <div className={`ed-box ed-box--hover${hoverNode.type === 'blockRef' ? ' ed-box--linked' : ''}`} style={rectStyle(boxes.hover)}>
+          <span className="ed-box-tag">{nodeLabel(hoverNode)}</span>
         </div>
       )}
 
       {boxes.selected && selectedNode && (
-        <div className={`ed-box ed-box--selected${editingId ? ' is-editing' : ''}`} style={rectStyle(boxes.selected)}>
+        <div
+          className={`ed-box ed-box--selected${editingId ? ' is-editing' : ''}${selectedNode.type === 'blockRef' ? ' ed-box--linked' : ''}`}
+          style={rectStyle(boxes.selected)}
+        >
           {!drag && !editingId && selectedNode.type !== 'root' && (
             <div className={`ed-toolbar${boxes.selected.y < 30 ? ' ed-toolbar--inside' : ''}`}>
               <span
@@ -76,7 +79,7 @@ export function Overlay({ doc }: { doc: Document }) {
               >
                 <GripVertical size={14} />
               </span>
-              <span className="ed-toolbar-label">{def?.label}</span>
+              <span className="ed-toolbar-label">{nodeLabel(selectedNode)}</span>
               {findParent(root, selectedNode.id)?.parent.id !== 'root' && (
                 <button className="ed-tool" title="Chọn phần tử cha" onClick={() => s.select(findParent(root, selectedNode.id)!.parent.id)}>
                   <ArrowUp size={14} />
@@ -85,6 +88,16 @@ export function Overlay({ doc }: { doc: Document }) {
               <button className="ed-tool" title="Nhân bản (Ctrl+D)" onClick={() => s.duplicate(selectedNode.id)}>
                 <Copy size={14} />
               </button>
+              {canSaveAsBlock(selectedNode.type) && (
+                <button className="ed-tool" title="Lưu thành My Block" onClick={() => s.openSaveBlock(selectedNode.id)}>
+                  <BookmarkPlus size={14} />
+                </button>
+              )}
+              {selectedNode.type === 'blockRef' && (
+                <button className="ed-tool" title="Tách khỏi block gốc (thành bản sao độc lập)" onClick={() => s.detach(selectedNode.id)}>
+                  <Unlink size={14} />
+                </button>
+              )}
               <button className="ed-tool" title="Xoá (Delete)" onClick={() => s.remove(selectedNode.id)}>
                 <Trash2 size={14} />
               </button>

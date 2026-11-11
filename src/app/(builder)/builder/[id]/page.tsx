@@ -23,6 +23,8 @@ export default async function BuilderPage({ params }: Args) {
   return (
     <Editor
       initial={{
+        kind: 'page',
+        userId: String(user.id),
         id: String(page.id),
         title: page.title,
         slug: page.slug,

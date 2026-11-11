@@ -10,6 +10,8 @@ export interface NodeAttrs {
   'data-node-id'?: string
   'data-node-type'?: string
   'data-empty'?: ''
+  /** Phần tử thuộc một My Block liên kết (chỉ trong editor): 'root' = gốc của block, '' = bên trong */
+  'data-linked'?: 'root' | ''
 }
 
 export interface RenderProps {

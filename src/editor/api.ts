@@ -1,8 +1,10 @@
 'use client'
 
-import type { PageContent } from '@/builder/types'
+import type { BuilderNode, PageContent } from '@/builder/types'
 import type { MediaValue } from '@/builder/types'
-import { useEditor } from './store'
+import { genId } from '@/builder/tree'
+import { validateBlockTree } from '@/builder/validate'
+import { type BlockScope, type MyBlock, useEditor } from './store'
 
 async function readError(res: Response): Promise<string> {
   try {
@@ -18,6 +20,7 @@ async function readError(res: Response): Promise<string> {
 /** Lưu trang qua REST API của Payload. publish=false: tạo bản nháp, không ảnh hưởng bản đã xuất bản */
 export async function savePage(publish: boolean): Promise<boolean> {
   const s = useEditor.getState()
+  if (s.kind === 'block') return saveBlock()
   if (s.saving) return false
   s.setSaving(true)
   const content: PageContent = { version: 1, root: s.root }
@@ -74,4 +77,121 @@ export async function uploadMedia(file: File, alt: string): Promise<MediaDoc> {
   if (!res.ok) throw new Error(await readError(res))
   const { doc } = await res.json()
   return doc
+}
+
+// ======================= My Blocks =======================
+
+export interface MyBlockDoc {
+  id: string | number
+  name: string
+  scope: BlockScope
+  owner?: string | number | { id: string | number } | null
+  tree: unknown
+  thumbnail?: MediaDoc | string | number | null
+  updatedAt: string
+}
+
+/** Chuẩn hoá doc từ API thành MyBlock dùng trong editor; null nếu cây dữ liệu hỏng */
+export function toMyBlock(doc: MyBlockDoc): MyBlock | null {
+  let tree: BuilderNode
+  try {
+    tree = validateBlockTree(doc.tree)
+  } catch {
+    return null
+  }
+  const owner = doc.owner == null ? null : typeof doc.owner === 'object' ? String(doc.owner.id) : String(doc.owner)
+  const thumb = doc.thumbnail && typeof doc.thumbnail === 'object' && doc.thumbnail.url ? toMediaValue(doc.thumbnail) : null
+  return { id: String(doc.id), name: doc.name, scope: doc.scope === 'shared' ? 'shared' : 'private', owner, tree, thumbnail: thumb, updatedAt: doc.updatedAt }
+}
+
+export async function listMyBlocks(): Promise<MyBlock[]> {
+  const res = await fetch('/api/my-blocks?limit=300&depth=1&sort=-updatedAt', { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const { docs } = (await res.json()) as { docs: MyBlockDoc[] }
+  return docs.map(toMyBlock).filter((b): b is MyBlock => b !== null)
+}
+
+/** Lấy một block theo id; null nếu không tồn tại / không có quyền */
+export async function getMyBlock(id: string): Promise<MyBlock | null> {
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1`, { credentials: 'include' })
+  if (res.status === 404 || res.status === 403) return null
+  if (!res.ok) throw new Error(await readError(res))
+  return toMyBlock(await res.json())
+}
+
+export async function createMyBlock(data: { name: string; scope: BlockScope; tree: BuilderNode }): Promise<MyBlock> {
+  const res = await fetch('/api/my-blocks?depth=1', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  const { doc } = await res.json()
+  const block = toMyBlock(doc)
+  if (!block) throw new Error('Dữ liệu block trả về không hợp lệ.')
+  return block
+}
+
+export async function updateMyBlock(id: string, data: Partial<{ name: string; scope: BlockScope; tree: BuilderNode }>): Promise<MyBlock> {
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  const { doc } = await res.json()
+  const block = toMyBlock(doc)
+  if (!block) throw new Error('Dữ liệu block trả về không hợp lệ.')
+  return block
+}
+
+export async function deleteMyBlock(id: string): Promise<void> {
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+/** Nạp thư viện vào store (gọi khi mở editor, khi quay lại tab, sau khi lưu block) */
+export async function refreshBlockLibrary(): Promise<void> {
+  const s = useEditor.getState()
+  if (s.blocksStatus === 'loading') return
+  s.setBlocksStatus('loading')
+  try {
+    s.setBlocks(await listMyBlocks())
+  } catch (err) {
+    useEditor.getState().setBlocksStatus('error')
+    useEditor.getState().toast('error', `Không tải được thư viện My Blocks: ${(err as Error).message}`)
+  }
+}
+
+/**
+ * Lưu bản gốc của block đang sửa (kind = block). Canvas là root chứa đúng một phần tử;
+ * nếu người dùng thêm nhiều phần tử ở cấp cao nhất thì gói chúng vào một Div.
+ */
+export async function saveBlock(): Promise<boolean> {
+  const s = useEditor.getState()
+  if (s.saving) return false
+  const kids = s.root.children ?? []
+  if (!kids.length) {
+    s.toast('error', 'Block đang trống. Hãy thêm ít nhất một phần tử.')
+    return false
+  }
+  const tree: BuilderNode = kids.length === 1 ? kids[0] : { id: genId(), type: 'div', props: {}, styles: {}, children: kids }
+  if (tree.type === 'blockRef') {
+    s.toast('error', 'Block không thể chỉ gồm một liên kết tới block khác. Hãy tách nó ra hoặc bọc trong một Div.')
+    return false
+  }
+  s.setSaving(true)
+  try {
+    const block = await updateMyBlock(s.pageId, { name: s.title.trim() || 'Block chưa đặt tên', scope: s.scope, tree })
+    useEditor.getState().upsertBlock(block)
+    useEditor.getState().markSaved('published')
+    useEditor.getState().toast('success', 'Đã lưu block. Các trang dùng liên kết sẽ tự cập nhật.')
+    return true
+  } catch (err) {
+    useEditor.getState().setSaving(false)
+    useEditor.getState().toast('error', `Lưu thất bại: ${(err as Error).message}`)
+    return false
+  }
 }

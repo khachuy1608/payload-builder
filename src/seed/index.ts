@@ -114,6 +114,12 @@ export function demoHomeContent(): PageContent {
   }
 }
 
+/** My Block mẫu: một thẻ tính năng (Div > Heading + Paragraph) */
+export function demoBlockTree(): BuilderNode {
+  n = 100
+  return feature('Block dùng lại', 'Lưu một vùng đã dựng thành My Block, chèn vào trang khác dạng bản sao hoặc liên kết.')
+}
+
 export async function seed(payload: Payload) {
   try {
     const { totalDocs } = await payload.count({ collection: 'pages' })
@@ -123,6 +129,12 @@ export async function seed(payload: Payload) {
       data: { title: 'Trang chủ', slug: 'home', content: demoHomeContent() as unknown as Record<string, unknown>, _status: 'published' },
     })
     payload.logger.info('Đã tạo trang mẫu "home".')
+    // một My Block mẫu dùng chung để thử tính năng bản sao / liên kết
+    await payload.create({
+      collection: 'my-blocks',
+      data: { name: 'Thẻ tính năng', scope: 'shared', tree: demoBlockTree() as unknown as Record<string, unknown> },
+    })
+    payload.logger.info('Đã tạo My Block mẫu "Thẻ tính năng".')
   } catch (err) {
     payload.logger.error({ err }, 'Không tạo được trang mẫu')
   }
