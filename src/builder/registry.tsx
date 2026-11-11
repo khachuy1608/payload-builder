@@ -19,6 +19,10 @@ import {
   Square,
   Youtube,
 } from 'lucide-react'
+import { FEEDBACK_BLOCKS } from './blocks/defs/feedback'
+import { FORM_BLOCKS } from './blocks/defs/forms'
+import { LAYOUT_BLOCKS } from './blocks/defs/layout'
+import { parseYouTubeId, safeHref } from './blocks/helpers'
 import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
@@ -29,21 +33,7 @@ import type { BlockRefProps, MediaValue } from './types'
 // ---------- helpers ----------
 
 const text = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback)
-
-export function safeHref(v: unknown): string | undefined {
-  const href = text(v).trim()
-  if (!href) return undefined
-  if (/^(https?:|mailto:|tel:)/i.test(href) || href.startsWith('/') || href.startsWith('#')) return href
-  if (/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(href)) return 'https://' + href
-  return undefined
-}
-
-export function parseYouTubeId(v: unknown): string | null {
-  const s = text(v).trim()
-  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s
-  const m = s.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/)
-  return m ? m[1] : null
-}
+export { parseYouTubeId, safeHref }
 
 function Placeholder({ attrs, label, icon: Icon }: { attrs: RenderProps['attrs']; label: string; icon: BlockDefinition['icon'] }) {
   return (
@@ -56,8 +46,8 @@ function Placeholder({ attrs, label, icon: Icon }: { attrs: RenderProps['attrs']
 
 const ContainerRender = ({ attrs, children }: RenderProps) => <div {...attrs}>{children}</div>
 
-const CONTAINER_GROUPS = ['layout', 'size', 'spacing', 'background', 'border', 'effects', 'child']
-const TEXT_GROUPS = ['typography', 'spacing', 'size', 'background', 'border', 'effects', 'child']
+const CONTAINER_GROUPS = ['layout', 'size', 'spacing', 'background', 'border', 'effects', 'position', 'child']
+const TEXT_GROUPS = ['typography', 'spacing', 'size', 'background', 'border', 'effects', 'position', 'child']
 
 // ---------- block definitions ----------
 
@@ -217,12 +207,36 @@ const BLOCK_LIST: BlockDefinition[] = [
     category: 'basic',
     icon: Minus,
     defaults: () => ({
-      props: {},
+      props: { variant: 'rule', label: 'hoặc' },
       styles: { desktop: { height: '1px', width: '100%', backgroundColor: 'var(--color-border)', margin: '16px 0' } },
     }),
-    contentControls: [],
-    styleGroups: ['size', 'spacing', 'background', 'effects', 'child'],
-    Render: ({ attrs }) => <div {...attrs} role="separator" />,
+    contentControls: [
+      {
+        type: 'select',
+        prop: 'variant',
+        label: 'Loại',
+        options: [
+          { value: 'rule', label: 'Rule – ngắt chủ đề (<hr>)' },
+          { value: 'separator', label: 'Separator – ngăn nhóm điều khiển' },
+          { value: 'labeled', label: 'Có chữ ở giữa (vd: “hoặc”)' },
+          { value: 'vertical', label: 'Dọc (trong hàng flex)' },
+          { value: 'decorative', label: 'Trang trí (không có ngữ nghĩa)' },
+        ],
+      },
+      { type: 'text', prop: 'label', label: 'Chữ ở giữa' },
+    ],
+    styleGroups: ['size', 'spacing', 'background', 'typography', 'effects', 'child'],
+    Render: ({ node, attrs }) => {
+      const variant = text(node.props.variant, 'rule')
+      if (variant === 'rule') return <hr {...attrs} className={attrs.className + ' b-divider b-divider--rule'} style={{ border: 0 }} />
+      if (variant === 'labeled')
+        return (
+          <div {...attrs} className={attrs.className + ' b-divider b-divider--labeled'} role="separator">
+            <span>{text(node.props.label)}</span>
+          </div>
+        )
+      return <div {...attrs} className={`${attrs.className} b-divider b-divider--${variant}`} role={variant === 'decorative' ? 'presentation' : 'separator'} aria-orientation={variant === 'vertical' ? 'vertical' : undefined} />
+    },
   },
   {
     type: 'image',
@@ -361,7 +375,7 @@ export const REF_ERROR_LABELS: Record<RefError, string> = {
   depth: 'Block "%s" lồng quá nhiều cấp – không thể hiển thị',
 }
 
-export const BLOCKS: Record<string, BlockDefinition> = Object.fromEntries(BLOCK_LIST.map((b) => [b.type, b]))
+export const BLOCKS: Record<string, BlockDefinition> = Object.fromEntries([...BLOCK_LIST, ...LAYOUT_BLOCKS, ...FEEDBACK_BLOCKS, ...FORM_BLOCKS].map((b) => [b.type, b]))
 
 export function getBlock(type: string): BlockDefinition | undefined {
   return BLOCKS[type]
@@ -371,4 +385,9 @@ export const BLOCK_CATEGORIES: { id: BlockDefinition['category']; label: string 
   { id: 'layout', label: 'Bố cục' },
   { id: 'basic', label: 'Cơ bản' },
   { id: 'media', label: 'Media' },
+  { id: 'nav', label: 'Điều hướng' },
+  { id: 'data', label: 'Dữ liệu & hiển thị' },
+  { id: 'feedback', label: 'Phản hồi & trạng thái' },
+  { id: 'overlay', label: 'Lớp phủ' },
+  { id: 'form', label: 'Form' },
 ]

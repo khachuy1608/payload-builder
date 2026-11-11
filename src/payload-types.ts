@@ -70,6 +70,7 @@ export interface Config {
     pages: Page;
     'my-blocks': MyBlock;
     themes: Theme;
+    'form-submissions': FormSubmission;
     media: Media;
     users: User;
     'payload-kv': PayloadKv;
@@ -82,6 +83,7 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     'my-blocks': MyBlocksSelect<false> | MyBlocksSelect<true>;
     themes: ThemesSelect<false> | ThemesSelect<true>;
+    'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -308,6 +310,28 @@ export interface Media {
   focalY?: number | null;
 }
 /**
+ * Dữ liệu người dùng gửi qua block Form trong Visual Builder.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "form-submissions".
+ */
+export interface FormSubmission {
+  id: number;
+  form: string;
+  page?: string | null;
+  data:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -342,6 +366,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'themes';
         value: number | Theme;
+      } | null)
+    | ({
+        relationTo: 'form-submissions';
+        value: number | FormSubmission;
       } | null)
     | ({
         relationTo: 'media';
@@ -461,6 +489,17 @@ export interface ThemesSelect<T extends boolean = true> {
         weight?: T;
         transform?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "form-submissions_select".
+ */
+export interface FormSubmissionsSelect<T extends boolean = true> {
+  form?: T;
+  page?: T;
+  data?: T;
   updatedAt?: T;
   createdAt?: T;
 }

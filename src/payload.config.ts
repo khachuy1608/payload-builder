@@ -3,6 +3,7 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
+import { FormSubmissions } from './collections/FormSubmissions'
 import { Media } from './collections/Media'
 import { MyBlocks } from './collections/MyBlocks'
 import { Pages } from './collections/Pages'
@@ -21,7 +22,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' – Page Builder' },
   },
-  collections: [Pages, MyBlocks, Themes, Media, Users],
+  collections: [Pages, MyBlocks, Themes, FormSubmissions, Media, Users],
   globals: [SiteSettings],
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },

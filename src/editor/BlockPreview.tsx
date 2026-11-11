@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { compileTreeCss } from '@/builder/css'
 import { resolveRefs } from '@/builder/refs'
+import { BuilderRuntime } from '@/builder/blocks/Runtime'
 import { RenderNode } from '@/builder/Renderer'
 import { BASE_CSS, themeToCss } from '@/builder/theme'
 import type { BuilderNode } from '@/builder/types'
@@ -75,6 +76,7 @@ export function BlockPreview({ tree, height = 96 }: { tree: BuilderNode; height?
             {theme.fontUrl && <link rel="stylesheet" href={theme.fontUrl} />}
             <style dangerouslySetInnerHTML={{ __html: themeToCss(theme) + css }} />
             <RenderNode node={resolved} mode="live" />
+            <BuilderRuntime mode="live" />
           </>,
           mount,
         )}

@@ -11,6 +11,7 @@ import { compileTreeCss } from '@/builder/css'
 import { resolveRefs } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { sanitizeRichText } from '@/builder/sanitize'
+import { BuilderRuntime } from '@/builder/blocks/Runtime'
 import { RenderNode } from '@/builder/Renderer'
 import { BASE_CSS, themeToCss } from '@/builder/theme'
 import { findNode, getAncestors } from '@/builder/tree'
@@ -119,6 +120,7 @@ function CanvasContent() {
       <style dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />
       <style dangerouslySetInnerHTML={{ __html: css }} />
       <RenderNode node={resolved} mode="editor" />
+      <BuilderRuntime mode="editor" />
     </>
   )
 }
@@ -278,12 +280,18 @@ export function Canvas() {
     const root = useEditor.getState().root
     const path = [...getAncestors(root, selectedId), findNode(root, selectedId)].filter(Boolean)
     path.forEach((n, i) => {
-      if (n!.type !== 'tabs') return
       const child = path[i + 1]
-      const idx = n!.children?.findIndex((c) => c.id === child?.id) ?? -1
-      if (idx < 0) return
-      const btn = doc.querySelector<HTMLElement>(`[data-node-id="${n!.id}"] > .b-tabs-nav > [data-tab-index="${idx}"]`)
-      if (btn && btn.getAttribute('aria-selected') !== 'true') btn.click()
+      if (n!.type === 'tabs' || n!.type === 'carousel') {
+        const idx = n!.children?.findIndex((c) => c.id === child?.id) ?? -1
+        if (idx < 0) return
+        const btn = doc.querySelector<HTMLElement>(`[data-node-id="${n!.id}"] [data-tab-index="${idx}"]`)
+        if (btn && btn.getAttribute('aria-selected') !== 'true' && !btn.classList.contains('is-active')) btn.click()
+      }
+      // mục accordion đang đóng: mở ra để thấy phần tử con
+      if (n!.type === 'accordionItem') {
+        const details = doc.querySelector<HTMLDetailsElement>(`details[data-node-id="${n!.id}"]`)
+        if (details && !details.open) details.open = true
+      }
     })
     const el = doc.querySelector(`[data-node-id="${selectedId}"]`)
     const r = el?.getBoundingClientRect()

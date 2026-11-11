@@ -4,6 +4,8 @@
  * Mọi block tham chiếu `var(--color-*)`, `var(--font-*)`, `var(--radius-*)`, `var(--button-*)` nên đổi theme = đổi bộ token.
  */
 import { sanitizeCssValue } from './css'
+import { BLOCKS_CSS } from './blocks/blocks.css'
+import { FX_CSS } from './effects'
 
 export const COLOR_KEYS = ['primary', 'secondary', 'accent', 'text', 'muted', 'background', 'surface', 'border'] as const
 export const FONT_KEYS = ['heading', 'body', 'mono'] as const
@@ -189,7 +191,7 @@ img,svg,video,iframe{display:block;max-width:100%}
 .b-tabs-btn{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 16px;font:inherit;color:var(--color-muted);cursor:pointer}
 .b-tabs-btn[aria-selected=true]{color:var(--color-primary);border-bottom-color:var(--color-primary);font-weight:600}
 .b-tabs-panel[hidden]{display:none}
-`
+` + FX_CSS + BLOCKS_CSS
 
 /** Các theme preset (chỉ đọc) được seed vào collection `themes` */
 export const PRESET_THEMES: { name: string; tokens: ThemeTokens }[] = [

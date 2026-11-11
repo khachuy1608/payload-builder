@@ -2,6 +2,7 @@
  * Kiểm tra & làm sạch cây nội dung trước khi lưu (hook beforeChange của Pages).
  * Không tin dữ liệu từ client: loại type lạ, id sai định dạng, quan hệ cha-con sai luật.
  */
+import { normalizeFx } from './effects'
 import { BLOCK_REF_TYPE, refBlockId } from './refs'
 import { canContain, canSaveAsBlock, getSchema, ID_PATTERN, MAX_DEPTH, MAX_NODES } from './schema'
 import { sanitizeRichText, sanitizeSvg } from './sanitize'
@@ -61,6 +62,11 @@ export function validateContent(input: unknown): PageContent {
       raw.props && typeof raw.props === 'object' && !Array.isArray(raw.props) ? { ...raw.props } : {}
     if (raw.type === 'svg') props.code = sanitizeSvg(props.code)
     if (raw.type === 'paragraph') props.text = sanitizeRichText(props.text)
+    if ('fx' in props) {
+      const fx = normalizeFx(props.fx)
+      if (fx) props.fx = fx
+      else delete props.fx
+    }
     if (raw.type === BLOCK_REF_TYPE) {
       // blockRef chỉ giữ id block và tên hiển thị; cờ `linked`/`refError` của cây render không bao giờ được lưu
       const blockId = refBlockId({ ...raw, props })

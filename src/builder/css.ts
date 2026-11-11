@@ -2,6 +2,7 @@
  * Biên dịch `styles` của từng node thành CSS có scope theo class `.n-<id>`.
  * Desktop-first: desktop là gốc, tablet/mobile ghi đè qua media query, hover dùng :hover.
  */
+import { fxCss, normalizeFx, resolveEasing } from './effects'
 import { ID_PATTERN } from './schema'
 import type { AdvancedProps, BuilderNode, StyleMap } from './types'
 
@@ -46,15 +47,28 @@ export function normalizeValue(prop: string, raw: string): string {
 /** Thuộc tính viết tắt phải đứng trước thuộc tính chi tiết (padding trước paddingTop) */
 const SHORTHANDS = new Set(['margin', 'padding', 'border', 'borderWidth', 'borderStyle', 'borderColor', 'borderRadius', 'background', 'flex', 'inset', 'font', 'overflow'])
 
+/** Các "thuộc tính ảo" của editor được biên dịch thành nhiều khai báo CSS */
+const VIRTUAL_PROPS = new Set(['lineClamp', 'overlayColor', 'focusRing'])
+
 export function declarations(map: StyleMap | undefined): string {
   if (!map) return ''
   const out: string[] = []
   const entries = Object.entries(map).sort(([a], [b]) => Number(SHORTHANDS.has(b)) - Number(SHORTHANDS.has(a)))
+  const overlay = map.overlayColor ? sanitizeCssValue(String(map.overlayColor)) : ''
   for (const [prop, raw] of entries) {
-    if (!PROP_PATTERN.test(prop) || raw == null) continue
-    const value = normalizeValue(prop, raw)
-    if (value) out.push(`${toKebab(prop)}:${value}`)
+    if (!PROP_PATTERN.test(prop) || raw == null || VIRTUAL_PROPS.has(prop)) continue
+    let value = normalizeValue(prop, raw)
+    if (!value) continue
+    // Scrim/overlay: lớp phủ màu đè lên ảnh nền
+    if (prop === 'backgroundImage' && overlay) value = `linear-gradient(${overlay},${overlay}),${value}`
+    if ((prop === 'transitionTimingFunction' || prop === 'animationTimingFunction') && value === 'spring') value = resolveEasing('spring')
+    out.push(`${toKebab(prop)}:${value}`)
   }
+  if (overlay && !map.backgroundImage) out.push(`background-image:linear-gradient(${overlay},${overlay})`)
+  // Truncation: 1 dòng = ellipsis, nhiều dòng = line-clamp
+  const clamp = parseInt(String(map.lineClamp ?? ''), 10)
+  if (clamp === 1) out.push('white-space:nowrap;overflow:hidden;text-overflow:ellipsis')
+  else if (clamp > 1) out.push(`display:-webkit-box;-webkit-line-clamp:${clamp};-webkit-box-orient:vertical;overflow:hidden`)
   return out.join(';')
 }
 
@@ -75,6 +89,15 @@ export function compileTreeCss(root: BuilderNode): string {
       if (d) base.push(`${sel}{${d}}`)
       const h = declarations(s.hover)
       if (h) hover.push(`${sel}:hover{${h}}`)
+      // Focus ring (:focus-visible) cho điều hướng bàn phím
+      const ring = s.desktop?.focusRing
+      if (ring && ring !== 'none') hover.push(`${sel}:focus-visible{outline:${ring === 'thick' ? '3px' : '2px'} solid var(--color-primary);outline-offset:${ring === 'inset' ? '-2px' : '2px'}}`)
+      const fx = normalizeFx((node.props as { fx?: unknown })?.fx)
+      if (fx) {
+        const extra = fxCss(sel, fx)
+        base.push(...extra.base)
+        hover.push(...extra.hover)
+      }
       const t = declarations(s.tablet)
       if (t) tablet.push(`${sel}{${t}}`)
       const m = declarations(s.mobile)

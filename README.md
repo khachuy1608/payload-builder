@@ -1,4 +1,4 @@
-# Payload Page Builder (P0 → P5)
+# Payload Page Builder (P0 → P5 + UI Kit)
 
 Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu Elementor** tự xây (không dùng thư viện page builder bên ngoài).
 
@@ -12,6 +12,7 @@ Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu E
   - Undo/redo, nhân bản, copy/paste, phím tắt, nhấp đúp để sửa chữ trực tiếp.
 - **P2** – Front-end render bằng **cùng một renderer** với canvas. Có responsive (Desktop/Tablet/Mobile), trạng thái Hover, ẩn theo thiết bị, lưu nháp, xem trước bản nháp và xuất bản.
 - **P3** – **My Blocks**: lưu một phần tử/vùng đã dựng thành block riêng (collection `my-blocks`), chèn lại vào trang dạng **bản sao** hoặc **liên kết** (sửa bản gốc thì mọi trang cập nhật, có nút *Tách*), sửa bản gốc bằng chính Visual Builder tại `/builder/block/:id`, chặn vòng lặp tham chiếu.
+- **UI Kit (theo namethatui.com)** – 36 block UI mới (header/navbar có hamburger, carousel, accordion, card, bento, masonry, marquee, breadcrumbs, pagination, steps, toggle group, bottom navigation, floating button, scrollspy, waffle menu, submenu/cascader/drill-down, overflow menu, command palette, product tour, data table, pie/donut chart, timeline, avatar group, status dot, chat bubble, badge/chip/pill/tag, progress/spinner, skeleton, empty state, alert/callout/banner, toast, modal/drawer/sheet, popover/dropdown/tooltip/hover card, lightbox, form + form field, sign-in form) và hệ **hiệu ứng** chọn được cho mọi phần tử (scroll reveal, spring/easing, hover highlight/lift/spotlight, text scramble/typewriter/rotating words/shimmer, parallax, stacking cards, hide-on-scroll header, sticky/fixed, truncation, scrim, focus ring).
 - **P5** – **Hoàn thiện**: rich text cho Paragraph (đậm/nghiêng/gạch chân/link, thanh công cụ nổi khi sửa trực tiếp), menu chuột phải trên canvas và cây Cấu trúc, kéo thả trực tiếp phần tử trên canvas không cần tay cầm, lịch sử phiên bản trong editor (xem trước, khôi phục, hoàn tác được), cache trang công khai + làm mới tự động khi xuất bản/sửa block/theme.
 - **P4** – **Themes**: collection `themes` (màu, font, bo góc, kiểu nút, link Google Fonts) với 4 preset chỉ đọc, nhân bản thành My Theme để chỉnh; global `site-settings` chọn theme của site, trang có thể ghi đè; hộp thoại *Quản lý theme* trong editor xem thử ngay trên canvas; bộ chọn màu lấy token theo theme đang dùng.
 
@@ -84,6 +85,16 @@ Chạy production không dùng Docker: `npm run build && npm start`. Migration t
 - **Khoá khi nhiều người cùng sửa:** dùng collection `payload-locked-documents` sẵn có của Payload (admin cũng dùng, nên admin và builder thấy khoá của nhau). Mở editor là giữ khoá, gia hạn mỗi 60s, thả khi rời trang (`pagehide` + `keepalive`); Payload coi khoá quá 300s là hết hạn. Người thứ hai thấy băng rôn "đang được X sửa", nút lưu bị vô hiệu, có *Kiểm tra lại* và *Chiếm quyền sửa*. Lưu gửi `overrideLock=false` nên server trả 423 nếu khoá thuộc người khác; vì Payload xoá khoá sau mỗi update, editor tự lấy lại khoá sau khi lưu.
 - **Cache:** trang công khai đọc từ `unstable_cache` theo tag `pages`; hook `afterChange`/`afterDelete` của Pages, My Blocks, Themes và Site Settings gọi `revalidateTag` (hết hạn ngay) kèm `revalidatePath` của trang. Draft mode luôn đọc bản nháp mới nhất, không cache.
 
+## UI Kit & hiệu ứng (theo namethatui.com)
+
+Toàn bộ 58 mục nền web của [namethatui.com](https://namethatui.com/?platform=web) được đưa vào builder: mục là **thành phần UI** thành block ở panel *Phần tử* (nhóm Bố cục, Điều hướng, Dữ liệu & hiển thị, Phản hồi & trạng thái, Lớp phủ, Form); mục là **hiệu ứng** thành lựa chọn trong tab *Kiểu* (nhóm *Chuyển động*, *Vị trí*, *Chữ → Giới hạn dòng*, *Nền → Lớp phủ*, *Hiệu ứng → Easing / Viền khi focus*). Drag & Drop là tương tác của chính editor; Tabs và Divider đã có từ trước (Divider thêm biến thể Rule / Separator / có chữ / dọc).
+
+- **Định nghĩa block:** `src/builder/blocks/defs/{layout,feedback,forms}.tsx` – mỗi block vẫn là một mục registry (defaults, controls, styleGroups, Render). Control mới: `list` (danh sách mục lặp lại có trường con), `number`, `color`, `custom: 'children'`.
+- **Render tĩnh + Runtime:** block render HTML thuần (server được), phần tương tác (accordion, carousel, drawer, dialog, popover/menu, toast, lightbox, command palette Ctrl+K, product tour, form, toggle group, dismiss, mật khẩu, multi-select chips) do `src/builder/blocks/Runtime.tsx` xử lý qua `data-*` bằng delegated event – chạy cả trên trang thật lẫn canvas. Trong editor, nội dung bị ẩn ở trang thật (modal, popover, toast, command palette, tour) được render mở trong khung “chỉ hiện trong editor” để sửa được.
+- **CSS block:** `src/builder/blocks/blocks.css.ts` (dùng token theme). Lưu ý class tự sinh `b-<type>` của mọi node: không đặt CSS cho phần tử con trùng tên type.
+- **Hiệu ứng:** `src/builder/effects.ts` – `props.fx` được làm sạch khi lưu, biên dịch CSS trong `css.ts` (keyframes trong `FX_CSS`), JS trong Runtime. **Spring** là mô phỏng lò xo thật (độ cứng / giảm chấn / khối lượng) xuất thành easing `linear()` kèm thời lượng tự tính. Tôn trọng `prefers-reduced-motion`.
+- **Form:** block Form gửi JSON tới collection `form-submissions` (khách tạo được, có honeypot, chỉ người đăng nhập đọc) hoặc tới URL `action` riêng; validation JS hiển thị dòng lỗi của Form Field. Sign-in Form chỉ là giao diện, POST tới `action` bạn đặt.
+
 ## Phím tắt trong Builder
 
 | Phím | Tác dụng |
@@ -133,7 +144,7 @@ src/
 │   ├── RightPanel.tsx       # Nội dung / Kiểu / Nâng cao (+ panel blockRef, cài đặt block)
 │   ├── MediaPicker.tsx      # thư viện ảnh + upload
 │   ├── TopBar.tsx, Editor.tsx, api.ts, shortcuts.ts, labels.ts, editor.css
-├── collections/             # Pages, MyBlocks, Themes, Media, Users
+├── collections/             # Pages, MyBlocks, Themes, FormSubmissions, Media, Users
 ├── globals/SiteSettings.ts  # theme đang dùng của site
 ├── lib/pages.ts             # server: lấy trang (cache theo tag `pages`, draft mode đọc tươi)
 ├── lib/revalidate.ts        # làm mới cache sau khi xuất bản / sửa block / theme

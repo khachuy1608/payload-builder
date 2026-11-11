@@ -1,9 +1,11 @@
 'use client'
 
-import { ChevronDown, ChevronRight, ExternalLink, Monitor, Palette, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, ExternalLink, Monitor, Palette, Play, Sparkles, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ContentControl, StyleField } from '@/builder/controls'
+import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
+import { EASING_OPTIONS, type FxProps, HOVER_OPTIONS, REVEAL_OPTIONS, TEXT_FX_OPTIONS, DEFAULT_SPRING, springEasing } from '@/builder/effects'
+import { getSchema } from '@/builder/schema'
 import { refBlockId } from '@/builder/refs'
 import { sanitizeRichText } from '@/builder/sanitize'
 import { getBlock } from '@/builder/registry'
@@ -102,6 +104,7 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
     case 'custom':
       if (control.component === 'tabs') return <TabsManager node={node} />
       if (control.component === 'blockRef') return <BlockRefPanel node={node} />
+      if (control.component === 'children') return <p className="ed-hint" style={{ margin: 0 }}>Nội dung bên trong là các phần tử con – kéo block vào hoặc chọn trong cây Cấu trúc.</p>
       return <PageSettings />
     case 'text':
     case 'url':
@@ -157,6 +160,134 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
       )
     case 'media':
       return <MediaField label={control.label} value={(node.props[control.prop] as MediaValue | null) ?? null} onChange={(v) => update(v, false)} />
+    case 'number':
+      return (
+        <Field label={control.label} help={control.help}>
+          <input
+            className="ed-input"
+            type="number"
+            min={control.min}
+            max={control.max}
+            step={control.step}
+            value={node.props[control.prop] == null ? '' : String(node.props[control.prop])}
+            onChange={(e) => update(e.target.value === '' ? null : Number(e.target.value))}
+          />
+        </Field>
+      )
+    case 'color':
+      return (
+        <Field label={control.label}>
+          <ColorInput value={String(node.props[control.prop] ?? '')} placeholder="" onChange={(v) => update(v)} />
+        </Field>
+      )
+    case 'list':
+      return <ListEditor node={node} control={control} />
+  }
+}
+
+/** Control dạng danh sách mục lặp lại (menu, breadcrumb, slide, cột bảng…) */
+function ListEditor({ node, control }: { node: BuilderNode; control: Extract<ContentControl, { type: 'list' }> }) {
+  const s = useEditor.getState
+  const items = (Array.isArray(node.props[control.prop]) ? (node.props[control.prop] as Record<string, unknown>[]) : []).map((it) => (it && typeof it === 'object' ? it : {}))
+  const save = (next: Record<string, unknown>[], key?: string) => s().updateProps(node.id, { [control.prop]: next }, key)
+  const setField = (i: number, key: string, value: unknown) => {
+    const next = items.map((it, j) => (j === i ? { ...it, [key]: value } : it))
+    save(next, `list:${node.id}:${control.prop}:${i}:${key}`)
+  }
+  const move = (i: number, dir: -1 | 1) => {
+    const next = [...items]
+    const [it] = next.splice(i, 1)
+    next.splice(i + dir, 0, it)
+    save(next)
+  }
+  const blank = () => Object.fromEntries(control.fields.map((f) => [f.key, f.type === 'toggle' ? false : f.type === 'media' ? null : f.type === 'number' ? null : f.options?.[0]?.value ?? '']))
+  return (
+    <div className="ed-field">
+      <span className="ed-label">{control.label}</span>
+      {control.help && <span className="ed-help">{control.help}</span>}
+      <div className="ed-list ed-list--cards">
+        {items.map((it, i) => (
+          <div key={i} className="ed-list-card">
+            <div className="ed-list-card-head">
+              <span className="ed-help">
+                {control.itemLabel ?? 'Mục'} {i + 1}
+              </span>
+              <button className="ed-icon-btn" title="Lên" disabled={i === 0} onClick={() => move(i, -1)}>
+                <ArrowUp size={13} />
+              </button>
+              <button className="ed-icon-btn" title="Xuống" disabled={i === items.length - 1} onClick={() => move(i, 1)}>
+                <ArrowDown size={13} />
+              </button>
+              <button className="ed-icon-btn" title="Xoá mục" onClick={() => save(items.filter((_, j) => j !== i))}>
+                <Trash2 size={13} />
+              </button>
+            </div>
+            {control.fields.map((f) => (
+              <ListFieldControl key={f.key} field={f} value={it[f.key]} onChange={(v) => setField(i, f.key, v)} />
+            ))}
+          </div>
+        ))}
+      </div>
+      <button className="ed-btn" disabled={!!control.max && items.length >= control.max} onClick={() => save([...items, blank()])}>
+        <Plus size={14} /> Thêm {control.itemLabel?.toLowerCase() ?? 'mục'}
+      </button>
+    </div>
+  )
+}
+
+function ListFieldControl({ field, value, onChange }: { field: ListField; value: unknown; onChange: (v: unknown) => void }) {
+  switch (field.type) {
+    case 'toggle':
+      return (
+        <label className="ed-toggle">
+          <input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} />
+          <span className="ed-toggle-ui" />
+          {field.label}
+        </label>
+      )
+    case 'select':
+      return (
+        <label className="ed-field">
+          <span className="ed-help">{field.label}</span>
+          <select className="ed-input" value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}>
+            {field.options?.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )
+    case 'media':
+      return <MediaField label={field.label} value={(value as MediaValue | null) ?? null} onChange={onChange} />
+    case 'number':
+      return (
+        <label className="ed-field">
+          <span className="ed-help">{field.label}</span>
+          <input className="ed-input" type="number" value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))} />
+        </label>
+      )
+    case 'color':
+      return (
+        <div className="ed-field">
+          <span className="ed-help">{field.label}</span>
+          <ColorInput value={String(value ?? '')} placeholder="" onChange={onChange} />
+        </div>
+      )
+    case 'textarea':
+      return (
+        <label className="ed-field">
+          <span className="ed-help">{field.label}</span>
+          <textarea className="ed-input ed-textarea" rows={2} value={String(value ?? '')} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />
+        </label>
+      )
+    default:
+      return (
+        <label className="ed-field">
+          <span className="ed-help">{field.label}</span>
+          <input className="ed-input" value={String(value ?? '')} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />
+        </label>
+      )
   }
 }
 
@@ -501,7 +632,144 @@ function StyleTab({ node }: { node: BuilderNode }) {
           </section>
         )
       })}
+      {node.type !== 'root' && <FxPanel node={node} />}
     </div>
+  )
+}
+
+/** Hiệu ứng (props.fx): xuất hiện khi cuộn, hover, chữ, parallax, xếp chồng, ẩn khi cuộn – áp dụng mọi thiết bị */
+function FxPanel({ node }: { node: BuilderNode }) {
+  const [open, setOpen] = useState(false)
+  const fx = ((node.props as { fx?: FxProps }).fx ?? {}) as FxProps
+  const def = getBlock(node.type)
+  const isContainer = !!getSchema(node.type)?.isContainer
+  const textOptions = def?.inlineEdit ? (def.inlineEdit.rich ? TEXT_FX_OPTIONS.filter((o) => o.value === 'none' || o.value === 'shimmer') : TEXT_FX_OPTIONS) : []
+  const set = (patch: Partial<FxProps>, key?: string) => {
+    const next: Record<string, unknown> = { ...fx, ...patch }
+    for (const k of Object.keys(next)) if (next[k] === undefined || next[k] === 'none' || next[k] === '' || next[k] === false || next[k] === 0) delete next[k]
+    useEditor.getState().updateProps(node.id, { fx: Object.keys(next).length ? next : undefined }, key)
+  }
+  const spring = { ...DEFAULT_SPRING, ...fx.spring }
+  const replay = () => {
+    const doc = (document.querySelector('iframe.ed-iframe') as HTMLIFrameElement | null)?.contentDocument
+    doc?.dispatchEvent(new CustomEvent('bld:replay', { detail: node.id }))
+  }
+  const count = Object.keys(fx).length
+  return (
+    <section className="ed-group">
+      <button className="ed-group-title" onClick={() => setOpen((o) => !o)}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <Sparkles size={13} /> Chuyển động (animation)
+        {count > 0 && <span className="ed-dot" title="Có hiệu ứng" />}
+      </button>
+      {open && (
+        <div className="ed-fields">
+          <p className="ed-help" style={{ margin: 0 }}>Áp dụng cho mọi thiết bị. Tôn trọng “giảm chuyển động” của hệ điều hành.</p>
+          <Field label="Xuất hiện khi cuộn tới (Scroll Reveal)">
+            <select className="ed-input" value={fx.reveal ?? 'none'} onChange={(e) => set({ reveal: e.target.value as FxProps['reveal'] })}>
+              {REVEAL_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {fx.reveal && (
+            <>
+              <Field label="Easing">
+                <select className="ed-input" value={fx.easing ?? 'ease'} onChange={(e) => set({ easing: e.target.value === 'ease' ? undefined : e.target.value })}>
+                  {EASING_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {fx.easing === 'spring' ? (
+                <div className="ed-row">
+                  {(['stiffness', 'damping', 'mass'] as const).map((k) => (
+                    <label key={k} className="ed-field" style={{ flex: 1 }}>
+                      <span className="ed-help">{k === 'stiffness' ? 'Độ cứng' : k === 'damping' ? 'Giảm chấn' : 'Khối lượng'}</span>
+                      <input className="ed-input" type="number" step={k === 'mass' ? 0.1 : 1} value={spring[k]} onChange={(e) => set({ spring: { ...spring, [k]: Number(e.target.value) } }, `fx:${node.id}:spring:${k}`)} />
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="ed-row">
+                  <label className="ed-field" style={{ flex: 1 }}>
+                    <span className="ed-help">Thời lượng (ms)</span>
+                    <input className="ed-input" type="number" min={50} step={50} value={fx.duration ?? 600} onChange={(e) => set({ duration: Number(e.target.value) }, `fx:${node.id}:duration`)} />
+                  </label>
+                  <label className="ed-field" style={{ flex: 1 }}>
+                    <span className="ed-help">Trễ (ms)</span>
+                    <input className="ed-input" type="number" min={0} step={50} value={fx.delay ?? 0} onChange={(e) => set({ delay: Number(e.target.value) }, `fx:${node.id}:delay`)} />
+                  </label>
+                </div>
+              )}
+              {fx.easing === 'spring' && <span className="ed-help">Thời lượng tự tính theo lò xo: {springEasing(spring).duration} ms.</span>}
+              <label className="ed-toggle">
+                <input type="checkbox" checked={fx.once !== false} onChange={(e) => set({ once: e.target.checked ? undefined : false })} />
+                <span className="ed-toggle-ui" />
+                Chỉ chạy lần đầu
+              </label>
+            </>
+          )}
+          <Field label="Khi rê chuột (Hover)">
+            <select className="ed-input" value={fx.hover ?? 'none'} onChange={(e) => set({ hover: e.target.value as FxProps['hover'] })}>
+              {HOVER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {textOptions.length > 0 && (
+            <Field label="Hiệu ứng chữ">
+              <select className="ed-input" value={fx.text ?? 'none'} onChange={(e) => set({ text: e.target.value as FxProps['text'] })}>
+                {textOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {fx.text === 'rotate' && (
+            <Field label="Các từ xoay vòng (cách nhau bằng dấu phẩy)">
+              <input className="ed-input" value={fx.words ?? ''} placeholder="nhanh, đẹp, dễ dùng" onChange={(e) => set({ words: e.target.value }, `fx:${node.id}:words`)} />
+            </Field>
+          )}
+          <Field label="Parallax khi cuộn" help="0 = tắt. Âm: trôi chậm hơn trang, dương: nhanh hơn.">
+            <input className="ed-input" type="number" min={-1} max={1} step={0.1} value={fx.parallax ?? 0} onChange={(e) => set({ parallax: Number(e.target.value) }, `fx:${node.id}:parallax`)} />
+          </Field>
+          {isContainer && (
+            <>
+              <label className="ed-toggle">
+                <input type="checkbox" checked={!!fx.stack} onChange={(e) => set({ stack: e.target.checked || undefined })} />
+                <span className="ed-toggle-ui" />
+                Xếp chồng thẻ khi cuộn (Stacking Cards)
+              </label>
+              {fx.stack && (
+                <Field label="Cách mép trên (px)">
+                  <input className="ed-input" type="number" min={0} value={fx.stackTop ?? 80} onChange={(e) => set({ stackTop: Number(e.target.value) }, `fx:${node.id}:stackTop`)} />
+                </Field>
+              )}
+            </>
+          )}
+          <label className="ed-toggle">
+            <input type="checkbox" checked={!!fx.hideOnScroll} onChange={(e) => set({ hideOnScroll: e.target.checked || undefined })} />
+            <span className="ed-toggle-ui" />
+            Ẩn khi cuộn xuống, hiện khi cuộn lên (header)
+          </label>
+          {fx.hideOnScroll && <span className="ed-help">Kết hợp với Vị trí = Sticky hoặc Fixed để thấy hiệu ứng.</span>}
+          {(fx.reveal || (fx.text && fx.text !== 'shimmer')) && (
+            <button className="ed-btn" onClick={replay}>
+              <Play size={14} /> Xem thử trên canvas
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 

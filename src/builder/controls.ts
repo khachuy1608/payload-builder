@@ -8,12 +8,25 @@ export interface Option {
   value: string
 }
 
+/** Trường con trong một control dạng danh sách (menu, breadcrumb, slide…) */
+export interface ListField {
+  key: string
+  label: string
+  type: 'text' | 'url' | 'textarea' | 'toggle' | 'select' | 'media' | 'number' | 'color'
+  options?: Option[]
+  placeholder?: string
+}
+
 export type ContentControl =
   | { type: 'text' | 'textarea' | 'url' | 'code' | 'richtext'; prop: string; label: string; placeholder?: string; help?: string }
-  | { type: 'select'; prop: string; label: string; options: Option[] }
-  | { type: 'toggle'; prop: string; label: string }
+  | { type: 'select'; prop: string; label: string; options: Option[]; help?: string }
+  | { type: 'toggle'; prop: string; label: string; help?: string }
   | { type: 'media'; prop: string; label: string }
-  | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' }
+  | { type: 'number'; prop: string; label: string; min?: number; max?: number; step?: number; help?: string }
+  | { type: 'color'; prop: string; label: string }
+  /** Danh sách mục lặp lại: mỗi mục là object với các trường `fields` */
+  | { type: 'list'; prop: string; label: string; itemLabel?: string; fields: ListField[]; max?: number; help?: string }
+  | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' | 'children' }
 
 export type StyleFieldKind = 'unit' | 'select' | 'color' | 'text' | 'box'
 
@@ -98,6 +111,8 @@ export const STYLE_GROUPS: Record<string, StyleGroup> = {
       { key: 'flexGrow', label: 'Grow', kind: 'unit', placeholder: '0' },
       { key: 'flexShrink', label: 'Shrink', kind: 'unit', placeholder: '1' },
       { key: 'flexBasis', label: 'Basis', kind: 'unit', placeholder: 'auto' },
+      { key: 'gridColumn', label: 'Cột (grid)', kind: 'text', placeholder: 'span 2' },
+      { key: 'gridRow', label: 'Hàng (grid)', kind: 'text', placeholder: 'span 2' },
       {
         key: 'alignSelf',
         label: 'Tự căn',
@@ -156,6 +171,29 @@ export const STYLE_GROUPS: Record<string, StyleGroup> = {
         options: opt(['none', 'Bình thường'], ['uppercase', 'IN HOA'], ['lowercase', 'chữ thường'], ['capitalize', 'Viết Hoa Đầu']),
       },
       { key: 'color', label: 'Màu chữ', kind: 'color' },
+      {
+        key: 'lineClamp',
+        label: 'Giới hạn dòng',
+        kind: 'select',
+        options: opt(['1', '1 dòng (…)'], ['2', '2 dòng'], ['3', '3 dòng'], ['4', '4 dòng'], ['5', '5 dòng'], ['6', '6 dòng']),
+      },
+    ],
+  },
+  position: {
+    id: 'position',
+    label: 'Vị trí',
+    fields: [
+      {
+        key: 'position',
+        label: 'Định vị',
+        kind: 'select',
+        options: opt(['static', 'Bình thường'], ['relative', 'Relative'], ['sticky', 'Sticky – dính khi cuộn tới'], ['fixed', 'Fixed – cố định trên màn hình'], ['absolute', 'Absolute']),
+      },
+      { key: 'top', label: 'Trên', kind: 'unit', placeholder: 'auto', showIf: (s) => !!s.position && s.position !== 'static' },
+      { key: 'bottom', label: 'Dưới', kind: 'unit', placeholder: 'auto', showIf: (s) => !!s.position && s.position !== 'static' },
+      { key: 'left', label: 'Trái', kind: 'unit', placeholder: 'auto', showIf: (s) => !!s.position && s.position !== 'static' },
+      { key: 'right', label: 'Phải', kind: 'unit', placeholder: 'auto', showIf: (s) => !!s.position && s.position !== 'static' },
+      { key: 'zIndex', label: 'Lớp (z-index)', kind: 'unit', placeholder: '0' },
     ],
   },
   background: {
@@ -164,6 +202,7 @@ export const STYLE_GROUPS: Record<string, StyleGroup> = {
     fields: [
       { key: 'backgroundColor', label: 'Màu nền', kind: 'color' },
       { key: 'backgroundImage', label: 'Ảnh / gradient', kind: 'text', placeholder: 'linear-gradient(...)' },
+      { key: 'overlayColor', label: 'Lớp phủ (scrim)', kind: 'color' },
     ],
   },
   border: {
@@ -207,6 +246,24 @@ export const STYLE_GROUPS: Record<string, StyleGroup> = {
         options: opt(['visible', 'Hiện'], ['hidden', 'Ẩn'], ['auto', 'Cuộn khi cần']),
       },
       { key: 'transition', label: 'Chuyển động', kind: 'text', placeholder: 'all .2s ease' },
+      {
+        key: 'transitionTimingFunction',
+        label: 'Easing',
+        kind: 'select',
+        options: opt(['ease', 'Ease'], ['linear', 'Linear'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in-out'], ['cubic-bezier(0.16, 1, 0.3, 1)', 'Expo out'], ['cubic-bezier(0.34, 1.56, 0.64, 1)', 'Back out'], ['spring', 'Spring (lò xo)']),
+      },
+      {
+        key: 'focusRing',
+        label: 'Viền khi focus',
+        kind: 'select',
+        options: opt(['none', 'Không'], ['default', 'Viền màu chính (2px)'], ['thick', 'Viền dày (3px)'], ['inset', 'Viền bên trong']),
+      },
+      {
+        key: 'cursor',
+        label: 'Con trỏ',
+        kind: 'select',
+        options: opt(['auto', 'Tự động'], ['pointer', 'Bàn tay'], ['grab', 'Nắm'], ['text', 'Chữ'], ['not-allowed', 'Cấm'], ['none', 'Ẩn']),
+      },
     ],
   },
 }

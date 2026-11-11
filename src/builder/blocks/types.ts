@@ -12,6 +12,14 @@ export interface NodeAttrs {
   'data-empty'?: ''
   /** Phần tử thuộc một My Block liên kết (chỉ trong editor): 'root' = gốc của block, '' = bên trong */
   'data-linked'?: 'root' | ''
+  'data-fx-reveal'?: string
+  'data-fx-once'?: string
+  'data-fx-text'?: string
+  'data-fx-words'?: string
+  'data-fx-parallax'?: string
+  'data-fx-hide'?: string
+  'data-fx-hover'?: string
+  style?: Record<string, string>
 }
 
 export interface RenderProps {
@@ -21,7 +29,7 @@ export interface RenderProps {
   mode: RenderMode
 }
 
-export type BlockCategory = 'layout' | 'basic' | 'media'
+export type BlockCategory = 'layout' | 'basic' | 'media' | 'nav' | 'data' | 'feedback' | 'overlay' | 'form'
 
 export interface BlockDefinition {
   type: string

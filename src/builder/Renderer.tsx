@@ -3,8 +3,10 @@
  * Không dùng hook nên chạy được ở cả hai phía.
  */
 import { memo } from 'react'
+import { BuilderRuntime } from './blocks/Runtime'
 import type { NodeAttrs, RenderMode } from './blocks/types'
 import { compileTreeCss } from './css'
+import { normalizeFx } from './effects'
 import type { BlockLookup } from './refs'
 import { resolveRefs } from './refs'
 import { getBlock } from './registry'
@@ -20,6 +22,20 @@ function buildAttrs(node: BuilderNode, mode: RenderMode): NodeAttrs {
   for (const c of String(adv.cssClass ?? '').split(/\s+/)) if (CLASS_PATTERN.test(c)) classes.push(c)
   const attrs: NodeAttrs = { className: classes.join(' ') }
   if (adv.cssId && CLASS_PATTERN.test(adv.cssId)) attrs.id = adv.cssId
+  const fx = normalizeFx((node.props as { fx?: unknown }).fx)
+  if (fx) {
+    if (fx.reveal) {
+      attrs['data-fx-reveal'] = fx.reveal
+      if (fx.once === false) attrs['data-fx-once'] = 'false'
+    }
+    if (fx.text) {
+      attrs['data-fx-text'] = fx.text
+      if (fx.words) attrs['data-fx-words'] = fx.words
+    }
+    if (fx.parallax) attrs['data-fx-parallax'] = String(fx.parallax)
+    if (fx.hideOnScroll) attrs['data-fx-hide'] = ''
+    if (fx.hover === 'spotlight') attrs['data-fx-hover'] = 'spotlight'
+  }
   if (mode === 'editor') {
     if (node.linked === 'inner') {
       // phần tử bên trong block liên kết: không có data-node-id nên bấm/kéo vào đâu cũng trỏ về cả block
@@ -82,6 +98,7 @@ export function PageRenderer({
       <style data-builder-theme="" dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />
       <style data-builder-css="" dangerouslySetInnerHTML={{ __html: css }} />
       <RenderNode node={root} mode={mode} />
+      <BuilderRuntime mode={mode} />
     </>
   )
 }

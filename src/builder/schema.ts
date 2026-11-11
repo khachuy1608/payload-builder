@@ -29,6 +29,51 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   divider: { isContainer: false },
   /** My Block dạng liên kết: triển khai thành cây thật lúc render (xem ./refs.ts). Không hiện ở panel Phần tử. */
   blockRef: { isContainer: false, hidden: true },
+
+  // ---- Bố cục ----
+  masonry: { isContainer: true },
+  bento: { isContainer: true },
+  card: { isContainer: true },
+  marquee: { isContainer: true },
+  carousel: { isContainer: true, allowedChildren: ['slide'] },
+  slide: { isContainer: true, allowedParents: ['carousel'], hidden: true },
+  accordion: { isContainer: true, allowedChildren: ['accordionItem'] },
+  accordionItem: { isContainer: true, allowedParents: ['accordion'], hidden: true },
+  // ---- Điều hướng ----
+  header: { isContainer: false },
+  breadcrumbs: { isContainer: false },
+  pagination: { isContainer: false },
+  steps: { isContainer: false },
+  toggleGroup: { isContainer: false },
+  bottomNav: { isContainer: false },
+  floatingButton: { isContainer: false },
+  scrollspy: { isContainer: false },
+  waffleMenu: { isContainer: false },
+  cascadingMenu: { isContainer: false },
+  overflowMenu: { isContainer: false },
+  commandPalette: { isContainer: false },
+  productTour: { isContainer: false },
+  // ---- Dữ liệu & hiển thị ----
+  dataTable: { isContainer: false },
+  chart: { isContainer: false },
+  timeline: { isContainer: false },
+  avatarGroup: { isContainer: false },
+  statusDot: { isContainer: false },
+  chatBubble: { isContainer: false },
+  badge: { isContainer: false },
+  progress: { isContainer: false },
+  skeleton: { isContainer: false },
+  emptyState: { isContainer: false },
+  alert: { isContainer: false },
+  // ---- Lớp phủ & phản hồi ----
+  dialog: { isContainer: true },
+  popover: { isContainer: true },
+  toast: { isContainer: false },
+  lightbox: { isContainer: false },
+  // ---- Form ----
+  form: { isContainer: true },
+  formField: { isContainer: false, allowedParents: ['form'] },
+  signInForm: { isContainer: false },
 }
 
 export function getSchema(type: string): BlockSchema | undefined {

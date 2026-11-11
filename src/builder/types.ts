@@ -51,6 +51,8 @@ export interface AdvancedProps {
   cssId?: string
   cssClass?: string
   hide?: Partial<Record<Device, boolean>>
+  /** Hiệu ứng (xem effects.ts) */
+  fx?: import('./effects').FxProps
 }
 
 export interface MediaValue {
