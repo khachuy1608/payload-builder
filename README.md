@@ -162,6 +162,8 @@ npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filenam
 - **Mẫu trang:** nút *Mẫu trang* trên thanh trên (trang trống tự mở): mẫu có sẵn (landing, giới thiệu + đội ngũ, liên hệ, danh sách có tìm kiếm, bảng giá) và mẫu của bạn. *Lưu trang hiện tại làm mẫu* lưu vào `my-blocks` với `kind = page`.
 - **Tay cầm kéo trên canvas:** phần tử đang chọn có 4 thanh cam (lề trong trên/phải/dưới/trái) và 2 tay cầm tím (chiều rộng ở mép phải, chiều cao ở mép dưới). Kéo ghi style cho thiết bị đang chọn; giữ Shift để bước 8px.
 - **Nhóm phần tử:** chuột phải → *Bọc trong Div* (Ctrl+G) / *Bỏ bọc* (Ctrl+Shift+G).
+- **Phiên bản:** mũi tên cạnh *Xuất bản* mở menu: ghi chú phiên bản (lưu cùng lần lưu kế tiếp, hiện trong Lịch sử), *Lên lịch* xuất bản / gỡ xuất bản. Lịch sử phiên bản có *So sánh với bản đang sửa* (phần tử thêm/xoá/đổi/dời, bấm “chọn” để nhảy tới).
+- **Lên lịch** dùng hàng đợi jobs của Payload (task `schedulePublish`), chạy bằng cron mỗi phút ngay trong tiến trình Next (`jobs.autoRun`). Nếu chạy nhiều instance, đặt `PAYLOAD_RUN_JOBS=false` ở các instance phụ. Vì job chạy ngoài ngữ cảnh request nên cache trang công khai có thêm `revalidate: 60` làm lưới an toàn (tối đa 1 phút sau giờ hẹn).
 
 ## Phím tắt trong Builder
 

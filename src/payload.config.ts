@@ -13,6 +13,7 @@ import { Themes } from './collections/Themes'
 import { SiteSettings } from './globals/SiteSettings'
 import { Users } from './collections/Users'
 import { getSources } from './lib/data'
+import { scheduleEndpoints } from './lib/schedule'
 import { migrations } from './migrations'
 import { seed } from './seed'
 
@@ -27,6 +28,7 @@ export default buildConfig({
   },
   collections: [Pages, MyBlocks, Themes, StylePresets, FormSubmissions, Redirects, Media, Users],
   endpoints: [
+    ...scheduleEndpoints,
     {
       // Health check cho load balancer / giám sát: kiểm tra kết nối DB
       path: '/health',
@@ -51,6 +53,13 @@ export default buildConfig({
     },
   ],
   globals: [SiteSettings],
+  jobs: {
+    tasks: [],
+    // chạy job đã tới hạn (lên lịch xuất bản) mỗi phút ngay trong tiến trình Next; tắt bằng PAYLOAD_RUN_JOBS=false (nếu chạy worker riêng)
+    autoRun: [{ cron: '* * * * *', queue: 'default', limit: 20 }],
+    shouldAutoRun: async () => process.env.PAYLOAD_RUN_JOBS !== 'false',
+    deleteJobOnComplete: true,
+  },
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   db: postgresAdapter({

@@ -1,6 +1,7 @@
 'use client'
 
-import { ArrowLeft, ExternalLink, History, LayoutTemplate, Loader2, Monitor, Redo2, Smartphone, Tablet, Undo2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ExternalLink, History, LayoutTemplate, Loader2, Monitor, Redo2, Smartphone, Tablet, Undo2 } from 'lucide-react'
+import { PublishMenu } from './PublishMenu'
 import type { Device } from '@/builder/types'
 import { saveBlock, savePage } from './api'
 import { useEditor } from './store'
@@ -24,6 +25,8 @@ export function TopBar() {
   const kind = useEditor((s) => s.kind)
   const lockedByOther = useEditor((s) => s.lock.state === 'locked')
   const readOnly = useEditor((s) => s.readOnly) || lockedByOther
+  const publishMenu = useEditor((s) => s.publishMenu)
+  const versionNote = useEditor((s) => s.versionNote)
 
   if (kind === 'block') {
     const badge = readOnly ? { text: 'Chỉ xem – block của người khác', cls: 'muted' } : dirty ? { text: 'Chưa lưu', cls: 'warn' } : { text: 'Đã lưu', cls: 'ok' }
@@ -99,9 +102,15 @@ export function TopBar() {
         <button className="ed-btn" onClick={() => savePage(false)} disabled={saving || lockedByOther} title={lockedByOther ? 'Trang đang được người khác sửa' : 'Ctrl+S'}>
           {saving && <Loader2 size={15} className="ed-spin" />} Lưu nháp
         </button>
-        <button className="ed-btn ed-btn--primary" onClick={() => savePage(true)} disabled={saving || lockedByOther} title={lockedByOther ? 'Trang đang được người khác sửa' : undefined}>
-          Xuất bản
-        </button>
+        <div className="ed-split">
+          <button className="ed-btn ed-btn--primary" onClick={() => savePage(true)} disabled={saving || lockedByOther} title={lockedByOther ? 'Trang đang được người khác sửa' : undefined}>
+            Xuất bản
+          </button>
+          <button className={`ed-btn ed-btn--primary ed-split-caret${versionNote ? ' has-dot' : ''}`} title="Ghi chú phiên bản, lên lịch xuất bản" aria-label="Tuỳ chọn xuất bản" onClick={() => useEditor.getState().openPublishMenu(!publishMenu)}>
+            <ChevronDown size={15} />
+          </button>
+          {publishMenu && <PublishMenu />}
+        </div>
       </div>
     </header>
   )

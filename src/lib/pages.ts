@@ -101,7 +101,8 @@ async function fetchPage(slug: string, draft: boolean, param?: string, params: U
  * Trang đã xuất bản được cache theo tag `pages`; hook afterChange của Pages / My Blocks / Themes / Site Settings
  * gọi revalidateTag nên cache chỉ mới lại khi có thay đổi (xem lib/revalidate.ts).
  */
-const getPublishedPage = unstable_cache((slug: string, param: string | undefined, paramsKey: string) => fetchPage(slug, false, param, JSON.parse(paramsKey)), ['published-page'], { tags: [PAGES_TAG] })
+// revalidate 60s làm lưới an toàn cho thay đổi xảy ra ngoài ngữ cảnh request (job lên lịch xuất bản, CLI import) – khi đó revalidateTag không chạy được
+const getPublishedPage = unstable_cache((slug: string, param: string | undefined, paramsKey: string) => fetchPage(slug, false, param, JSON.parse(paramsKey)), ['published-page'], { tags: [PAGES_TAG], revalidate: 60 })
 
 /**
  * Lấy trang theo slug cho front-end.

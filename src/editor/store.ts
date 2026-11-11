@@ -157,6 +157,9 @@ export interface EditorState {
   /** Header/footer toàn site (id My Block trong Cài đặt site) và tuỳ chọn ẩn của trang này */
   siteParts: SiteParts
   layout: PageLayout
+  /** Ghi chú cho lần lưu/xuất bản kế tiếp (lưu cùng phiên bản) */
+  versionNote: string
+  publishMenu: boolean
   /** Nguồn dữ liệu có thể bind (từ /api/builder/sources) */
   sources: SourceInfo[]
   /** Bản ghi đã nạp theo id node có nguồn (canvas dùng để hiện dữ liệu thật) */
@@ -205,6 +208,8 @@ export interface EditorActions {
     layout?: Partial<PageLayout>
   }): void
   setLayout(patch: Partial<PageLayout>): void
+  setVersionNote(note: string): void
+  openPublishMenu(open: boolean): void
   /** Đổi header/footer toàn site (đã lưu vào Cài đặt site ở api.ts) */
   setSiteParts(parts: SiteParts): void
   setTemplate(template: EditorState['template']): void
@@ -382,6 +387,8 @@ export const useEditor = create<Store>()(
       seo: { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '' },
       siteParts: { header: null, footer: null },
       layout: { hideHeader: false, hideFooter: false },
+      versionNote: '',
+      publishMenu: false,
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -633,6 +640,14 @@ export const useEditor = create<Store>()(
       setLock: (lock) =>
         set((s) => {
           s.lock = lock
+        }),
+      setVersionNote: (note) =>
+        set((s) => {
+          s.versionNote = note
+        }),
+      openPublishMenu: (open) =>
+        set((s) => {
+          s.publishMenu = open
         }),
       setLayout: (patch) =>
         set((s) => {

@@ -44,6 +44,7 @@ export async function savePage(publish: boolean): Promise<boolean> {
         templateCollection: s.template?.collection ?? null,
         templateField: s.template?.field ?? 'id',
         layout: { hideHeader: s.layout.hideHeader, hideFooter: s.layout.hideFooter },
+        versionNote: s.versionNote.trim() || null,
         seo: { metaTitle: s.seo.metaTitle || null, metaDescription: s.seo.metaDescription || null, ogImage: s.seo.ogImage ? relValue(String(s.seo.ogImage.id)) : null, noIndex: s.seo.noIndex, canonical: s.seo.canonical || null },
         _status: publish ? 'published' : 'draft',
       }),
@@ -52,6 +53,7 @@ export async function savePage(publish: boolean): Promise<boolean> {
     const { doc } = await res.json()
     if (doc?.slug && doc.slug !== s.slug) useEditor.getState().setMeta({ slug: doc.slug })
     useEditor.getState().markSaved(publish ? 'published' : 'draft')
+    useEditor.getState().setVersionNote('')
     useEditor.getState().toast('success', publish ? 'Đã xuất bản.' : 'Đã lưu bản nháp.')
     void acquireLock() // Payload xoá khoá sau mỗi lần update -> lấy lại
     return true
@@ -325,13 +327,14 @@ export interface PageVersion {
   status: SaveStatus
   content: PageContent
   updatedAt: string
+  note: string
 }
 
 export async function listVersions(pageId: string): Promise<PageVersion[]> {
   const q = new URLSearchParams({ 'where[parent][equals]': pageId, sort: '-updatedAt', limit: '40', depth: '0' })
   const res = await fetch(`/api/pages/versions?${q}`, { credentials: 'include' })
   if (!res.ok) throw new Error(await readError(res))
-  const { docs } = (await res.json()) as { docs: { id: string | number; updatedAt: string; version: { title?: string; slug?: string; _status?: string; content?: unknown } }[] }
+  const { docs } = (await res.json()) as { docs: { id: string | number; updatedAt: string; version: { title?: string; slug?: string; _status?: string; content?: unknown; versionNote?: string | null } }[] }
   return docs.map((d) => ({
     id: String(d.id),
     title: d.version.title ?? '',
@@ -339,7 +342,33 @@ export async function listVersions(pageId: string): Promise<PageVersion[]> {
     status: d.version._status === 'published' ? 'published' : 'draft',
     content: normalizeContent(d.version.content),
     updatedAt: d.updatedAt,
+    note: d.version.versionNote ?? '',
   }))
+}
+
+// ======================= Lên lịch xuất bản =======================
+
+export interface ScheduledJob {
+  id: string
+  type: 'publish' | 'unpublish'
+  waitUntil: string
+}
+
+export async function listSchedules(pageId: string): Promise<ScheduledJob[]> {
+  const res = await fetch(`/api/builder/schedule?pageId=${encodeURIComponent(pageId)}`, { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  return ((await res.json()) as { jobs: ScheduledJob[] }).jobs
+}
+
+export async function createSchedule(pageId: string, at: Date, type: 'publish' | 'unpublish'): Promise<ScheduledJob> {
+  const res = await fetch('/api/builder/schedule', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pageId, at: at.toISOString(), type }) })
+  if (!res.ok) throw new Error(await readError(res))
+  return ((await res.json()) as { job: ScheduledJob }).job
+}
+
+export async function cancelSchedule(jobId: string): Promise<void> {
+  const res = await fetch(`/api/builder/schedule/${encodeURIComponent(jobId)}`, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
 }
 
 // ======================= Nguồn dữ liệu (data binding) =======================

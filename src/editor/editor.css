@@ -38,6 +38,7 @@ html, body.ed-body { margin: 0; height: 100%; overflow: hidden; }
 .ed-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; font-weight: 600; }
 .ed-badge--ok { background: #d1fae5; color: #065f46; }
 .ed-badge--warn { background: #fef3c7; color: #92400e; }
+.ed-badge--danger { background: #fee2e2; color: #991b1b; }
 .ed-badge--muted { background: #eef0f3; color: var(--ed-ink-2); }
 
 /* ---------- buttons ---------- */
@@ -381,3 +382,19 @@ select.ed-input + .ed-reset { right: 22px; }
 .ed-handle--size.ed-handle--x { width: 7px; height: 28px; border-radius: 4px; }
 .ed-handle--size.ed-handle--y { width: 28px; height: 7px; border-radius: 4px; }
 .ed-handle-tip { position: absolute; left: 50%; top: -28px; transform: translateX(-50%); background: #111827; color: #fff; font: 11px/1 system-ui, sans-serif; padding: 5px 8px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+
+/* ---------- Menu xuất bản / lên lịch ---------- */
+.ed-split { position: relative; display: inline-flex; }
+.ed-split > .ed-btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.ed-split-caret { border-top-left-radius: 0; border-bottom-left-radius: 0; padding: 0 6px; margin-left: 1px; position: relative; }
+.ed-split-caret.has-dot::after { content: ''; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #fbbf24; }
+.ed-pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: 420px; background: #fff; border: 1px solid var(--ed-line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.ed-pop-head { display: flex; align-items: center; justify-content: space-between; }
+.ed-sep { border: 0; border-top: 1px solid var(--ed-line); margin: 2px 0; }
+.ed-sched { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #f8fafc; border-radius: 6px; }
+.ed-sched span:nth-child(2) { flex: 1; }
+.ed-version-note { display: block; font-size: 11px; color: #6b7280; font-style: italic; }
+.ed-diff { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow: auto; font-size: 12px; }
+.ed-diff-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; border-radius: 4px; background: #f8fafc; }
+.ed-diff-row .ed-badge { min-width: 52px; text-align: center; }
+.ed-diff-row code { color: #6b7280; font-size: 11px; }

@@ -1,9 +1,14 @@
 'use client'
 
-import { History, Loader2, RotateCcw, X } from 'lucide-react'
+import { GitCompare, History, Loader2, RotateCcw, X } from 'lucide-react'
+import { diffTrees, summarizeDiff } from '@/builder/diff'
+import { getBlock } from '@/builder/registry'
+import { findNode } from '@/builder/tree'
+import { nodeLabel } from './labels'
 import { useEffect, useState } from 'react'
 import { listVersions, type PageVersion } from './api'
 import { BlockPreview } from './BlockPreview'
+import type { BuilderNode } from '@/builder/types'
 import { useEditor } from './store'
 
 /** Lịch sử phiên bản của trang: xem trước và khôi phục vào editor (chưa lưu cho tới khi bấm Lưu/Xuất bản) */
@@ -12,6 +17,8 @@ export function HistoryDialog() {
   const [versions, setVersions] = useState<PageVersion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<PageVersion | null>(null)
+  const [compare, setCompare] = useState(false)
+  const root = useEditor((s) => s.root)
   const close = () => useEditor.getState().openHistory(false)
 
   useEffect(() => {
@@ -62,6 +69,7 @@ export function HistoryDialog() {
                   {fmt(v.updatedAt)}
                   <span className={`ed-badge ed-badge--${v.status === 'published' ? 'ok' : 'muted'}`}>{v.status === 'published' ? 'Xuất bản' : 'Nháp'}</span>
                 </span>
+                {v.note && <span className="ed-version-note">“{v.note}”</span>}
               </button>
             ))}
             {versions && !versions.length && <p className="ed-hint">Chưa có phiên bản nào. Mỗi lần Lưu nháp / Xuất bản tạo một bản.</p>}
@@ -73,11 +81,17 @@ export function HistoryDialog() {
                   <span className="ed-help">
                     <b>{selected.title}</b> · /{selected.slug === 'home' ? '' : selected.slug} · {fmt(selected.updatedAt)}
                   </span>
-                  <button className="ed-btn ed-btn--primary" onClick={restore}>
-                    <RotateCcw size={14} /> Khôi phục vào editor
-                  </button>
+                  <span className="ed-row">
+                    <button className={`ed-btn${compare ? ' is-active' : ''}`} onClick={() => setCompare((c) => !c)} title="Liệt kê phần tử khác nhau giữa phiên bản này và nội dung đang sửa">
+                      <GitCompare size={14} /> So sánh với bản đang sửa
+                    </button>
+                    <button className="ed-btn ed-btn--primary" onClick={restore}>
+                      <RotateCcw size={14} /> Khôi phục vào editor
+                    </button>
+                  </span>
                 </div>
-                <BlockPreview key={selected.id} tree={selected.content.root} height={420} />
+                {selected.note && <p className="ed-hint" style={{ margin: 0 }}>Ghi chú: {selected.note}</p>}
+                {compare ? <DiffView before={selected.content.root} after={root} /> : <BlockPreview key={selected.id} tree={selected.content.root} height={420} />}
                 <p className="ed-hint" style={{ margin: 0 }}>
                   Khôi phục chỉ đưa nội dung vào editor như một bước chỉnh sửa (Ctrl+Z hoàn tác được); trang chỉ đổi khi bạn Lưu nháp hoặc Xuất bản.
                 </p>
@@ -87,6 +101,40 @@ export function HistoryDialog() {
             )}
           </section>
         </div>
+      </div>
+    </div>
+  )
+}
+
+const KIND_LABEL = { added: 'Thêm', removed: 'Xoá', changed: 'Đổi', moved: 'Dời' } as const
+const KIND_CLS = { added: 'ok', removed: 'danger', changed: 'warn', moved: 'muted' } as const
+
+/** Danh sách khác biệt phiên bản cũ -> nội dung đang sửa */
+function DiffView({ before, after }: { before: BuilderNode; after: BuilderNode }) {
+  const entries = diffTrees(before, after)
+  const sum = summarizeDiff(entries)
+  if (!entries.length) return <p className="ed-hint">Không có khác biệt với nội dung đang sửa.</p>
+  return (
+    <div className="ed-fields">
+      <span className="ed-help">
+        {sum.added} thêm · {sum.removed} xoá · {sum.changed} đổi · {sum.moved} dời chỗ (so với nội dung đang sửa)
+      </span>
+      <div className="ed-diff">
+        {entries.map((e) => {
+          const node = findNode(e.kind === 'removed' ? before : after, e.id)
+          return (
+            <div key={e.kind + e.id} className="ed-diff-row">
+              <span className={`ed-badge ed-badge--${KIND_CLS[e.kind]}`}>{KIND_LABEL[e.kind]}</span>
+              <span>{node ? nodeLabel(node) : getBlock(e.type)?.label ?? e.type}</span>
+              {e.changes && <code>{e.changes.join(', ')}</code>}
+              {e.kind !== 'removed' && (
+                <button className="ed-link" onClick={() => useEditor.getState().select(e.id)}>
+                  chọn
+                </button>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

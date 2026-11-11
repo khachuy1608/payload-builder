@@ -31,7 +31,7 @@ export const Pages: CollectionConfig = {
     delete: loggedIn,
   },
   versions: {
-    drafts: true,
+    drafts: { schedulePublish: true },
     maxPerDoc: 50,
   },
   fields: [
@@ -73,6 +73,13 @@ export const Pages: CollectionConfig = {
         { name: 'noIndex', label: 'Không cho máy tìm kiếm lập chỉ mục (noindex)', type: 'checkbox', defaultValue: false },
         { name: 'canonical', label: 'Canonical URL', type: 'text' },
       ],
+    },
+    {
+      name: 'versionNote',
+      label: 'Ghi chú phiên bản',
+      type: 'text',
+      maxLength: 200,
+      admin: { position: 'sidebar', description: 'Lưu cùng mỗi lần Lưu nháp / Xuất bản để nhận ra phiên bản trong Lịch sử.' },
     },
     {
       name: 'layout',
