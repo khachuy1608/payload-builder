@@ -73,6 +73,58 @@ export const FONT_PRESETS: { label: string; value: string }[] = [
 
 const FONT_URL_PATTERN = /^https:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$/
 
+// ---------- Google Fonts ----------
+
+export type FontCategory = 'sans' | 'serif' | 'display' | 'mono'
+export const FONT_CATEGORY_LABELS: Record<FontCategory, string> = { sans: 'Sans-serif', serif: 'Serif', display: 'Display / tiêu đề', mono: 'Mono' }
+
+/** Danh sách Google Fonts phổ biến (có hỗ trợ tiếng Việt với đa số font sans/serif) */
+export const GOOGLE_FONTS: { name: string; category: FontCategory }[] = [
+  ...['Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Be Vietnam Pro', 'Nunito', 'Nunito Sans', 'Raleway', 'Work Sans', 'DM Sans', 'Manrope', 'Source Sans 3', 'Noto Sans', 'PT Sans', 'Rubik', 'Mulish', 'Fira Sans', 'Karla', 'Quicksand', 'Josefin Sans', 'Archivo', 'Plus Jakarta Sans', 'Lexend', 'Outfit', 'Space Grotesk'].map((name) => ({ name, category: 'sans' as const })),
+  ...['Playfair Display', 'Merriweather', 'Lora', 'Noto Serif', 'PT Serif', 'Libre Baskerville', 'Crimson Text', 'EB Garamond', 'Cormorant Garamond', 'Bitter', 'Roboto Slab', 'Source Serif 4', 'Literata'].map((name) => ({ name, category: 'serif' as const })),
+  ...['Oswald', 'Bebas Neue', 'Anton', 'Righteous', 'Pacifico', 'Lobster', 'Dancing Script', 'Abril Fatface'].map((name) => ({ name, category: 'display' as const })),
+  ...['Roboto Mono', 'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'IBM Plex Mono', 'Space Mono'].map((name) => ({ name, category: 'mono' as const })),
+]
+
+const GOOGLE_FALLBACK: Record<FontCategory, string> = { sans: SYSTEM_SANS, serif: SYSTEM_SERIF, display: SYSTEM_SANS, mono: SYSTEM_MONO }
+
+/** Font stack CSS cho một Google Font: 'Tên', fallback hệ thống theo nhóm */
+export function googleFontStack(name: string): string {
+  const font = GOOGLE_FONTS.find((f) => f.name === name)
+  return `'${name}', ${GOOGLE_FALLBACK[font?.category ?? 'sans']}`
+}
+
+/** Tên Google Font đứng đầu một font stack (nếu có trong danh sách) */
+export function googleFontOfStack(stack: string): string | null {
+  const m = stack.trim().match(/^['"]?([^'",]+)['"]?\s*(,|$)/)
+  const name = m?.[1]?.trim()
+  return name && GOOGLE_FONTS.some((f) => f.name === name) ? name : null
+}
+
+/** Các Google Font mà theme đang dùng (theo thứ tự heading, body, mono; không trùng) */
+export function googleFamiliesInTheme(theme: Pick<ThemeTokens, 'fonts'>): string[] {
+  const out: string[] = []
+  for (const key of FONT_KEYS) {
+    const name = googleFontOfStack(theme.fonts[key] ?? '')
+    if (name && !out.includes(name)) out.push(name)
+  }
+  return out
+}
+
+const GOOGLE_FONTS_BASE = 'https://fonts.googleapis.com/css2?'
+
+/** URL stylesheet Google Fonts cho các font đã chọn (đủ các độ đậm hay dùng); '' nếu không có font nào */
+export function buildGoogleFontsUrl(families: string[]): string {
+  if (!families.length) return ''
+  const q = families.map((name) => `family=${name.trim().replace(/\s+/g, '+')}:wght@400;500;600;700;800`).join('&')
+  return `${GOOGLE_FONTS_BASE}${q}&display=swap`
+}
+
+/** fontUrl đang được editor tự sinh (trống hoặc là link Google Fonts) -> có thể tự cập nhật khi đổi font */
+export function isAutoFontUrl(url: string | undefined): boolean {
+  return !url || url.startsWith(GOOGLE_FONTS_BASE)
+}
+
 function pickGroup(input: unknown, keys: readonly string[], base: Record<string, string>): Record<string, string> {
   const src = input && typeof input === 'object' ? (input as Record<string, unknown>) : {}
   const out: Record<string, string> = {}

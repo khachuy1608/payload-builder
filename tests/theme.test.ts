@@ -30,3 +30,21 @@ test('preset: 4 theme, giá trị đã sạch, tên khác nhau', () => {
   assert.equal(new Set(PRESET_THEMES.map((p) => p.name)).size, 4)
   for (const p of PRESET_THEMES) assert.deepEqual(normalizeTheme(p.tokens), p.tokens, p.name)
 })
+
+test('google fonts: nhận diện font trong stack, sinh URL, phân biệt URL tự sinh', async () => {
+  const { GOOGLE_FONTS, buildGoogleFontsUrl, googleFamiliesInTheme, googleFontOfStack, googleFontStack, isAutoFontUrl } = await import('../src/builder/theme')
+  assert.ok(GOOGLE_FONTS.length > 40 && new Set(GOOGLE_FONTS.map((f) => f.name)).size === GOOGLE_FONTS.length)
+  assert.equal(googleFontOfStack("'Be Vietnam Pro', ui-sans-serif, system-ui"), 'Be Vietnam Pro')
+  assert.equal(googleFontOfStack('Inter, sans-serif'), 'Inter')
+  assert.equal(googleFontOfStack('ui-sans-serif, system-ui'), null)
+  assert.match(googleFontStack('Lora'), /^'Lora', ui-serif/)
+  assert.match(googleFontStack('JetBrains Mono'), /^'JetBrains Mono', ui-monospace/)
+  const sunset = PRESET_THEMES.find((p) => p.name === 'Sunset')!.tokens
+  assert.deepEqual(googleFamiliesInTheme(sunset), ['Playfair Display', 'Lora'])
+  assert.equal(buildGoogleFontsUrl(['Playfair Display', 'Lora']), 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700;800&display=swap')
+  assert.equal(buildGoogleFontsUrl([]), '')
+  assert.ok(normalizeTheme({ fontUrl: buildGoogleFontsUrl(['Inter']) }).fontUrl, 'URL sinh ra qua được bộ lọc https')
+  assert.equal(isAutoFontUrl(undefined), true)
+  assert.equal(isAutoFontUrl(buildGoogleFontsUrl(['Inter'])), true)
+  assert.equal(isAutoFontUrl('https://use.typekit.net/abc.css'), false)
+})
