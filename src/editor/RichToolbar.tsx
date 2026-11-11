@@ -1,6 +1,6 @@
 'use client'
 
-import { Bold, Italic, Link2, Strikethrough, Underline, Unlink } from 'lucide-react'
+import { Bold, Italic, Link2, List, ListOrdered, Strikethrough, Underline, Unlink } from 'lucide-react'
 
 export type RichExec = (command: string, value?: string) => void
 
@@ -16,6 +16,8 @@ export function RichToolbar({ exec, compact }: { exec: RichExec; compact?: boole
     { cmd: 'strikeThrough', title: 'Gạch ngang', icon: Strikethrough },
     { cmd: 'createLink', title: 'Chèn liên kết', icon: Link2, arg: () => prompt('Địa chỉ liên kết (https://…)') },
     { cmd: 'unlink', title: 'Bỏ liên kết', icon: Unlink },
+    { cmd: 'insertUnorderedList', title: 'Danh sách chấm', icon: List },
+    { cmd: 'insertOrderedList', title: 'Danh sách số', icon: ListOrdered },
   ]
   return (
     <span className={`ed-rich-bar${compact ? ' ed-rich-bar--compact' : ''}`} onMouseDown={(e) => e.preventDefault()}>

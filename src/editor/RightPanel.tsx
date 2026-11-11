@@ -195,6 +195,9 @@ function RichTextField({ value, onChange }: { value: string; onChange: (html: st
         onBlur={emit}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !(e.ctrlKey || e.metaKey)) {
+            const anchor = document.getSelection()?.anchorNode
+            const inList = !!(anchor && (anchor.nodeType === 1 ? (anchor as Element) : anchor.parentElement)?.closest('li'))
+            if (inList) return // trình duyệt tự tạo mục mới
             e.preventDefault()
             document.execCommand('insertLineBreak')
             emit()

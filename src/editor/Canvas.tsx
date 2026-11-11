@@ -78,7 +78,10 @@ function startInlineEdit(doc: Document, el: HTMLElement, nodeId: string) {
       e.preventDefault()
       el.blur()
     } else if (e.key === 'Enter' && rich) {
-      // xuống dòng bằng <br> thay vì <div> của trình duyệt
+      // trong mục danh sách: để trình duyệt tạo mục mới; ngoài ra xuống dòng bằng <br> thay vì <div>
+      const anchor = doc.getSelection()?.anchorNode
+      const inList = !!(anchor && (anchor.nodeType === 1 ? (anchor as Element) : anchor.parentElement)?.closest('li'))
+      if (inList) return
       e.preventDefault()
       doc.execCommand('insertLineBreak')
     } else if (rich && mod && RICH_KEYS[e.key.toLowerCase()]) {
