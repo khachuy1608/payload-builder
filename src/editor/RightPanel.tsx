@@ -10,7 +10,7 @@ import { canContain, getSchema } from '@/builder/schema'
 import { refBlockId } from '@/builder/refs'
 import { sanitizeRichText } from '@/builder/sanitize'
 import { BLOCKS, getBlock } from '@/builder/registry'
-import { COLOR_TOKEN_LABELS } from '@/builder/theme'
+import { COLOR_TOKEN_LABELS, tokenOptionsFor } from '@/builder/theme'
 import { SITE_PART_LABELS, type SitePart, sitePartOf } from '@/builder/siteParts'
 import { findNode, genId, getAncestors } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
@@ -113,6 +113,7 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
       if (control.component === 'blockRef') return <BlockRefPanel node={node} />
       if (control.component === 'children') return <p className="ed-hint" style={{ margin: 0 }}>Nội dung bên trong là các phần tử con – kéo block vào hoặc chọn trong cây Cấu trúc.</p>
       if (control.component === 'data') return <DataSourcePanel node={node} />
+      if (control.component === 'textStyle') return <TextStyleField node={node} />
       return <PageSettings />
     case 'text':
     case 'url':
@@ -533,6 +534,25 @@ function TemplatePicker({ node }: { node: BuilderNode }) {
       </div>
       <span className="ed-help">Hoặc chọn một phần tử bất kỳ trên trang rồi bấm nút <b>🗄 Lặp theo dữ liệu</b> trên thanh công cụ / menu chuột phải.</span>
     </div>
+  )
+}
+
+/** Kiểu chữ đặt tên của theme (class .ts-<name>): chọn một kiểu, style riêng của phần tử vẫn ghi đè được */
+function TextStyleField({ node }: { node: BuilderNode }) {
+  const theme = useEditor(effectiveTheme)
+  const value = typeof node.props.textStyle === 'string' ? node.props.textStyle : ''
+  const set = (v: string) => useEditor.getState().updateProps(node.id, { textStyle: v || undefined })
+  return (
+    <Field label="Kiểu chữ (theme)" help="Kiểu chữ đặt tên trong Theme: đổi theme là đổi cả site. Thuộc tính ở tab Kiểu sẽ ghi đè.">
+      <select className="ed-input" value={value} onChange={(e) => set(e.target.value)} data-field="textStyle">
+        <option value="">— Không dùng —</option>
+        {theme.textStyles.map((ts) => (
+          <option key={ts.name} value={ts.name}>
+            {ts.label} ({ts.name})
+          </option>
+        ))}
+      </select>
+    </Field>
   )
 }
 
@@ -1375,6 +1395,7 @@ function StyleFieldControl({ node, field, own, inherited }: { node: BuilderNode;
           <span className="ed-label">{field.label}</span>
           <div className="ed-input-wrap">
             <input className="ed-input" value={value} placeholder={placeholder} onChange={(e) => set(field.key, e.target.value)} />
+            {field.kind === 'unit' && <TokenPicker prop={field.key} value={value} onPick={(v) => set(field.key, v)} />}
             {reset}
           </div>
         </div>
@@ -1410,6 +1431,7 @@ function StyleFieldControl({ node, field, own, inherited }: { node: BuilderNode;
           <span className="ed-label">{field.label}</span>
           <div className="ed-input-wrap">
             <input className="ed-input" value={short} placeholder={shortPh || 'Tất cả cạnh, vd: 16px 24px'} onChange={(e) => set(field.key, e.target.value)} />
+            <TokenPicker prop={field.key} value={short} onPick={(v) => set(field.key, v)} />
             {short && (
               <button className="ed-reset" title="Đặt lại" onClick={() => set(field.key, '')}>
                 <X size={12} />
@@ -1433,6 +1455,23 @@ function StyleFieldControl({ node, field, own, inherited }: { node: BuilderNode;
       )
     }
   }
+}
+
+/** Dropdown token của theme (khoảng cách, cỡ chữ, bóng, bề rộng, bo góc) cho ô đơn vị */
+function TokenPicker({ prop, value, onPick }: { prop: string; value: string; onPick: (v: string) => void }) {
+  const theme = useEditor(effectiveTheme)
+  const options = tokenOptionsFor(prop, theme)
+  if (!options.length) return null
+  return (
+    <select className="ed-token" value={options.some((o) => o.value === value) ? value : ''} title="Dùng token của theme" aria-label="Token" onChange={(e) => e.target.value && onPick(e.target.value)}>
+      <option value="">◆</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  )
 }
 
 function ColorInput({ value, placeholder, onChange }: { value: string; placeholder: string; onChange: (v: string) => void }) {

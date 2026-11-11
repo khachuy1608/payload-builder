@@ -236,7 +236,7 @@ export function toThemeDoc(doc: ThemeApiDoc): ThemeDoc {
 
 /** Token -> body gửi lên collection themes (group field phẳng) */
 function themeBody(name: string, tokens: ThemeTokens) {
-  return { name, colors: tokens.colors, fonts: tokens.fonts, radius: tokens.radius, button: tokens.button, fontUrl: tokens.fontUrl ?? null }
+  return { name, colors: tokens.colors, fonts: tokens.fonts, radius: tokens.radius, button: tokens.button, spacing: tokens.spacing, text: tokens.text, shadow: tokens.shadow, layout: tokens.layout, textStyles: tokens.textStyles, fontUrl: tokens.fontUrl ?? null }
 }
 
 export async function listThemes(): Promise<ThemeDoc[]> {

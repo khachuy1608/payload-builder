@@ -73,6 +73,8 @@ Chạy production không dùng Docker: `npm run build && npm start`. Migration t
 
 ## Themes (P4)
 
+Theme gồm màu, font (Google Fonts), bo góc, kiểu nút, và từ đợt 2: khoảng cách, cỡ chữ, bóng, bề rộng bố cục, kiểu chữ đặt tên (xem mục *Trải nghiệm editor*).
+
 - **Token:** `colors` (8 màu), `fonts` (tiêu đề/nội dung/mono), `radius` (sm/md/lg), `button` (bo góc, độ đậm, kiểu chữ) và `fontUrl` (stylesheet font ngoài, chỉ nhận https). Chúng thành CSS variables `--color-*`, `--font-*`, `--radius-*`, `--button-*` (src/builder/theme.ts). Block Button và CSS nền dùng `var(--button-*)` nên đổi theme là đổi kiểu nút cả site.
 - **Preset:** 4 theme chỉ đọc được seed (Indigo, Ocean, Sunset, Mono). Người dùng bấm **Nhân bản** để có My Theme rồi chỉnh (ô màu, font gợi ý hoặc font stack tuỳ chỉnh, link Google Fonts). Chỉ seed mới tạo được preset; API luôn ép `isPreset=false` với người dùng.
 - **Áp dụng:** global **Cài đặt site** chọn theme của site; field *Ghi đè theme* trên trang (hoặc ô *Theme* trong Cài đặt trang của editor) ghi đè riêng cho trang đó. Thứ tự ưu tiên khi render: ghi đè của trang → theme site → mặc định (src/lib/themes.ts). Xoá theme đang dùng thì tự quay về bậc tiếp theo.
@@ -165,6 +167,8 @@ npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filenam
 - **Phiên bản:** mũi tên cạnh *Xuất bản* mở menu: ghi chú phiên bản (lưu cùng lần lưu kế tiếp, hiện trong Lịch sử), *Lên lịch* xuất bản / gỡ xuất bản. Lịch sử phiên bản có *So sánh với bản đang sửa* (phần tử thêm/xoá/đổi/dời, bấm “chọn” để nhảy tới).
 - **Vai trò** (`users.role`): *admin* (toàn quyền: người dùng, Cài đặt site, mọi block/theme), *editor* (dựng trang, block, theme, media, redirects), *viewer* (chỉ xem trong builder + bình luận). Người dùng đầu tiên tự thành admin; chỉ admin đổi được vai trò.
 - **Cộng tác:** thanh trên hiện ai đang mở cùng tài liệu (nhịp 10 giây, bộ nhớ trong tiến trình); băng rôn khoá cho biết ai đang sửa. Tab 💬 ở panel trái: bình luận gắn vào phần tử đang chọn (collection `comments`), số bình luận mở hiện trên tab, cây Cấu trúc và thanh công cụ phần tử; đánh dấu đã giải quyết, tác giả/admin xoá được.
+- **Design tokens mở rộng:** theme có thêm thang khoảng cách `--space-xs…2xl`, cỡ chữ `--text-xs…4xl`, bóng `--shadow-sm/md/lg`, bề rộng `--container`/`--narrow`. Ô đơn vị trong tab Kiểu có nút ◆ để chọn token (padding/margin/gap, cỡ chữ, bóng, bề rộng, bo góc) → giá trị `var(--…)` đổi theo theme.
+- **Kiểu chữ đặt tên:** mỗi theme có bảng text style (display, h1–h3, lead, body, small, caption… tự thêm được) sinh class `.ts-<tên>`. Heading/Paragraph/Button chọn ở tab Nội dung → *Kiểu chữ (theme)*; thuộc tính riêng ở tab Kiểu vẫn ghi đè.
 - **Lên lịch** dùng hàng đợi jobs của Payload (task `schedulePublish`), chạy bằng cron mỗi phút ngay trong tiến trình Next (`jobs.autoRun`). Nếu chạy nhiều instance, đặt `PAYLOAD_RUN_JOBS=false` ở các instance phụ. Vì job chạy ngoài ngữ cảnh request nên cache trang công khai có thêm `revalidate: 60` làm lưới an toàn (tối đa 1 phút sau giờ hẹn).
 
 ## Phím tắt trong Builder

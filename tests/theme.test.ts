@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { PRESET_THEMES, defaultTheme, normalizeTheme, themeToCss } from '../src/builder/theme'
+import { PRESET_THEMES, defaultTheme, normalizeTextStyles, normalizeTheme, textStylesCss, themeToCss, tokenOptionsFor } from '../src/builder/theme'
 
 test('normalizeTheme: điền thiếu từ mặc định, làm sạch giá trị, chỉ nhận fontUrl https', () => {
   const t = normalizeTheme({ colors: { primary: 'red}</style><script>', accent: '' }, fonts: null, button: { radius: '999px' }, fontUrl: 'http://x.y/z' })
@@ -47,4 +47,38 @@ test('google fonts: nhận diện font trong stack, sinh URL, phân biệt URL t
   assert.equal(isAutoFontUrl(undefined), true)
   assert.equal(isAutoFontUrl(buildGoogleFontsUrl(['Inter'])), true)
   assert.equal(isAutoFontUrl('https://use.typekit.net/abc.css'), false)
+})
+
+test('token mở rộng: spacing/text/shadow/layout thành CSS variables, preset đủ nhóm', () => {
+  const css = themeToCss(defaultTheme)
+  assert.ok(css.includes('--space-md:16px') && css.includes('--text-4xl:48px') && css.includes('--shadow-sm:') && css.includes('--container:1120px'))
+  for (const p of PRESET_THEMES) assert.ok(p.tokens.spacing.md && p.tokens.textStyles.length >= 8, `preset ${p.name} đủ nhóm token`)
+  const t = normalizeTheme({ spacing: { md: '20px' }, layout: { container: '960px' } })
+  assert.equal(t.spacing.md, '20px')
+  assert.equal(t.spacing.xs, '4px', 'thiếu thì lấy mặc định')
+  assert.equal(t.layout.container, '960px')
+})
+
+test('kiểu chữ đặt tên: chuẩn hoá tên/giá trị, bỏ trùng, sinh CSS .ts-*', () => {
+  const list = normalizeTextStyles([
+    { name: 'h1', label: 'H1', fontSize: '40px', fontWeight: 700, lineHeight: '1.1', color: 'red}</style>' },
+    { name: 'h1', label: 'trùng', fontSize: '1px', fontWeight: '1', lineHeight: '1' },
+    { name: 'Bad Name', fontSize: '1px' },
+    { name: 'tiny', fontSize: '', fontWeight: '', lineHeight: '' },
+  ])
+  assert.deepEqual(list.map((s) => s.name), ['h1', 'tiny'])
+  assert.equal(list[0].color, 'red/style', 'giá trị đã lọc ký tự CSS nguy hiểm')
+  assert.equal(list[1].fontSize, 'var(--text-base)')
+  const css = textStylesCss(list)
+  assert.ok(css.startsWith('.ts-h1{font-size:40px;font-weight:700;line-height:1.1;color:red/style}'), css)
+  assert.ok(themeToCss(normalizeTheme({ textStyles: list })).includes('.ts-tiny{'))
+  assert.deepEqual(normalizeTextStyles(undefined).map((s) => s.name), defaultTheme.textStyles.map((s) => s.name), 'không có -> mặc định')
+  assert.deepEqual(normalizeTextStyles(undefined, []), [], 'base rỗng -> rỗng')
+})
+
+test('tokenOptionsFor: gợi ý token theo thuộc tính', () => {
+  assert.ok(tokenOptionsFor('paddingTop', defaultTheme).some((o) => o.value === 'var(--space-md)'))
+  assert.ok(tokenOptionsFor('fontSize', defaultTheme).some((o) => o.value === 'var(--text-2xl)'))
+  assert.ok(tokenOptionsFor('maxWidth', defaultTheme).some((o) => o.value === 'var(--container)'))
+  assert.deepEqual(tokenOptionsFor('color', defaultTheme), [])
 })

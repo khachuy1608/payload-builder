@@ -11,11 +11,28 @@ export const COLOR_KEYS = ['primary', 'secondary', 'accent', 'text', 'muted', 'b
 export const FONT_KEYS = ['heading', 'body', 'mono'] as const
 export const RADIUS_KEYS = ['sm', 'md', 'lg'] as const
 export const BUTTON_KEYS = ['radius', 'weight', 'transform'] as const
+export const SPACING_KEYS = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'] as const
+export const TEXT_KEYS = ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl'] as const
+export const SHADOW_KEYS = ['sm', 'md', 'lg'] as const
+export const LAYOUT_KEYS = ['container', 'narrow'] as const
 
 export type ColorKey = (typeof COLOR_KEYS)[number]
 export type FontKey = (typeof FONT_KEYS)[number]
 export type RadiusKey = (typeof RADIUS_KEYS)[number]
 export type ButtonKey = (typeof BUTTON_KEYS)[number]
+
+/** Kiểu chữ đặt tên (text style): áp cho Heading/Paragraph/Button qua class .ts-<name> */
+export interface TextStyle {
+  name: string
+  label: string
+  fontFamily?: string
+  fontSize: string
+  fontWeight: string
+  lineHeight: string
+  letterSpacing?: string
+  textTransform?: string
+  color?: string
+}
 
 export interface ThemeTokens {
   colors: Record<string, string>
@@ -23,6 +40,16 @@ export interface ThemeTokens {
   radius: Record<string, string>
   /** Kiểu nút mặc định: bo góc, độ đậm, kiểu chữ */
   button: Record<string, string>
+  /** Thang khoảng cách: --space-xs … --space-2xl */
+  spacing: Record<string, string>
+  /** Thang cỡ chữ: --text-xs … --text-4xl */
+  text: Record<string, string>
+  /** Bóng đổ: --shadow-sm/md/lg */
+  shadow: Record<string, string>
+  /** Bề rộng bố cục: --container, --narrow */
+  layout: Record<string, string>
+  /** Kiểu chữ đặt tên */
+  textStyles: TextStyle[]
   /** Stylesheet font ngoài (ví dụ Google Fonts), chỉ nhận https */
   fontUrl?: string
 }
@@ -45,6 +72,35 @@ export const defaultTheme: ThemeTokens = {
   fonts: { heading: SYSTEM_SANS, body: SYSTEM_SANS, mono: SYSTEM_MONO },
   radius: { sm: '4px', md: '8px', lg: '16px' },
   button: { radius: '8px', weight: '600', transform: 'none' },
+  spacing: { xs: '4px', sm: '8px', md: '16px', lg: '24px', xl: '40px', '2xl': '64px' },
+  text: { xs: '12px', sm: '14px', base: '16px', lg: '18px', xl: '20px', '2xl': '24px', '3xl': '32px', '4xl': '48px' },
+  shadow: { sm: '0 1px 2px rgba(0,0,0,.06)', md: '0 4px 12px rgba(0,0,0,.08)', lg: '0 16px 40px rgba(0,0,0,.14)' },
+  layout: { container: '1120px', narrow: '760px' },
+  textStyles: [
+    { name: 'display', label: 'Display', fontFamily: 'var(--font-heading)', fontSize: 'var(--text-4xl)', fontWeight: '800', lineHeight: '1.1', letterSpacing: '-0.02em' },
+    { name: 'h1', label: 'Tiêu đề 1', fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)', fontWeight: '700', lineHeight: '1.2' },
+    { name: 'h2', label: 'Tiêu đề 2', fontFamily: 'var(--font-heading)', fontSize: 'var(--text-2xl)', fontWeight: '700', lineHeight: '1.25' },
+    { name: 'h3', label: 'Tiêu đề 3', fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)', fontWeight: '600', lineHeight: '1.3' },
+    { name: 'lead', label: 'Mở đầu', fontSize: 'var(--text-lg)', fontWeight: '400', lineHeight: '1.6', color: 'var(--color-muted)' },
+    { name: 'body', label: 'Nội dung', fontSize: 'var(--text-base)', fontWeight: '400', lineHeight: '1.6' },
+    { name: 'small', label: 'Nhỏ', fontSize: 'var(--text-sm)', fontWeight: '400', lineHeight: '1.5', color: 'var(--color-muted)' },
+    { name: 'caption', label: 'Chú thích', fontSize: 'var(--text-xs)', fontWeight: '500', lineHeight: '1.4', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-muted)' },
+  ],
+}
+
+export const SPACING_TOKEN_LABELS: Record<string, string> = { xs: 'Rất nhỏ', sm: 'Nhỏ', md: 'Vừa', lg: 'Lớn', xl: 'Rất lớn', '2xl': 'Cực lớn' }
+export const TEXT_TOKEN_LABELS: Record<string, string> = { xs: 'xs', sm: 'sm', base: 'base', lg: 'lg', xl: 'xl', '2xl': '2xl', '3xl': '3xl', '4xl': '4xl' }
+export const SHADOW_TOKEN_LABELS: Record<string, string> = { sm: 'Bóng nhẹ', md: 'Bóng vừa', lg: 'Bóng đậm' }
+export const LAYOUT_TOKEN_LABELS: Record<string, string> = { container: 'Bề rộng container', narrow: 'Bề rộng hẹp (bài viết)' }
+
+/** Token gợi ý cho một thuộc tính style (dropdown trong panel Kiểu): [nhãn, giá trị CSS] */
+export function tokenOptionsFor(prop: string, theme: ThemeTokens): { label: string; value: string }[] {
+  if (/^(padding|margin|gap|rowGap|columnGap|top|right|bottom|left)/.test(prop)) return SPACING_KEYS.map((k) => ({ label: `${SPACING_TOKEN_LABELS[k]} (${theme.spacing[k]})`, value: `var(--space-${k})` }))
+  if (prop === 'fontSize') return TEXT_KEYS.map((k) => ({ label: `${k} (${theme.text[k]})`, value: `var(--text-${k})` }))
+  if (prop === 'boxShadow') return SHADOW_KEYS.map((k) => ({ label: `${SHADOW_TOKEN_LABELS[k]}`, value: `var(--shadow-${k})` }))
+  if (prop === 'maxWidth' || prop === 'width') return LAYOUT_KEYS.map((k) => ({ label: `${LAYOUT_TOKEN_LABELS[k]} (${theme.layout[k]})`, value: `var(--${k})` }))
+  if (prop === 'borderRadius') return RADIUS_KEYS.map((k) => ({ label: `${RADIUS_TOKEN_LABELS[k]} (${theme.radius[k]})`, value: `var(--radius-${k})` }))
+  return []
 }
 
 export const COLOR_TOKEN_LABELS: Record<string, string> = {
@@ -149,10 +205,54 @@ export function normalizeTheme(input: unknown, base: ThemeTokens = defaultTheme)
     fonts: pickGroup(src.fonts, FONT_KEYS, base.fonts),
     radius: pickGroup(src.radius, RADIUS_KEYS, base.radius),
     button: pickGroup(src.button, BUTTON_KEYS, base.button),
+    spacing: pickGroup(src.spacing, SPACING_KEYS, base.spacing),
+    text: pickGroup(src.text, TEXT_KEYS, base.text),
+    shadow: pickGroup(src.shadow, SHADOW_KEYS, base.shadow),
+    layout: pickGroup(src.layout, LAYOUT_KEYS, base.layout),
+    textStyles: normalizeTextStyles(src.textStyles, base.textStyles),
   }
   const url = typeof src.fontUrl === 'string' ? src.fontUrl.trim() : ''
   if (url && FONT_URL_PATTERN.test(url) && url.length <= 500) theme.fontUrl = url
   return theme
+}
+
+export const TEXT_STYLE_NAME = /^[a-z][a-z0-9-]{0,30}$/
+
+/** Kiểu chữ đặt tên: tên hợp lệ, không trùng, giá trị đã làm sạch; thiếu thì dùng base (hoặc mặc định) */
+export function normalizeTextStyles(input: unknown, base: TextStyle[] = defaultTheme.textStyles): TextStyle[] {
+  if (!Array.isArray(input)) return structuredClone(base)
+  const out: TextStyle[] = []
+  const seen = new Set<string>()
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object') continue
+    const r = raw as Record<string, unknown>
+    const name = String(r.name ?? '').trim()
+    if (!TEXT_STYLE_NAME.test(name) || seen.has(name)) continue
+    seen.add(name)
+    const str = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? sanitizeCssValue(String(v)) : '')
+    const ts: TextStyle = { name, label: String(r.label ?? name).slice(0, 60) || name, fontSize: str(r.fontSize) || 'var(--text-base)', fontWeight: str(r.fontWeight) || '400', lineHeight: str(r.lineHeight) || '1.5' }
+    for (const k of ['fontFamily', 'letterSpacing', 'textTransform', 'color'] as const) {
+      const v = str(r[k])
+      if (v) ts[k] = v
+    }
+    out.push(ts)
+  }
+  return out
+}
+
+const TS_PROPS: Record<keyof Omit<TextStyle, 'name' | 'label'>, string> = { fontFamily: 'font-family', fontSize: 'font-size', fontWeight: 'font-weight', lineHeight: 'line-height', letterSpacing: 'letter-spacing', textTransform: 'text-transform', color: 'color' }
+
+/** CSS cho các kiểu chữ đặt tên (.ts-<name>) */
+export function textStylesCss(styles: TextStyle[]): string {
+  return styles
+    .map((ts) => {
+      const decl = (Object.keys(TS_PROPS) as (keyof typeof TS_PROPS)[])
+        .filter((k) => ts[k])
+        .map((k) => `${TS_PROPS[k]}:${ts[k]}`)
+        .join(';')
+      return `.ts-${ts.name}{${decl}}`
+    })
+    .join('')
 }
 
 export function themeToCss(theme: ThemeTokens = defaultTheme): string {
@@ -161,7 +261,11 @@ export function themeToCss(theme: ThemeTokens = defaultTheme): string {
   for (const [k, v] of Object.entries(theme.fonts)) vars.push(`--font-${k}:${v}`)
   for (const [k, v] of Object.entries(theme.radius)) vars.push(`--radius-${k}:${v}`)
   for (const [k, v] of Object.entries(theme.button ?? {})) vars.push(`--button-${k}:${v}`)
-  return `:root{${vars.join(';')}}`
+  for (const [k, v] of Object.entries(theme.spacing ?? {})) vars.push(`--space-${k}:${v}`)
+  for (const [k, v] of Object.entries(theme.text ?? {})) vars.push(`--text-${k}:${v}`)
+  for (const [k, v] of Object.entries(theme.shadow ?? {})) vars.push(`--shadow-${k}:${v}`)
+  for (const [k, v] of Object.entries(theme.layout ?? {})) vars.push(`--${k}:${v}`)
+  return `:root{${vars.join(';')}}` + textStylesCss(theme.textStyles ?? [])
 }
 
 /** Thẻ <link> nạp font ngoài (chuỗi HTML an toàn vì fontUrl đã được lọc theo pattern) */
@@ -194,8 +298,8 @@ img,svg,video,iframe{display:block;max-width:100%}
 .b-tabs-panel[hidden]{display:none}
 ` + FX_CSS + BLOCKS_CSS
 
-/** Các theme preset (chỉ đọc) được seed vào collection `themes` */
-export const PRESET_THEMES: { name: string; tokens: ThemeTokens }[] = [
+/** Các theme preset (chỉ đọc) được seed vào collection `themes` – nhóm thiếu lấy từ mặc định */
+const PRESET_SOURCE: { name: string; tokens: Partial<ThemeTokens> }[] = [
   { name: 'Indigo', tokens: defaultTheme },
   {
     name: 'Ocean',
@@ -228,3 +332,5 @@ export const PRESET_THEMES: { name: string; tokens: ThemeTokens }[] = [
     },
   },
 ]
+
+export const PRESET_THEMES: { name: string; tokens: ThemeTokens }[] = PRESET_SOURCE.map((p) => ({ name: p.name, tokens: normalizeTheme(p.tokens) }))

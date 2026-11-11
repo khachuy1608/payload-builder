@@ -416,3 +416,14 @@ select.ed-input + .ed-reset { right: 22px; }
 .ed-left > .ed-tabs button { padding: 0 2px; font-size: 12px; min-width: 0; }
 .ed-left > .ed-tabs button[title="Bình luận"] { flex: none; padding: 0 10px; }
 .ed-left > .ed-tabs button:not([title]) > svg { display: none; }
+
+/* ---------- Token & kiểu chữ đặt tên ---------- */
+.ed-token { width: 22px; height: 28px; border: 1px solid var(--ed-line); border-radius: 6px; background: #fff; color: #7c3aed; font-size: 11px; padding: 0; text-align: center; cursor: pointer; flex: none; }
+.ed-token:hover { border-color: #7c3aed; }
+.ed-ts-list { display: flex; flex-direction: column; gap: 6px; }
+.ed-ts { border: 1px solid var(--ed-line); border-radius: 8px; background: #fff; }
+.ed-ts-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 8px 10px; background: none; border: 0; cursor: pointer; text-align: left; font: inherit; }
+.ed-ts-head code { font-size: 11px; color: #6b7280; }
+.ed-ts-sample { line-height: 1.2; }
+.ed-ts.is-open > .ed-theme-grid { padding: 0 10px 10px; }
+.ed-input.is-invalid { border-color: #dc2626; }

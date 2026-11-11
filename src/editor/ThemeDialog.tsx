@@ -14,8 +14,18 @@ import {
   FONT_KEYS,
   FONT_TOKEN_LABELS,
   GOOGLE_FONTS,
+  LAYOUT_KEYS,
+  LAYOUT_TOKEN_LABELS,
   RADIUS_KEYS,
   RADIUS_TOKEN_LABELS,
+  SHADOW_KEYS,
+  SHADOW_TOKEN_LABELS,
+  SPACING_KEYS,
+  SPACING_TOKEN_LABELS,
+  TEXT_KEYS,
+  TEXT_STYLE_NAME,
+  TEXT_TOKEN_LABELS,
+  type TextStyle,
   SYSTEM_MONO,
   SYSTEM_SANS,
   SYSTEM_SERIF,
@@ -302,6 +312,45 @@ export function ThemeDialog() {
                       </select>
                     </label>
                   </div>
+
+                  <span className="ed-label ed-theme-h">Khoảng cách (--space-*)</span>
+                  <div className="ed-theme-grid">
+                    {SPACING_KEYS.map((k) => (
+                      <label key={k} className="ed-field">
+                        <span className="ed-help">{SPACING_TOKEN_LABELS[k]} · {k}</span>
+                        <input className="ed-input" value={draft.tokens.spacing[k]} onChange={(e) => patch((t) => (t.spacing[k] = e.target.value))} />
+                      </label>
+                    ))}
+                  </div>
+
+                  <span className="ed-label ed-theme-h">Cỡ chữ (--text-*)</span>
+                  <div className="ed-theme-grid">
+                    {TEXT_KEYS.map((k) => (
+                      <label key={k} className="ed-field">
+                        <span className="ed-help">{TEXT_TOKEN_LABELS[k]}</span>
+                        <input className="ed-input" value={draft.tokens.text[k]} onChange={(e) => patch((t) => (t.text[k] = e.target.value))} />
+                      </label>
+                    ))}
+                  </div>
+
+                  <span className="ed-label ed-theme-h">Bóng đổ & bố cục</span>
+                  <div className="ed-theme-grid">
+                    {SHADOW_KEYS.map((k) => (
+                      <label key={k} className="ed-field">
+                        <span className="ed-help">{SHADOW_TOKEN_LABELS[k]} (--shadow-{k})</span>
+                        <input className="ed-input" value={draft.tokens.shadow[k]} onChange={(e) => patch((t) => (t.shadow[k] = e.target.value))} />
+                      </label>
+                    ))}
+                    {LAYOUT_KEYS.map((k) => (
+                      <label key={k} className="ed-field">
+                        <span className="ed-help">{LAYOUT_TOKEN_LABELS[k]} (--{k})</span>
+                        <input className="ed-input" value={draft.tokens.layout[k]} onChange={(e) => patch((t) => (t.layout[k] = e.target.value))} />
+                      </label>
+                    ))}
+                  </div>
+
+                  <span className="ed-label ed-theme-h">Kiểu chữ đặt tên (.ts-tên)</span>
+                  <TextStylesEditor styles={draft.tokens.textStyles} onChange={(list) => patch((t) => (t.textStyles = list))} />
                 </fieldset>
               </>
             )}
@@ -326,6 +375,98 @@ const SYSTEM_STACKS: { label: string; value: string }[] = [
   { label: 'Hệ thống (serif)', value: SYSTEM_SERIF },
   { label: 'Hệ thống (mono)', value: SYSTEM_MONO },
 ]
+/** Bảng kiểu chữ đặt tên: thêm / sửa / xoá; Heading, Paragraph, Button chọn ở tab Nội dung */
+function TextStylesEditor({ styles, onChange }: { styles: TextStyle[]; onChange: (list: TextStyle[]) => void }) {
+  const [open, setOpen] = useState<number | null>(null)
+  const update = (i: number, patch: Partial<TextStyle>) => onChange(styles.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
+  const add = () => {
+    let n = 1
+    while (styles.some((s) => s.name === `custom-${n}`)) n++
+    onChange([...styles, { name: `custom-${n}`, label: `Kiểu ${n}`, fontSize: 'var(--text-base)', fontWeight: '400', lineHeight: '1.5' }])
+    setOpen(styles.length)
+  }
+  return (
+    <div className="ed-ts-list">
+      {styles.map((ts, i) => (
+        <div key={i} className={`ed-ts${open === i ? ' is-open' : ''}`} data-ts={ts.name}>
+          <button type="button" className="ed-ts-head" onClick={() => setOpen(open === i ? null : i)}>
+            <span className="ed-ts-sample" style={{ fontFamily: ts.fontFamily, fontSize: `min(${ts.fontSize}, 22px)`, fontWeight: ts.fontWeight, letterSpacing: ts.letterSpacing, textTransform: ts.textTransform as never, color: ts.color }}>
+              {ts.label}
+            </span>
+            <code>.ts-{ts.name}</code>
+          </button>
+          {open === i && (
+            <div className="ed-theme-grid">
+              <label className="ed-field">
+                <span className="ed-help">Tên (class)</span>
+                <input className={`ed-input${TEXT_STYLE_NAME.test(ts.name) ? '' : ' is-invalid'}`} value={ts.name} onChange={(e) => update(i, { name: e.target.value })} />
+              </label>
+              <label className="ed-field">
+                <span className="ed-help">Nhãn</span>
+                <input className="ed-input" value={ts.label} onChange={(e) => update(i, { label: e.target.value })} />
+              </label>
+              <label className="ed-field">
+                <span className="ed-help">Font</span>
+                <select className="ed-input" value={ts.fontFamily ?? ''} onChange={(e) => update(i, { fontFamily: e.target.value || undefined })}>
+                  <option value="">Kế thừa</option>
+                  <option value="var(--font-heading)">Font tiêu đề</option>
+                  <option value="var(--font-body)">Font nội dung</option>
+                  <option value="var(--font-mono)">Font mono</option>
+                </select>
+              </label>
+              <label className="ed-field">
+                <span className="ed-help">Cỡ chữ</span>
+                <input className="ed-input" value={ts.fontSize} list="ed-text-tokens" onChange={(e) => update(i, { fontSize: e.target.value })} />
+              </label>
+              <label className="ed-field">
+                <span className="ed-help">Độ đậm</span>
+                <select className="ed-input" value={ts.fontWeight} onChange={(e) => update(i, { fontWeight: e.target.value })}>
+                  {['300', '400', '500', '600', '700', '800', '900'].map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="ed-field">
+                <span className="ed-help">Cao dòng</span>
+                <input className="ed-input" value={ts.lineHeight} onChange={(e) => update(i, { lineHeight: e.target.value })} />
+              </label>
+              <label className="ed-field">
+                <span className="ed-help">Giãn chữ</span>
+                <input className="ed-input" value={ts.letterSpacing ?? ''} placeholder="0" onChange={(e) => update(i, { letterSpacing: e.target.value || undefined })} />
+              </label>
+              <label className="ed-field">
+                <span className="ed-help">Kiểu chữ</span>
+                <select className="ed-input" value={ts.textTransform ?? ''} onChange={(e) => update(i, { textTransform: e.target.value || undefined })}>
+                  <option value="">Bình thường</option>
+                  <option value="uppercase">IN HOA</option>
+                  <option value="capitalize">Viết Hoa Đầu</option>
+                </select>
+              </label>
+              <label className="ed-field">
+                <span className="ed-help">Màu</span>
+                <input className="ed-input" value={ts.color ?? ''} placeholder="kế thừa" onChange={(e) => update(i, { color: e.target.value || undefined })} />
+              </label>
+              <button type="button" className="ed-btn" onClick={() => onChange(styles.filter((_, idx) => idx !== i))}>
+                <Trash2 size={13} /> Xoá kiểu này
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+      <datalist id="ed-text-tokens">
+        {TEXT_KEYS.map((k) => (
+          <option key={k} value={`var(--text-${k})`} />
+        ))}
+      </datalist>
+      <button type="button" className="ed-btn" onClick={add}>
+        + Thêm kiểu chữ
+      </button>
+    </div>
+  )
+}
+
 const CATEGORIES: FontCategory[] = ['sans', 'serif', 'display', 'mono']
 
 /** Chọn font: font hệ thống, Google Fonts theo nhóm, hoặc stack tuỳ chỉnh; kèm dòng chữ mẫu */

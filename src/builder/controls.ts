@@ -26,7 +26,7 @@ export type ContentControl =
   | { type: 'color'; prop: string; label: string }
   /** Danh sách mục lặp lại: mỗi mục là object với các trường `fields` */
   | { type: 'list'; prop: string; label: string; itemLabel?: string; fields: ListField[]; max?: number; help?: string }
-  | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' | 'children' | 'data' }
+  | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' | 'children' | 'data' | 'textStyle' }
 
 export type StyleFieldKind = 'unit' | 'select' | 'color' | 'text' | 'box'
 

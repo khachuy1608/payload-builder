@@ -318,6 +318,45 @@ export interface Theme {
     weight: '400' | '500' | '600' | '700' | '800';
     transform: 'none' | 'uppercase' | 'capitalize';
   };
+  spacing: {
+    xs: string;
+    sm: string;
+    md: string;
+    lg: string;
+    xl: string;
+    '2xl': string;
+  };
+  text: {
+    xs: string;
+    sm: string;
+    base: string;
+    lg: string;
+    xl: string;
+    '2xl': string;
+    '3xl': string;
+    '4xl': string;
+  };
+  shadow: {
+    sm: string;
+    md: string;
+    lg: string;
+  };
+  layout: {
+    container: string;
+    narrow: string;
+  };
+  /**
+   * Mảng { name, label, fontFamily?, fontSize, fontWeight, lineHeight, letterSpacing?, textTransform?, color? }. Chỉnh thuận tiện hơn trong Visual Builder → Theme.
+   */
+  textStyles?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -757,6 +796,42 @@ export interface ThemesSelect<T extends boolean = true> {
         weight?: T;
         transform?: T;
       };
+  spacing?:
+    | T
+    | {
+        xs?: T;
+        sm?: T;
+        md?: T;
+        lg?: T;
+        xl?: T;
+        '2xl'?: T;
+      };
+  text?:
+    | T
+    | {
+        xs?: T;
+        sm?: T;
+        base?: T;
+        lg?: T;
+        xl?: T;
+        '2xl'?: T;
+        '3xl'?: T;
+        '4xl'?: T;
+      };
+  shadow?:
+    | T
+    | {
+        sm?: T;
+        md?: T;
+        lg?: T;
+      };
+  layout?:
+    | T
+    | {
+        container?: T;
+        narrow?: T;
+      };
+  textStyles?: T;
   updatedAt?: T;
   createdAt?: T;
 }

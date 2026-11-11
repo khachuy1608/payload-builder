@@ -1,6 +1,6 @@
 import type { Access, CollectionConfig } from 'payload'
 import { canEdit, loggedIn, roleOf } from '../lib/access'
-import { BUTTON_TOKEN_LABELS, COLOR_TOKEN_LABELS, FONT_TOKEN_LABELS, RADIUS_TOKEN_LABELS, defaultTheme } from '../builder/theme'
+import { BUTTON_TOKEN_LABELS, COLOR_TOKEN_LABELS, FONT_TOKEN_LABELS, LAYOUT_TOKEN_LABELS, RADIUS_TOKEN_LABELS, SHADOW_TOKEN_LABELS, SPACING_TOKEN_LABELS, TEXT_TOKEN_LABELS, defaultTheme, normalizeTextStyles } from '../builder/theme'
 import { revalidatePages } from '../lib/revalidate'
 
 /** Preset chỉ đọc: người dùng nhân bản thành My Theme để chỉnh; viewer không sửa */
@@ -80,6 +80,37 @@ export const Themes: CollectionConfig = {
         },
       ],
     },
+    {
+      name: 'spacing',
+      label: 'Khoảng cách (--space-*)',
+      type: 'group',
+      fields: Object.entries(SPACING_TOKEN_LABELS).map(([k, label]) => text(k, `${label} (${k})`, defaultTheme.spacing[k])),
+    },
+    {
+      name: 'text',
+      label: 'Cỡ chữ (--text-*)',
+      type: 'group',
+      fields: Object.entries(TEXT_TOKEN_LABELS).map(([k, label]) => text(k, label, defaultTheme.text[k])),
+    },
+    {
+      name: 'shadow',
+      label: 'Bóng đổ (--shadow-*)',
+      type: 'group',
+      fields: Object.entries(SHADOW_TOKEN_LABELS).map(([k, label]) => text(k, label, defaultTheme.shadow[k])),
+    },
+    {
+      name: 'layout',
+      label: 'Bố cục',
+      type: 'group',
+      fields: Object.entries(LAYOUT_TOKEN_LABELS).map(([k, label]) => text(k, label, defaultTheme.layout[k])),
+    },
+    {
+      name: 'textStyles',
+      label: 'Kiểu chữ đặt tên (JSON)',
+      type: 'json',
+      defaultValue: defaultTheme.textStyles,
+      admin: { description: 'Mảng { name, label, fontFamily?, fontSize, fontWeight, lineHeight, letterSpacing?, textTransform?, color? }. Chỉnh thuận tiện hơn trong Visual Builder → Theme.' },
+    },
   ],
   hooks: {
     afterChange: [
@@ -97,6 +128,7 @@ export const Themes: CollectionConfig = {
     beforeChange: [
       ({ data, req, operation }) => {
         if (!data) return data
+        if ('textStyles' in data) data.textStyles = normalizeTextStyles(data.textStyles, [])
         // chỉ seed (không có user) mới tạo được preset
         if (req.user) data.isPreset = false
         if (operation === 'create') data.owner = req.user?.id ?? null

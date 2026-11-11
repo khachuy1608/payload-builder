@@ -12,7 +12,7 @@ import type { BlockLookup } from './refs'
 import { resolveRefs } from './refs'
 import { getBlock } from './registry'
 import { getSchema, ID_PATTERN } from './schema'
-import { defaultTheme, type ThemeTokens, themeToCss } from './theme'
+import { defaultTheme, TEXT_STYLE_NAME, type ThemeTokens, themeToCss } from './theme'
 import type { AdvancedProps, BuilderNode, PageContent } from './types'
 
 const CLASS_PATTERN = /^[A-Za-z_-][A-Za-z0-9_-]*$/
@@ -21,6 +21,9 @@ function buildAttrs(node: BuilderNode, mode: RenderMode): NodeAttrs {
   const adv = node.props as AdvancedProps
   const classes = [`n-${node.id}`, `b-${node.type}`]
   for (const c of String(adv.cssClass ?? '').split(/\s+/)) if (CLASS_PATTERN.test(c)) classes.push(c)
+  // kiểu chữ đặt tên của theme (.ts-<name>) cho Heading/Paragraph/Button…
+  const ts = node.props.textStyle
+  if (typeof ts === 'string' && TEXT_STYLE_NAME.test(ts)) classes.push(`ts-${ts}`)
   const attrs: NodeAttrs = { className: classes.join(' ') }
   if (adv.cssId && CLASS_PATTERN.test(adv.cssId)) attrs.id = adv.cssId
   const fx = normalizeFx((node.props as { fx?: unknown }).fx)

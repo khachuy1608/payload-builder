@@ -9,6 +9,7 @@ import * as migration_20261111_132429_seo_redirects from './20261111_132429_seo_
 import * as migration_20261111_134538_phase2_layout from './20261111_134538_phase2_layout';
 import * as migration_20261111_135634_phase2_versions from './20261111_135634_phase2_versions';
 import * as migration_20261111_140719_phase2_roles_comments from './20261111_140719_phase2_roles_comments';
+import * as migration_20261111_141528_phase2_tokens from './20261111_141528_phase2_tokens';
 
 export const migrations = [
   {
@@ -64,6 +65,11 @@ export const migrations = [
   {
     up: migration_20261111_140719_phase2_roles_comments.up,
     down: migration_20261111_140719_phase2_roles_comments.down,
-    name: '20261111_140719_phase2_roles_comments'
+    name: '20261111_140719_phase2_roles_comments',
+  },
+  {
+    up: migration_20261111_141528_phase2_tokens.up,
+    down: migration_20261111_141528_phase2_tokens.down,
+    name: '20261111_141528_phase2_tokens'
   },
 ];
