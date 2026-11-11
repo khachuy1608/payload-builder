@@ -1,6 +1,7 @@
 import type { Access, CollectionConfig, FieldHook } from 'payload'
 import { APIError } from 'payload'
 import { ContentValidationError, validateContent } from '../builder/validate'
+import { revalidatePages } from '../lib/revalidate'
 import { RESERVED_SLUGS, slugify } from '../lib/slug'
 
 const loggedIn: Access = ({ req: { user } }) => Boolean(user)
@@ -62,6 +63,13 @@ export const Pages: CollectionConfig = {
       },
     },
     {
+      name: 'theme',
+      label: 'Ghi đè theme',
+      type: 'relationship',
+      relationTo: 'themes',
+      admin: { position: 'sidebar', description: 'Để trống sẽ dùng theme trong Cài đặt site.' },
+    },
+    {
       name: 'content',
       label: 'Nội dung (JSON từ Visual Builder)',
       type: 'json',
@@ -69,6 +77,22 @@ export const Pages: CollectionConfig = {
     },
   ],
   hooks: {
+    afterChange: [
+      ({ doc, previousDoc }) => {
+        // xuất bản, bỏ xuất bản hay đổi slug: làm mới cache trang công khai
+        if (doc?._status === 'published' || previousDoc?._status === 'published') {
+          revalidatePages(doc?.slug)
+          if (previousDoc?.slug && previousDoc.slug !== doc?.slug) revalidatePages(previousDoc.slug)
+        }
+        return doc
+      },
+    ],
+    afterDelete: [
+      ({ doc }) => {
+        revalidatePages(doc?.slug)
+        return doc
+      },
+    ],
     beforeChange: [
       ({ data }) => {
         if (data && 'content' in data && data.content != null) {

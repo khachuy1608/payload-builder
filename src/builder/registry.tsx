@@ -11,6 +11,7 @@ import {
   FileText,
   Heading as HeadingIcon,
   Image as ImageIcon,
+  LayoutTemplate,
   Minus,
   MousePointerClick,
   PanelTop,
@@ -20,9 +21,10 @@ import {
 } from 'lucide-react'
 import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
-import { sanitizeSvg } from './sanitize'
+import type { RefError } from './refs'
+import { richHasBlock, sanitizeRichText, sanitizeSvg } from './sanitize'
 import { genId } from './tree'
-import type { MediaValue } from './types'
+import type { BlockRefProps, MediaValue } from './types'
 
 // ---------- helpers ----------
 
@@ -160,10 +162,15 @@ const BLOCK_LIST: BlockDefinition[] = [
       props: { text: 'Đây là một đoạn văn. Nhấp đúp để sửa trực tiếp, hoặc sửa trong panel bên phải.' },
       styles: {},
     }),
-    contentControls: [{ type: 'textarea', prop: 'text', label: 'Nội dung' }],
+    contentControls: [{ type: 'richtext', prop: 'text', label: 'Nội dung' }],
     styleGroups: TEXT_GROUPS,
-    inlineEdit: { prop: 'text', multiline: true },
-    Render: ({ node, attrs }) => <p {...attrs}>{text(node.props.text)}</p>,
+    inlineEdit: { prop: 'text', multiline: true, rich: true },
+    // text là HTML đã làm sạch (đậm, nghiêng, link, xuống dòng, danh sách); văn bản thuần cũ vẫn hiển thị như trước
+    Render: ({ node, attrs }) => {
+      const html = sanitizeRichText(text(node.props.text))
+      const Tag = richHasBlock(html) ? 'div' : 'p'
+      return <Tag {...attrs} dangerouslySetInnerHTML={{ __html: html }} />
+    },
   },
   {
     type: 'button',
@@ -177,8 +184,6 @@ const BLOCK_LIST: BlockDefinition[] = [
           backgroundColor: 'var(--color-primary)',
           color: '#ffffff',
           padding: '12px 24px',
-          borderRadius: 'var(--radius-md)',
-          fontWeight: '600',
           transition: 'opacity .2s ease',
         },
         hover: { opacity: '0.85' },
@@ -328,7 +333,33 @@ const BLOCK_LIST: BlockDefinition[] = [
       )
     },
   },
+  {
+    /**
+     * My Block dạng liên kết. Bình thường node này được `resolveRefs()` thay bằng cây thật trước khi render,
+     * nên Render ở đây chỉ chạy khi KHÔNG triển khai được (block chưa tải, đã xoá, vòng lặp, lồng quá sâu).
+     */
+    type: 'blockRef',
+    label: 'My Block',
+    category: 'basic',
+    icon: LayoutTemplate,
+    defaults: () => ({ props: { blockId: '', name: '' }, styles: {} }),
+    contentControls: [{ type: 'custom', component: 'blockRef' }],
+    styleGroups: ['spacing', 'size', 'child', 'effects'],
+    Render: ({ node, attrs, mode }) => {
+      if (mode !== 'editor') return null
+      const props = node.props as BlockRefProps & { refError?: RefError }
+      const name = text(props.name) || `#${text(props.blockId)}`
+      const label = REF_ERROR_LABELS[props.refError ?? 'missing'].replace('%s', name)
+      return <Placeholder attrs={attrs} label={label} icon={LayoutTemplate} />
+    },
+  },
 ]
+
+export const REF_ERROR_LABELS: Record<RefError, string> = {
+  missing: 'Block "%s" chưa tải được hoặc đã bị xoá',
+  cycle: 'Block "%s" tham chiếu vòng lặp – không thể hiển thị',
+  depth: 'Block "%s" lồng quá nhiều cấp – không thể hiển thị',
+}
 
 export const BLOCKS: Record<string, BlockDefinition> = Object.fromEntries(BLOCK_LIST.map((b) => [b.type, b]))
 

@@ -10,6 +10,8 @@ export interface NodeAttrs {
   'data-node-id'?: string
   'data-node-type'?: string
   'data-empty'?: ''
+  /** Phần tử thuộc một My Block liên kết (chỉ trong editor): 'root' = gốc của block, '' = bên trong */
+  'data-linked'?: 'root' | ''
 }
 
 export interface RenderProps {
@@ -31,7 +33,7 @@ export interface BlockDefinition {
   contentControls: ContentControl[]
   /** id các nhóm trong STYLE_GROUPS */
   styleGroups: string[]
-  /** Cho phép double-click để sửa chữ trực tiếp trên canvas */
-  inlineEdit?: { prop: string; multiline?: boolean }
+  /** Cho phép double-click để sửa chữ trực tiếp trên canvas. rich = HTML inline (đậm/nghiêng/link) */
+  inlineEdit?: { prop: string; multiline?: boolean; rich?: boolean }
   Render: ComponentType<RenderProps>
 }

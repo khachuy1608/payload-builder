@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import type { ReactNode } from 'react'
-import { BASE_CSS, defaultTheme, themeToCss } from '@/builder/theme'
+import { BASE_CSS } from '@/builder/theme'
 
 export const metadata: Metadata = {
   title: { default: 'Page Builder', template: '%s – Page Builder' },
@@ -12,7 +12,8 @@ export default async function FrontendLayout({ children }: { children: ReactNode
   return (
     <html lang="vi">
       <head>
-        <style dangerouslySetInnerHTML={{ __html: themeToCss(defaultTheme) + BASE_CSS }} />
+        {/* token màu/font của theme do PageRenderer phát theo từng trang */}
+        <style dangerouslySetInnerHTML={{ __html: BASE_CSS }} />
       </head>
       <body>
         {draft && (

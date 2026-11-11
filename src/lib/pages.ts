@@ -1,16 +1,26 @@
 import config from '@payload-config'
 import { draftMode } from 'next/headers'
+import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import { cache } from 'react'
+import type { ThemeTokens } from '../builder/theme'
+import type { BuilderNode, PageContent } from '../builder/types'
 import { normalizeContent } from '../builder/validate'
+import { loadBlocksForContent } from './blocks'
+import { PAGES_TAG } from './revalidate'
+import { loadThemeForPage } from './themes'
 
-/**
- * Lấy trang theo slug cho front-end.
- * - Bình thường: chỉ trang đã xuất bản.
- * - Draft mode (bật qua /preview khi đã đăng nhập): lấy bản nháp mới nhất.
- */
-export const getPageBySlug = cache(async (slug: string) => {
-  const { isEnabled: draft } = await draftMode()
+export interface LoadedPage {
+  title: string
+  slug: string
+  content: PageContent
+  /** Cây gốc của các My Block liên kết mà trang dùng (object thuần để cache được) */
+  blocks: Record<string, BuilderNode>
+  theme: ThemeTokens
+  draft: boolean
+}
+
+async function fetchPage(slug: string, draft: boolean): Promise<LoadedPage | null> {
   const payload = await getPayload({ config })
   const result = await payload.find({
     collection: 'pages',
@@ -25,5 +35,23 @@ export const getPageBySlug = cache(async (slug: string) => {
   })
   const doc = result.docs[0]
   if (!doc) return null
-  return { title: doc.title, slug: doc.slug, content: normalizeContent(doc.content), draft }
+  const content = normalizeContent(doc.content)
+  const [blocks, theme] = await Promise.all([loadBlocksForContent(payload, content), loadThemeForPage(payload, doc.theme)])
+  return { title: doc.title, slug: doc.slug, content, blocks: Object.fromEntries(blocks), theme: theme.tokens, draft }
+}
+
+/**
+ * Trang đã xuất bản được cache theo tag `pages`; hook afterChange của Pages / My Blocks / Themes / Site Settings
+ * gọi revalidateTag nên cache chỉ mới lại khi có thay đổi (xem lib/revalidate.ts).
+ */
+const getPublishedPage = unstable_cache((slug: string) => fetchPage(slug, false), ['published-page'], { tags: [PAGES_TAG] })
+
+/**
+ * Lấy trang theo slug cho front-end.
+ * - Bình thường: trang đã xuất bản, từ cache.
+ * - Draft mode (bật qua /preview khi đã đăng nhập): luôn đọc bản nháp mới nhất, không cache.
+ */
+export const getPageBySlug = cache(async (slug: string): Promise<LoadedPage | null> => {
+  const { isEnabled: draft } = await draftMode()
+  return draft ? fetchPage(slug, true) : getPublishedPage(slug)
 })

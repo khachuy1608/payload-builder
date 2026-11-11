@@ -1,16 +1,20 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Monitor, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, ExternalLink, Monitor, Palette, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
+import { refBlockId } from '@/builder/refs'
+import { sanitizeRichText } from '@/builder/sanitize'
 import { getBlock } from '@/builder/registry'
-import { COLOR_TOKEN_LABELS, defaultTheme } from '@/builder/theme'
+import { COLOR_TOKEN_LABELS } from '@/builder/theme'
 import { findNode, genId, getAncestors } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
+import { nodeLabel } from './labels'
 import { MediaPicker } from './MediaPicker'
-import { useEditor } from './store'
+import { RichToolbar } from './RichToolbar'
+import { type BlockScope, effectiveTheme, useEditor } from './store'
 
 type Tab = 'content' | 'style' | 'advanced'
 
@@ -42,6 +46,7 @@ export function RightPanel() {
 
   const def = getBlock(node.type)
   const ancestors = getAncestors(root, node.id)
+  const kind = useEditor.getState().kind
 
   return (
     <aside className="ed-right">
@@ -49,13 +54,13 @@ export function RightPanel() {
         <div className="ed-crumbs">
           {ancestors.slice(-3).map((a) => (
             <button key={a.id} onClick={() => useEditor.getState().select(a.id)}>
-              {getBlock(a.type)?.label} ›
+              {a.type === 'root' && kind === 'block' ? 'Block' : getBlock(a.type)?.label} ›
             </button>
           ))}
         </div>
         <div className="ed-right-title">
           {def && <def.icon size={18} />}
-          <strong>{def?.label ?? node.type}</strong>
+          <strong>{node.type === 'blockRef' ? nodeLabel(node) : node.type === 'root' && kind === 'block' ? 'Cài đặt block' : (def?.label ?? node.type)}</strong>
         </div>
       </header>
       <div className="ed-tabs ed-tabs--small">
@@ -95,7 +100,9 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
 
   switch (control.type) {
     case 'custom':
-      return control.component === 'tabs' ? <TabsManager node={node} /> : <PageSettings />
+      if (control.component === 'tabs') return <TabsManager node={node} />
+      if (control.component === 'blockRef') return <BlockRefPanel node={node} />
+      return <PageSettings />
     case 'text':
     case 'url':
       return (
@@ -106,6 +113,12 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
             placeholder={control.placeholder}
             onChange={(e) => update(e.target.value)}
           />
+        </Field>
+      )
+    case 'richtext':
+      return (
+        <Field label={control.label} help={control.help ?? 'Đậm, nghiêng, gạch chân, liên kết. Enter để xuống dòng.'}>
+          <RichTextField value={String(node.props[control.prop] ?? '')} onChange={(v) => update(v)} />
         </Field>
       )
     case 'textarea':
@@ -145,6 +158,54 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
     case 'media':
       return <MediaField label={control.label} value={(node.props[control.prop] as MediaValue | null) ?? null} onChange={(v) => update(v, false)} />
   }
+}
+
+/** Ô soạn rich text (contentEditable) – không điều khiển hoàn toàn để con trỏ không bị nhảy khi gõ */
+function RichTextField({ value, onChange }: { value: string; onChange: (html: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const last = useRef<string | null>(null)
+  useEffect(() => {
+    if (ref.current && value !== last.current) {
+      ref.current.innerHTML = sanitizeRichText(value)
+      last.current = value
+    }
+  }, [value])
+  const emit = () => {
+    if (!ref.current) return
+    const html = sanitizeRichText(ref.current.innerHTML)
+    last.current = html
+    onChange(html)
+  }
+  return (
+    <div className="ed-rich">
+      <RichToolbar
+        compact
+        exec={(cmd, v) => {
+          ref.current?.focus()
+          document.execCommand(cmd, false, v)
+          emit()
+        }}
+      />
+      <div
+        ref={ref}
+        className="ed-input ed-rich-area"
+        contentEditable
+        suppressContentEditableWarning
+        onInput={emit}
+        onBlur={emit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !(e.ctrlKey || e.metaKey)) {
+            const anchor = document.getSelection()?.anchorNode
+            const inList = !!(anchor && (anchor.nodeType === 1 ? (anchor as Element) : anchor.parentElement)?.closest('li'))
+            if (inList) return // trình duyệt tự tạo mục mới
+            e.preventDefault()
+            document.execCommand('insertLineBreak')
+            emit()
+          }
+        }}
+      />
+    </div>
+  )
 }
 
 function Field({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {
@@ -247,10 +308,79 @@ function TabsManager({ node }: { node: BuilderNode }) {
   )
 }
 
+/** Panel Nội dung của node blockRef: thông tin bản gốc, mở sửa, tách */
+function BlockRefPanel({ node }: { node: BuilderNode }) {
+  const blockId = refBlockId(node)
+  const block = useEditor((s) => (blockId ? s.blocks[blockId] : undefined))
+  const missing = useEditor((s) => (blockId ? !!s.missingBlocks[blockId] : true))
+  const userId = useEditor((s) => s.userId)
+  const mine = !!block && (block.owner === null || block.owner === userId)
+  const s = useEditor.getState()
+  return (
+    <div className="ed-fields">
+      {block ? (
+        <div className="ed-field">
+          <span className="ed-label">Liên kết tới block</span>
+          <div className="ed-ref-card">
+            <strong>{block.name}</strong>
+            <span className="ed-help">
+              {block.scope === 'shared' ? 'Dùng chung' : 'Riêng tư'} · {mine ? 'của bạn' : 'của người khác'} · gốc là {getBlock(block.tree.type)?.label}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <p className="ed-error" style={{ margin: 0 }}>
+          {missing ? 'Không tìm thấy bản gốc (có thể đã bị xoá). Trang thật sẽ bỏ qua phần tử này.' : 'Đang tải bản gốc…'}
+        </p>
+      )}
+      <p className="ed-help">
+        Phần tử liên kết chỉ đọc trên trang này. Muốn đổi nội dung hãy sửa bản gốc (mọi trang dùng nó cùng cập nhật), hoặc tách ra thành bản sao độc lập.
+      </p>
+      <div className="ed-row">
+        {block && (
+          <a className="ed-btn" href={`/builder/block/${block.id}`} target="_blank" rel="noreferrer">
+            <ExternalLink size={14} /> {mine ? 'Sửa bản gốc' : 'Xem bản gốc'}
+          </a>
+        )}
+        <button className="ed-btn" disabled={!block} onClick={() => s.detach(node.id)}>
+          <Unlink size={14} /> Tách
+        </button>
+      </div>
+      <p className="ed-hint" style={{ margin: 0 }}>
+        Tab “Kiểu” cho phép ghi đè lề, kích thước… của riêng vị trí này mà không ảnh hưởng bản gốc.
+      </p>
+    </div>
+  )
+}
+
+/** Cài đặt bản gốc của block (kind = block): tên và phạm vi */
+function BlockSettings() {
+  const title = useEditor((s) => s.title)
+  const scope = useEditor((s) => s.scope)
+  const readOnly = useEditor((s) => s.readOnly)
+  const setMeta = useEditor((s) => s.setMeta)
+  return (
+    <div className="ed-fields">
+      <Field label="Tên block">
+        <input className="ed-input" value={title} disabled={readOnly} onChange={(e) => setMeta({ title: e.target.value })} />
+      </Field>
+      <Field label="Phạm vi">
+        <select className="ed-input" value={scope} disabled={readOnly} onChange={(e) => setMeta({ scope: e.target.value as BlockScope })}>
+          <option value="private">Riêng tôi</option>
+          <option value="shared">Dùng chung (mọi editor đều thấy)</option>
+        </select>
+      </Field>
+      <p className="ed-hint">Block gồm đúng một phần tử gốc. Nếu thêm nhiều phần tử ở cấp cao nhất, khi lưu chúng sẽ được gói trong một Div.</p>
+    </div>
+  )
+}
+
 function PageSettings() {
+  const kind = useEditor((s) => s.kind)
   const title = useEditor((s) => s.title)
   const slug = useEditor((s) => s.slug)
   const setMeta = useEditor((s) => s.setMeta)
+  if (kind === 'block') return <BlockSettings />
   return (
     <div className="ed-fields">
       <Field label="Tiêu đề trang">
@@ -259,7 +389,35 @@ function PageSettings() {
       <Field label="Đường dẫn (slug)" help={slug === 'home' ? 'Đây là trang chủ (/)' : `/${slug}`}>
         <input className="ed-input" value={slug} onChange={(e) => setMeta({ slug: e.target.value })} onBlur={(e) => setMeta({ slug: slugify(e.target.value) })} />
       </Field>
+      <ThemeField />
       <p className="ed-hint">Màu nền, font và lề của cả trang chỉnh ở tab “Kiểu”.</p>
+    </div>
+  )
+}
+
+/** Chọn theme cho trang: theo site hoặc ghi đè */
+function ThemeField() {
+  const themes = useEditor((s) => s.themes)
+  const siteThemeId = useEditor((s) => s.siteThemeId)
+  const pageThemeId = useEditor((s) => s.pageThemeId)
+  const list = Object.values(themes).sort((a, b) => Number(b.isPreset) - Number(a.isPreset) || a.name.localeCompare(b.name))
+  const siteName = (siteThemeId && themes[siteThemeId]?.name) || 'Mặc định'
+  return (
+    <div className="ed-field">
+      <span className="ed-label">Theme</span>
+      <select className="ed-input" value={pageThemeId ?? ''} onChange={(e) => useEditor.getState().setPageTheme(e.target.value || null)}>
+        <option value="">Theo cài đặt site ({siteName})</option>
+        {list.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+            {t.isPreset ? ' (preset)' : ''}
+          </option>
+        ))}
+      </select>
+      <button className="ed-btn" onClick={() => useEditor.getState().openThemeDialog(true)}>
+        <Palette size={14} /> Quản lý theme…
+      </button>
+      <span className="ed-help">Ghi đè chỉ áp dụng cho trang này. Theme của cả site đổi trong “Quản lý theme”.</span>
     </div>
   )
 }
@@ -431,9 +589,10 @@ function StyleFieldControl({ node, field, own, inherited }: { node: BuilderNode;
 
 function ColorInput({ value, placeholder, onChange }: { value: string; placeholder: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false)
+  const theme = useEditor(effectiveTheme)
   const shown = value || placeholder
   const tokenMatch = shown.match(/^var\(--color-([a-z]+)\)$/)
-  const preview = tokenMatch ? defaultTheme.colors[tokenMatch[1]] : shown
+  const preview = tokenMatch ? theme.colors[tokenMatch[1]] : shown
   const hex = /^#[0-9a-f]{6}$/i.test(preview) ? preview : '#000000'
   return (
     <div className="ed-color">
@@ -456,7 +615,7 @@ function ColorInput({ value, placeholder, onChange }: { value: string; placehold
         <div className="ed-popover">
           <span className="ed-label">Màu toàn cục (theme)</span>
           <div className="ed-tokens">
-            {Object.entries(defaultTheme.colors).map(([k, v]) => (
+            {Object.entries(theme.colors).map(([k, v]) => (
               <button
                 key={k}
                 className={`ed-token${value === `var(--color-${k})` ? ' is-active' : ''}`}

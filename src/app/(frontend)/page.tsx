@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { PageRenderer } from '@/builder/Renderer'
 import { getPageBySlug } from '@/lib/pages'
 
-// Luôn đọc dữ liệu mới nhất sau khi xuất bản (xem README: bật cache + revalidate khi cần)
+// Render động để kiểm tra draft mode mỗi request và không chạm DB lúc build; dữ liệu trang lấy từ cache theo tag (lib/pages.ts)
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,5 +22,5 @@ export default async function HomePage() {
       </main>
     )
   }
-  return <PageRenderer content={page.content} />
+  return <PageRenderer content={page.content} blocks={(id) => page.blocks[id]} theme={page.theme} />
 }

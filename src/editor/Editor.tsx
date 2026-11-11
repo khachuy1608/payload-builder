@@ -1,20 +1,33 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { collectRefIds } from '@/builder/refs'
 import type { PageContent } from '@/builder/types'
+import { getMyBlock, refreshBlockLibrary, refreshThemes } from './api'
 import { Canvas } from './Canvas'
+import { ContextMenu } from './ContextMenu'
+import { HistoryDialog } from './HistoryDialog'
 import { LeftPanel } from './LeftPanel'
 import { RightPanel } from './RightPanel'
+import { SaveBlockDialog } from './SaveBlockDialog'
+import { ThemeDialog } from './ThemeDialog'
+import { LockBanner, useDocumentLock } from './LockBanner'
 import { handleShortcut } from './shortcuts'
-import { type SaveStatus, useEditor } from './store'
+import { type BlockScope, type EditorKind, type SaveStatus, useEditor } from './store'
 import { TopBar } from './TopBar'
 
 export interface EditorInitial {
+  kind: EditorKind
   id: string
   title: string
   slug: string
   status: SaveStatus
   content: PageContent
+  scope?: BlockScope
+  readOnly?: boolean
+  userId: string | null
+  /** Ghi đè theme của trang (kind = page) */
+  pageThemeId?: string | null
 }
 
 export function Editor({ initial }: { initial: EditorInitial }) {
@@ -22,11 +35,16 @@ export function Editor({ initial }: { initial: EditorInitial }) {
   if (!ready.current) {
     // khởi tạo đồng bộ trước lần render đầu để canvas không nháy trang rỗng
     useEditor.getState().init({
+      kind: initial.kind,
       pageId: initial.id,
       title: initial.title,
       slug: initial.slug,
       status: initial.status,
       root: initial.content.root,
+      scope: initial.scope,
+      readOnly: initial.readOnly,
+      userId: initial.userId,
+      pageThemeId: initial.pageThemeId ?? null,
     })
     ready.current = true
   }
@@ -43,17 +61,65 @@ export function Editor({ initial }: { initial: EditorInitial }) {
     }
   }, [])
 
+  useBlockLibrary()
+  useDocumentLock()
+  const saveBlockFor = useEditor((s) => s.saveBlockFor)
+  const themeDialog = useEditor((s) => s.themeDialog)
+  const historyDialog = useEditor((s) => s.historyDialog)
+
   return (
     <div className="ed">
       <TopBar />
+      <LockBanner />
       <div className="ed-main">
         <LeftPanel />
         <Canvas />
         <RightPanel />
       </div>
+      {saveBlockFor && <SaveBlockDialog nodeId={saveBlockFor} />}
+      {themeDialog && <ThemeDialog />}
+      {historyDialog && <HistoryDialog />}
+      <ContextMenu />
       <Toasts />
     </div>
   )
+}
+
+/**
+ * Thư viện My Blocks: nạp khi mở editor, nạp lại khi quay về tab (người dùng có thể vừa sửa bản gốc ở tab khác).
+ * Block được trang tham chiếu nhưng không có trong thư viện (đã xoá…) sẽ được thử tải riêng rồi đánh dấu thiếu.
+ */
+function useBlockLibrary() {
+  const root = useEditor((s) => s.root)
+  const blocksStatus = useEditor((s) => s.blocksStatus)
+
+  useEffect(() => {
+    void refreshBlockLibrary()
+    void refreshThemes()
+    let last = Date.now()
+    const onFocus = () => {
+      if (Date.now() - last < 3000) return
+      last = Date.now()
+      void refreshBlockLibrary()
+      if (!useEditor.getState().themeDialog) void refreshThemes()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  const inflight = useRef(new Set<string>())
+  useEffect(() => {
+    if (blocksStatus !== 'ready') return
+    const s = useEditor.getState()
+    for (const id of collectRefIds(root)) {
+      if (s.blocks[id] || s.missingBlocks[id] || inflight.current.has(id)) continue
+      inflight.current.add(id)
+      getMyBlock(id)
+        .then((block) => (block ? useEditor.getState().upsertBlock(block) : useEditor.getState().markMissingBlock(id)))
+        .catch(() => useEditor.getState().markMissingBlock(id))
+        .finally(() => inflight.current.delete(id))
+    }
+  }, [root, blocksStatus])
 }
 
 function Toasts() {

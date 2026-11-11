@@ -7,8 +7,10 @@
  */
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { canContain } from '@/builder/schema'
+import { defaultTheme, type ThemeTokens } from '@/builder/theme'
 import {
   cloneWithNewIds,
   findNode,
@@ -19,9 +21,54 @@ import {
   moveNode,
   removeNode,
 } from '@/builder/tree'
-import type { BuilderNode, Device, DropTarget, StyleBucket, StyleState } from '@/builder/types'
+import type { BuilderNode, Device, DropTarget, MediaValue, StyleBucket, StyleState } from '@/builder/types'
 
-export type DragPayload = { kind: 'new'; blockType: string } | { kind: 'move'; nodeId: string }
+export type DragPayload =
+  | { kind: 'new'; blockType: string }
+  | { kind: 'move'; nodeId: string }
+  /** Kéo một My Block từ thư viện. blockType = 'blockRef' (liên kết) hoặc type gốc của block (bản sao) – để kiểm tra chỗ thả */
+  | { kind: 'block'; blockId: string; linked: boolean; blockType: string }
+
+/** Editor đang sửa một trang hay bản gốc của một My Block */
+export type EditorKind = 'page' | 'block'
+export type BlockScope = 'private' | 'shared'
+export type InsertMode = 'copy' | 'linked'
+
+/** Một My Block trong thư viện (đã chuẩn hoá từ doc của collection my-blocks) */
+export interface MyBlock {
+  id: string
+  name: string
+  scope: BlockScope
+  owner: string | null
+  tree: BuilderNode
+  thumbnail: MediaValue | null
+  updatedAt: string
+}
+
+export type LockState =
+  | { state: 'checking' | 'off' }
+  | { state: 'owned'; lockId: string }
+  | { state: 'locked'; by: { name: string; email: string; since: string } }
+  | { state: 'error'; message: string }
+
+export const blockLookup = (blocks: Record<string, MyBlock>): BlockLookup => (id) => blocks[id]?.tree
+
+/** Một theme trong thư viện (đã chuẩn hoá từ doc của collection themes) */
+export interface ThemeDoc {
+  id: string
+  name: string
+  isPreset: boolean
+  owner: string | null
+  tokens: ThemeTokens
+  updatedAt: string
+}
+
+/** Theme hiệu lực trên canvas: bản xem thử (đang chỉnh trong hộp thoại) -> ghi đè của trang -> theme site -> mặc định */
+export function effectiveTheme(s: Pick<EditorState, 'themePreview' | 'themes' | 'pageThemeId' | 'siteThemeId'>): ThemeTokens {
+  if (s.themePreview) return s.themePreview
+  const id = s.pageThemeId ?? s.siteThemeId
+  return (id && s.themes[id]?.tokens) || defaultTheme
+}
 
 export interface Rect {
   x: number
@@ -48,18 +95,52 @@ const HISTORY_LIMIT = 100
 const COALESCE_MS = 800
 
 export interface EditorState {
+  kind: EditorKind
+  /** id trang (kind = page) hoặc id block (kind = block) */
   pageId: string
   title: string
   slug: string
   status: SaveStatus
+  /** Phạm vi của block đang sửa (kind = block) */
+  scope: BlockScope
+  /** Block của người khác: chỉ xem */
+  readOnly: boolean
+  userId: string | null
   root: BuilderNode
+
+  /** Thư viện My Blocks (mọi block đọc được), key = id */
+  blocks: Record<string, MyBlock>
+  blocksStatus: 'idle' | 'loading' | 'ready' | 'error'
+  /** Block được trang tham chiếu nhưng không tải được (đã xoá…) */
+  missingBlocks: Record<string, true>
+  insertMode: InsertMode
+  /** Đang mở hộp thoại "Lưu thành My Block" cho node này */
+  saveBlockFor: string | null
+
+  /** Thư viện theme, key = id */
+  themes: Record<string, ThemeDoc>
+  themesStatus: 'idle' | 'loading' | 'ready' | 'error'
+  /** Theme trong site-settings */
+  siteThemeId: string | null
+  /** Ghi đè theme của trang đang sửa (null = theo site) */
+  pageThemeId: string | null
+  /** Token đang xem thử khi chỉnh theme trong hộp thoại (không lưu) */
+  themePreview: ThemeTokens | null
+  themeDialog: boolean
+
+  /** Menu chuột phải (toạ độ theo cửa sổ editor) */
+  contextMenu: { x: number; y: number; nodeId: string } | null
+  historyDialog: boolean
+
+  /** Khoá tài liệu (xem lock.ts): owned = mình giữ khoá, locked = người khác đang sửa */
+  lock: LockState
 
   selectedId: string | null
   hoveredId: string | null
   editingId: string | null
   device: Device
   styleState: StyleState
-  leftTab: 'elements' | 'navigator'
+  leftTab: 'elements' | 'navigator' | 'blocks'
 
   past: BuilderNode[]
   future: BuilderNode[]
@@ -76,14 +157,57 @@ export interface EditorState {
 }
 
 export interface EditorActions {
-  init(data: { pageId: string; title: string; slug: string; status: SaveStatus; root: BuilderNode }): void
+  init(data: {
+    kind: EditorKind
+    pageId: string
+    title: string
+    slug: string
+    status: SaveStatus
+    root: BuilderNode
+    scope?: BlockScope
+    readOnly?: boolean
+    userId: string | null
+    pageThemeId?: string | null
+  }): void
   select(id: string | null): void
   hover(id: string | null): void
   setEditing(id: string | null): void
   setDevice(device: Device): void
   setStyleState(state: StyleState): void
   setLeftTab(tab: EditorState['leftTab']): void
-  setMeta(patch: { title?: string; slug?: string }): void
+  setMeta(patch: { title?: string; slug?: string; scope?: BlockScope }): void
+
+  // ----- My Blocks -----
+  setBlocks(list: MyBlock[]): void
+  setBlocksStatus(status: EditorState['blocksStatus']): void
+  upsertBlock(block: MyBlock): void
+  removeBlock(id: string): void
+  markMissingBlock(id: string): void
+  setInsertMode(mode: InsertMode): void
+  openSaveBlock(id: string | null): void
+  /** Chèn My Block từ thư viện: bản sao độc lập hoặc node blockRef liên kết */
+  insertMyBlock(blockId: string, linked: boolean, target?: DropTarget): string | null
+  /** Thay node (giữ vị trí) bằng node khác – dùng khi thay phần tử bằng liên kết tới block vừa lưu */
+  replaceNode(id: string, node: BuilderNode): boolean
+  /** Tách blockRef thành bản sao độc lập */
+  detach(id: string): void
+
+  // ----- Themes -----
+  setThemes(list: ThemeDoc[], siteThemeId: string | null): void
+  setThemesStatus(status: EditorState['themesStatus']): void
+  upsertTheme(theme: ThemeDoc): void
+  removeTheme(id: string): void
+  setSiteThemeId(id: string | null): void
+  /** Đổi ghi đè theme của trang (ghi vào trang khi lưu) */
+  setPageTheme(id: string | null): void
+  setThemePreview(tokens: ThemeTokens | null): void
+  openThemeDialog(open: boolean): void
+
+  setLock(lock: LockState): void
+  openContextMenu(menu: EditorState['contextMenu']): void
+  openHistory(open: boolean): void
+  /** Đưa nội dung một phiên bản cũ vào editor như một bước chỉnh sửa (hoàn tác được) */
+  restoreVersion(data: { root: BuilderNode; title: string; slug: string }): void
 
   insertBlock(type: string, target?: DropTarget): string | null
   insertNode(node: BuilderNode, target: DropTarget): boolean
@@ -116,7 +240,7 @@ let toastSeq = 0
 export function canDropAt(root: BuilderNode, target: DropTarget, drag: DragPayload): boolean {
   const parent = findNode(root, target.parentId)
   if (!parent) return false
-  if (drag.kind === 'new') return canContain(parent.type, drag.blockType)
+  if (drag.kind === 'new' || drag.kind === 'block') return canContain(parent.type, drag.blockType)
   const moving = findNode(root, drag.nodeId)
   if (!moving || moving.type === 'root') return false
   if (isInSubtree(root, drag.nodeId, target.parentId)) return false
@@ -169,11 +293,29 @@ export const useEditor = create<Store>()(
     }
 
     return {
+      kind: 'page',
       pageId: '',
       title: '',
       slug: '',
       status: 'draft',
+      scope: 'private',
+      readOnly: false,
+      userId: null,
       root: { id: 'root', type: 'root', props: {}, styles: {}, children: [] },
+      blocks: {},
+      blocksStatus: 'idle',
+      missingBlocks: {},
+      insertMode: 'copy',
+      saveBlockFor: null,
+      themes: {},
+      themesStatus: 'idle',
+      siteThemeId: null,
+      pageThemeId: null,
+      themePreview: null,
+      themeDialog: false,
+      contextMenu: null,
+      historyDialog: false,
+      lock: { state: 'checking' },
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -193,15 +335,23 @@ export const useEditor = create<Store>()(
 
       init: (data) =>
         set((s) => {
+          s.kind = data.kind
           s.pageId = data.pageId
           s.title = data.title
           s.slug = data.slug
           s.status = data.status
+          s.scope = data.scope ?? 'private'
+          s.readOnly = data.readOnly ?? false
+          s.userId = data.userId
           s.root = data.root
           s.past = []
           s.future = []
           s.dirty = false
           s.selectedId = null
+          s.saveBlockFor = null
+          s.pageThemeId = data.pageThemeId ?? null
+          s.themePreview = null
+          s.themeDialog = false
         }),
 
       select: (id) =>
@@ -234,8 +384,161 @@ export const useEditor = create<Store>()(
         set((s) => {
           if (patch.title !== undefined) s.title = patch.title
           if (patch.slug !== undefined) s.slug = patch.slug
+          if (patch.scope !== undefined) s.scope = patch.scope
           s.dirty = true
         }),
+
+      // ----- My Blocks -----
+      setBlocks: (list) =>
+        set((s) => {
+          // giữ nguyên object của block chưa đổi để cache triển khai (resolveRefs) và memo của canvas còn hiệu lực
+          s.blocks = Object.fromEntries(list.map((b) => [b.id, s.blocks[b.id]?.updatedAt === b.updatedAt ? s.blocks[b.id] : b]))
+          for (const id of Object.keys(s.missingBlocks)) if (s.blocks[id]) delete s.missingBlocks[id]
+          s.blocksStatus = 'ready'
+        }),
+      setBlocksStatus: (status) =>
+        set((s) => {
+          s.blocksStatus = status
+        }),
+      upsertBlock: (block) =>
+        set((s) => {
+          s.blocks[block.id] = block
+          delete s.missingBlocks[block.id]
+        }),
+      removeBlock: (id) =>
+        set((s) => {
+          delete s.blocks[id]
+        }),
+      markMissingBlock: (id) =>
+        set((s) => {
+          s.missingBlocks[id] = true
+        }),
+      setInsertMode: (mode) =>
+        set((s) => {
+          s.insertMode = mode
+        }),
+      openSaveBlock: (id) =>
+        set((s) => {
+          s.saveBlockFor = id
+        }),
+
+      insertMyBlock: (blockId, linked, target) => {
+        const state = get()
+        const block = state.blocks[blockId]
+        if (!block) {
+          get().toast('error', 'Block chưa tải xong hoặc không còn tồn tại.')
+          return null
+        }
+        // đang sửa bản gốc của block X: không được chèn X hay block nào dẫn tới X (vòng lặp)
+        if (state.kind === 'block' && state.pageId && (blockId === state.pageId || reachesBlock(block.tree, state.pageId, blockLookup(state.blocks)))) {
+          get().toast('error', 'Không thể chèn: block này tham chiếu tới chính block đang sửa (vòng lặp).')
+          return null
+        }
+        const node: BuilderNode = linked
+          ? { id: genId(), type: BLOCK_REF_TYPE, props: { blockId, name: block.name }, styles: {} }
+          : cloneWithNewIds(block.tree)
+        const t = target ?? defaultTarget(state.root, state.selectedId, node.type)
+        if (!t || !canDropAt(state.root, t, { kind: 'new', blockType: node.type })) {
+          get().toast('error', 'Không thể đặt block ở vị trí này.')
+          return null
+        }
+        commit((root) => insertNode(root, t, node))
+        set((s) => {
+          s.selectedId = node.id
+        })
+        return node.id
+      },
+
+      replaceNode: (id, node) => {
+        const loc = findParent(get().root, id)
+        if (!loc || !canContain(loc.parent.type, node.type)) return false
+        commit((root) => {
+          const parent = findNode(root, loc.parent.id)
+          if (parent?.children) parent.children.splice(loc.index, 1, node)
+        })
+        set((s) => {
+          s.selectedId = node.id
+        })
+        return true
+      },
+
+      // ----- Themes -----
+      setThemes: (list, siteThemeId) =>
+        set((s) => {
+          s.themes = Object.fromEntries(list.map((t) => [t.id, s.themes[t.id]?.updatedAt === t.updatedAt ? s.themes[t.id] : t]))
+          s.siteThemeId = siteThemeId
+          s.themesStatus = 'ready'
+        }),
+      setThemesStatus: (status) =>
+        set((s) => {
+          s.themesStatus = status
+        }),
+      upsertTheme: (theme) =>
+        set((s) => {
+          s.themes[theme.id] = theme
+        }),
+      removeTheme: (id) =>
+        set((s) => {
+          delete s.themes[id]
+          if (s.siteThemeId === id) s.siteThemeId = null
+          if (s.pageThemeId === id) s.pageThemeId = null
+        }),
+      setSiteThemeId: (id) =>
+        set((s) => {
+          s.siteThemeId = id
+        }),
+      setPageTheme: (id) =>
+        set((s) => {
+          s.pageThemeId = id
+          s.dirty = true
+        }),
+      setThemePreview: (tokens) =>
+        set((s) => {
+          s.themePreview = tokens
+        }),
+      openThemeDialog: (open) =>
+        set((s) => {
+          s.themeDialog = open
+          if (!open) s.themePreview = null
+        }),
+
+      setLock: (lock) =>
+        set((s) => {
+          s.lock = lock
+        }),
+      openContextMenu: (menu) =>
+        set((s) => {
+          s.contextMenu = menu
+        }),
+      openHistory: (open) =>
+        set((s) => {
+          s.historyDialog = open
+        }),
+      restoreVersion: (data) => {
+        commit((_root, state) => {
+          state.root = data.root
+          state.title = data.title
+          state.slug = data.slug
+        })
+        set((s) => {
+          s.selectedId = null
+          s.hoveredId = null
+        })
+      },
+
+      detach: (id) => {
+        const state = get()
+        const node = findNode(state.root, id)
+        const blockId = node ? refBlockId(node) : null
+        const tree = blockId ? state.blocks[blockId]?.tree : null
+        if (!node || !tree) {
+          get().toast('error', 'Chưa tải được bản gốc của block nên không thể tách.')
+          return
+        }
+        // triển khai một cấp rồi cấp id mới: block lồng bên trong vẫn là liên kết
+        const copy = cloneWithNewIds(expandRef(node, tree))
+        if (get().replaceNode(id, copy)) get().toast('info', 'Đã tách khỏi block gốc. Phần tử này giờ độc lập.')
+      },
 
       insertBlock: (type, target) => {
         const state = get()
@@ -388,6 +691,7 @@ export const useEditor = create<Store>()(
         if (drag && drop) {
           const target = { parentId: drop.parentId, index: drop.index }
           if (drag.kind === 'new') get().insertBlock(drag.blockType, target)
+          else if (drag.kind === 'block') get().insertMyBlock(drag.blockId, drag.linked, target)
           else if (get().move(drag.nodeId, target))
             set((s) => {
               s.selectedId = drag.nodeId

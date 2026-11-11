@@ -68,6 +68,8 @@ export interface Config {
   blocks: {};
   collections: {
     pages: Page;
+    'my-blocks': MyBlock;
+    themes: Theme;
     media: Media;
     users: User;
     'payload-kv': PayloadKv;
@@ -78,6 +80,8 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     pages: PagesSelect<false> | PagesSelect<true>;
+    'my-blocks': MyBlocksSelect<false> | MyBlocksSelect<true>;
+    themes: ThemesSelect<false> | ThemesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -89,8 +93,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'site-settings': SiteSetting;
+  };
+  globalsSelect: {
+    'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -130,6 +138,10 @@ export interface Page {
    * Trang có slug "home" là trang chủ. Để trống sẽ tự tạo từ tiêu đề.
    */
   slug: string;
+  /**
+   * Để trống sẽ dùng theme trong Cài đặt site.
+   */
+  theme?: (number | null) | Theme;
   content?:
     | {
         [k: string]: unknown;
@@ -144,23 +156,83 @@ export interface Page {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * Bộ màu, font, bo góc và kiểu nút cho cả site. Theme preset chỉ đọc – hãy nhân bản trong Visual Builder để chỉnh.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
+ * via the `definition` "themes".
  */
-export interface Media {
+export interface Theme {
   id: number;
-  alt?: string | null;
+  name: string;
+  isPreset?: boolean | null;
+  owner?: (number | null) | User;
+  colors: {
+    /**
+     * Mã màu CSS, ví dụ #4f46e5
+     */
+    primary: string;
+    /**
+     * Mã màu CSS, ví dụ #4f46e5
+     */
+    secondary: string;
+    /**
+     * Mã màu CSS, ví dụ #4f46e5
+     */
+    accent: string;
+    /**
+     * Mã màu CSS, ví dụ #4f46e5
+     */
+    text: string;
+    /**
+     * Mã màu CSS, ví dụ #4f46e5
+     */
+    muted: string;
+    /**
+     * Mã màu CSS, ví dụ #4f46e5
+     */
+    background: string;
+    /**
+     * Mã màu CSS, ví dụ #4f46e5
+     */
+    surface: string;
+    /**
+     * Mã màu CSS, ví dụ #4f46e5
+     */
+    border: string;
+  };
+  fonts: {
+    /**
+     * Font stack CSS
+     */
+    heading: string;
+    /**
+     * Font stack CSS
+     */
+    body: string;
+    /**
+     * Font stack CSS
+     */
+    mono: string;
+  };
+  /**
+   * Ví dụ link Google Fonts. Để trống nếu dùng font hệ thống.
+   */
+  fontUrl?: string | null;
+  radius: {
+    sm: string;
+    md: string;
+    lg: string;
+  };
+  button: {
+    /**
+     * Ví dụ 8px hoặc 999px (tròn)
+     */
+    radius: string;
+    weight: '400' | '500' | '600' | '700' | '800';
+    transform: 'none' | 'uppercase' | 'capitalize';
+  };
   updatedAt: string;
   createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -190,6 +262,52 @@ export interface User {
   collection: 'users';
 }
 /**
+ * Phần tử/vùng đã dựng trong Visual Builder được lưu lại để dùng ở nhiều trang (bản sao hoặc liên kết).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "my-blocks".
+ */
+export interface MyBlock {
+  id: number;
+  name: string;
+  scope: 'private' | 'shared';
+  owner?: (number | null) | User;
+  /**
+   * Để trống thì editor tự dựng preview từ nội dung block.
+   */
+  thumbnail?: (number | null) | Media;
+  tree:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -216,6 +334,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pages';
         value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'my-blocks';
+        value: number | MyBlock;
+      } | null)
+    | ({
+        relationTo: 'themes';
+        value: number | Theme;
       } | null)
     | ({
         relationTo: 'media';
@@ -274,10 +400,69 @@ export interface PayloadMigration {
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  theme?: T;
   content?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "my-blocks_select".
+ */
+export interface MyBlocksSelect<T extends boolean = true> {
+  name?: T;
+  scope?: T;
+  owner?: T;
+  thumbnail?: T;
+  tree?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "themes_select".
+ */
+export interface ThemesSelect<T extends boolean = true> {
+  name?: T;
+  isPreset?: T;
+  owner?: T;
+  colors?:
+    | T
+    | {
+        primary?: T;
+        secondary?: T;
+        accent?: T;
+        text?: T;
+        muted?: T;
+        background?: T;
+        surface?: T;
+        border?: T;
+      };
+  fonts?:
+    | T
+    | {
+        heading?: T;
+        body?: T;
+        mono?: T;
+      };
+  fontUrl?: T;
+  radius?:
+    | T
+    | {
+        sm?: T;
+        md?: T;
+        lg?: T;
+      };
+  button?:
+    | T
+    | {
+        radius?: T;
+        weight?: T;
+        transform?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -360,6 +545,29 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings".
+ */
+export interface SiteSetting {
+  id: number;
+  /**
+   * Áp dụng cho mọi trang, trừ trang có ghi đè theme riêng.
+   */
+  theme?: (number | null) | Theme;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings_select".
+ */
+export interface SiteSettingsSelect<T extends boolean = true> {
+  theme?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

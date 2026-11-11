@@ -9,11 +9,11 @@ export interface Option {
 }
 
 export type ContentControl =
-  | { type: 'text' | 'textarea' | 'url' | 'code'; prop: string; label: string; placeholder?: string; help?: string }
+  | { type: 'text' | 'textarea' | 'url' | 'code' | 'richtext'; prop: string; label: string; placeholder?: string; help?: string }
   | { type: 'select'; prop: string; label: string; options: Option[] }
   | { type: 'toggle'; prop: string; label: string }
   | { type: 'media'; prop: string; label: string }
-  | { type: 'custom'; component: 'tabs' | 'page' }
+  | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' }
 
 export type StyleFieldKind = 'unit' | 'select' | 'color' | 'text' | 'box'
 

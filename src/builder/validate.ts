@@ -2,8 +2,9 @@
  * Kiểm tra & làm sạch cây nội dung trước khi lưu (hook beforeChange của Pages).
  * Không tin dữ liệu từ client: loại type lạ, id sai định dạng, quan hệ cha-con sai luật.
  */
-import { canContain, getSchema, ID_PATTERN, MAX_DEPTH, MAX_NODES } from './schema'
-import { sanitizeSvg } from './sanitize'
+import { BLOCK_REF_TYPE, refBlockId } from './refs'
+import { canContain, canSaveAsBlock, getSchema, ID_PATTERN, MAX_DEPTH, MAX_NODES } from './schema'
+import { sanitizeRichText, sanitizeSvg } from './sanitize'
 import type { BuilderNode, NodeStyles, PageContent, StyleMap } from './types'
 import { createEmptyContent } from './tree'
 
@@ -59,6 +60,15 @@ export function validateContent(input: unknown): PageContent {
     const props: Record<string, unknown> =
       raw.props && typeof raw.props === 'object' && !Array.isArray(raw.props) ? { ...raw.props } : {}
     if (raw.type === 'svg') props.code = sanitizeSvg(props.code)
+    if (raw.type === 'paragraph') props.text = sanitizeRichText(props.text)
+    if (raw.type === BLOCK_REF_TYPE) {
+      // blockRef chỉ giữ id block và tên hiển thị; cờ `linked`/`refError` của cây render không bao giờ được lưu
+      const blockId = refBlockId({ ...raw, props })
+      if (!blockId) return null
+      props.blockId = blockId
+      props.name = typeof props.name === 'string' ? props.name.slice(0, 120) : ''
+      delete props.refError
+    }
 
     const node: BuilderNode = { id: raw.id, type: raw.type, props, styles: cleanStyles(raw.styles) }
     if (schema.isContainer) {
@@ -72,6 +82,27 @@ export function validateContent(input: unknown): PageContent {
   const root = visit(content.root, null, 0)
   if (!root) throw new ContentValidationError('Node root không hợp lệ.')
   return { version: 1, root }
+}
+
+/**
+ * Kiểm tra & làm sạch cây gốc của một My Block (hook beforeChange của my-blocks).
+ * Block là MỘT phần tử (có thể chứa con); gốc không được là root/tab/blockRef.
+ */
+export function validateBlockTree(input: unknown): BuilderNode {
+  const raw = input as Partial<BuilderNode> | null
+  if (!raw || typeof raw !== 'object' || typeof raw.type !== 'string') {
+    throw new ContentValidationError('Block không hợp lệ: thiếu phần tử gốc.')
+  }
+  if (!canSaveAsBlock(raw.type)) {
+    throw new ContentValidationError(`Không thể lưu phần tử "${raw.type}" thành block.`)
+  }
+  const content = validateContent({
+    version: 1,
+    root: { id: 'root', type: 'root', props: {}, styles: {}, children: [raw as BuilderNode] },
+  })
+  const tree = content.root.children?.[0]
+  if (!tree) throw new ContentValidationError('Block không hợp lệ.')
+  return tree
 }
 
 /** Dùng khi đọc: trả về nội dung rỗng thay vì ném lỗi */

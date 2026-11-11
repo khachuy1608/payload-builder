@@ -1,12 +1,14 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Layers, LayoutGrid, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Layers, LayoutGrid, LayoutTemplate, Search } from 'lucide-react'
 import { useState } from 'react'
 import { BLOCK_CATEGORIES, BLOCKS, getBlock } from '@/builder/registry'
 import { getSchema } from '@/builder/schema'
 import { getAncestors } from '@/builder/tree'
 import type { BuilderNode, DropTarget } from '@/builder/types'
+import { MyBlocksPanel } from './MyBlocksPanel'
 import { canDropAt, useEditor } from './store'
+import { nodeLabel } from './labels'
 
 export function LeftPanel() {
   const tab = useEditor((s) => s.leftTab)
@@ -17,11 +19,14 @@ export function LeftPanel() {
         <button className={tab === 'elements' ? 'is-active' : ''} onClick={() => setTab('elements')}>
           <LayoutGrid size={15} /> Phần tử
         </button>
+        <button className={tab === 'blocks' ? 'is-active' : ''} onClick={() => setTab('blocks')}>
+          <LayoutTemplate size={15} /> My Blocks
+        </button>
         <button className={tab === 'navigator' ? 'is-active' : ''} onClick={() => setTab('navigator')}>
           <Layers size={15} /> Cấu trúc
         </button>
       </div>
-      <div className="ed-left-body">{tab === 'elements' ? <ElementsPanel /> : <Navigator />}</div>
+      <div className="ed-left-body">{tab === 'elements' ? <ElementsPanel /> : tab === 'blocks' ? <MyBlocksPanel /> : <Navigator />}</div>
     </aside>
   )
 }
@@ -123,6 +128,7 @@ function Navigator() {
     const t = over && over.id === node.id ? targetFor(node, over.zone) : null
     if (t && s.drag) {
       if (s.drag.kind === 'new') s.insertBlock(s.drag.blockType, t)
+      else if (s.drag.kind === 'block') s.insertMyBlock(s.drag.blockId, s.drag.linked, t)
       else s.move(s.drag.nodeId, t)
     }
     setOver(null)
@@ -133,7 +139,7 @@ function Navigator() {
     const def = getBlock(node.type)
     const hasKids = !!node.children?.length
     const open = !closed[node.id] || openPath.has(node.id)
-    const label = node.type === 'tab' ? `Tab: ${String(node.props.title ?? '')}` : node.type === 'heading' || node.type === 'button' ? `${def?.label}: ${String(node.props.text ?? '').slice(0, 24)}` : def?.label ?? node.type
+    const label = nodeLabel(node)
     const Icon = def?.icon
     return (
       <div key={node.id}>
@@ -160,6 +166,11 @@ function Navigator() {
           onDragLeave={() => setOver(null)}
           onDrop={(e) => onDrop(e, node)}
           onClick={() => useEditor.getState().select(node.id)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            useEditor.getState().select(node.id)
+            useEditor.getState().openContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id })
+          }}
           onMouseEnter={() => useEditor.getState().hover(node.id)}
           onMouseLeave={() => useEditor.getState().hover(null)}
         >

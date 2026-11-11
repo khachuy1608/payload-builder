@@ -1,10 +1,18 @@
 'use client'
 
-import type { PageContent } from '@/builder/types'
+import type { BuilderNode, PageContent } from '@/builder/types'
 import type { MediaValue } from '@/builder/types'
-import { useEditor } from './store'
+import { normalizeTheme, type ThemeTokens } from '@/builder/theme'
+import { genId } from '@/builder/tree'
+import { normalizeContent, validateBlockTree } from '@/builder/validate'
+import { acquireLock } from './lock'
+import { type BlockScope, type MyBlock, type SaveStatus, type ThemeDoc, useEditor } from './store'
+
+/** id quan hệ gửi lên Payload: số nếu là số (Postgres serial) */
+const relValue = (id: string | null) => (id == null ? null : /^\d+$/.test(id) ? Number(id) : id)
 
 async function readError(res: Response): Promise<string> {
+  if (res.status === 423) return 'Tài liệu đang được người khác sửa (bị khoá). Tải lại trang để xem ai đang giữ khoá hoặc chiếm quyền sửa.'
   try {
     const body = await res.json()
     const first = body?.errors?.[0]
@@ -18,11 +26,13 @@ async function readError(res: Response): Promise<string> {
 /** Lưu trang qua REST API của Payload. publish=false: tạo bản nháp, không ảnh hưởng bản đã xuất bản */
 export async function savePage(publish: boolean): Promise<boolean> {
   const s = useEditor.getState()
+  if (s.kind === 'block') return saveBlock()
   if (s.saving) return false
   s.setSaving(true)
   const content: PageContent = { version: 1, root: s.root }
   try {
-    const res = await fetch(`/api/pages/${s.pageId}?depth=0${publish ? '' : '&draft=true'}`, {
+    // overrideLock=false: Payload từ chối (423) nếu người khác đang giữ khoá
+    const res = await fetch(`/api/pages/${s.pageId}?depth=0&overrideLock=false${publish ? '' : '&draft=true'}`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -30,6 +40,7 @@ export async function savePage(publish: boolean): Promise<boolean> {
         title: s.title,
         slug: s.slug,
         content,
+        theme: relValue(s.pageThemeId),
         _status: publish ? 'published' : 'draft',
       }),
     })
@@ -38,10 +49,12 @@ export async function savePage(publish: boolean): Promise<boolean> {
     if (doc?.slug && doc.slug !== s.slug) useEditor.getState().setMeta({ slug: doc.slug })
     useEditor.getState().markSaved(publish ? 'published' : 'draft')
     useEditor.getState().toast('success', publish ? 'Đã xuất bản.' : 'Đã lưu bản nháp.')
+    void acquireLock() // Payload xoá khoá sau mỗi lần update -> lấy lại
     return true
   } catch (err) {
     useEditor.getState().setSaving(false)
     useEditor.getState().toast('error', `Lưu thất bại: ${(err as Error).message}`)
+    void acquireLock() // 423: cập nhật băng rôn "đang được X sửa"
     return false
   }
 }
@@ -74,4 +87,236 @@ export async function uploadMedia(file: File, alt: string): Promise<MediaDoc> {
   if (!res.ok) throw new Error(await readError(res))
   const { doc } = await res.json()
   return doc
+}
+
+// ======================= My Blocks =======================
+
+export interface MyBlockDoc {
+  id: string | number
+  name: string
+  scope: BlockScope
+  owner?: string | number | { id: string | number } | null
+  tree: unknown
+  thumbnail?: MediaDoc | string | number | null
+  updatedAt: string
+}
+
+/** Chuẩn hoá doc từ API thành MyBlock dùng trong editor; null nếu cây dữ liệu hỏng */
+export function toMyBlock(doc: MyBlockDoc): MyBlock | null {
+  let tree: BuilderNode
+  try {
+    tree = validateBlockTree(doc.tree)
+  } catch {
+    return null
+  }
+  const owner = doc.owner == null ? null : typeof doc.owner === 'object' ? String(doc.owner.id) : String(doc.owner)
+  const thumb = doc.thumbnail && typeof doc.thumbnail === 'object' && doc.thumbnail.url ? toMediaValue(doc.thumbnail) : null
+  return { id: String(doc.id), name: doc.name, scope: doc.scope === 'shared' ? 'shared' : 'private', owner, tree, thumbnail: thumb, updatedAt: doc.updatedAt }
+}
+
+export async function listMyBlocks(): Promise<MyBlock[]> {
+  const res = await fetch('/api/my-blocks?limit=300&depth=1&sort=-updatedAt', { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const { docs } = (await res.json()) as { docs: MyBlockDoc[] }
+  return docs.map(toMyBlock).filter((b): b is MyBlock => b !== null)
+}
+
+/** Lấy một block theo id; null nếu không tồn tại / không có quyền */
+export async function getMyBlock(id: string): Promise<MyBlock | null> {
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1`, { credentials: 'include' })
+  if (res.status === 404 || res.status === 403) return null
+  if (!res.ok) throw new Error(await readError(res))
+  return toMyBlock(await res.json())
+}
+
+export async function createMyBlock(data: { name: string; scope: BlockScope; tree: BuilderNode }): Promise<MyBlock> {
+  const res = await fetch('/api/my-blocks?depth=1', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  const { doc } = await res.json()
+  const block = toMyBlock(doc)
+  if (!block) throw new Error('Dữ liệu block trả về không hợp lệ.')
+  return block
+}
+
+export async function updateMyBlock(id: string, data: Partial<{ name: string; scope: BlockScope; tree: BuilderNode }>, respectLock = false): Promise<MyBlock> {
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1${respectLock ? '&overrideLock=false' : ''}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  const { doc } = await res.json()
+  const block = toMyBlock(doc)
+  if (!block) throw new Error('Dữ liệu block trả về không hợp lệ.')
+  return block
+}
+
+export async function deleteMyBlock(id: string): Promise<void> {
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+/** Nạp thư viện vào store (gọi khi mở editor, khi quay lại tab, sau khi lưu block) */
+export async function refreshBlockLibrary(): Promise<void> {
+  const s = useEditor.getState()
+  if (s.blocksStatus === 'loading') return
+  s.setBlocksStatus('loading')
+  try {
+    s.setBlocks(await listMyBlocks())
+  } catch (err) {
+    useEditor.getState().setBlocksStatus('error')
+    useEditor.getState().toast('error', `Không tải được thư viện My Blocks: ${(err as Error).message}`)
+  }
+}
+
+/**
+ * Lưu bản gốc của block đang sửa (kind = block). Canvas là root chứa đúng một phần tử;
+ * nếu người dùng thêm nhiều phần tử ở cấp cao nhất thì gói chúng vào một Div.
+ */
+export async function saveBlock(): Promise<boolean> {
+  const s = useEditor.getState()
+  if (s.saving) return false
+  const kids = s.root.children ?? []
+  if (!kids.length) {
+    s.toast('error', 'Block đang trống. Hãy thêm ít nhất một phần tử.')
+    return false
+  }
+  const tree: BuilderNode = kids.length === 1 ? kids[0] : { id: genId(), type: 'div', props: {}, styles: {}, children: kids }
+  if (tree.type === 'blockRef') {
+    s.toast('error', 'Block không thể chỉ gồm một liên kết tới block khác. Hãy tách nó ra hoặc bọc trong một Div.')
+    return false
+  }
+  s.setSaving(true)
+  try {
+    const block = await updateMyBlock(s.pageId, { name: s.title.trim() || 'Block chưa đặt tên', scope: s.scope, tree }, true)
+    useEditor.getState().upsertBlock(block)
+    useEditor.getState().markSaved('published')
+    useEditor.getState().toast('success', 'Đã lưu block. Các trang dùng liên kết sẽ tự cập nhật.')
+    void acquireLock()
+    return true
+  } catch (err) {
+    useEditor.getState().setSaving(false)
+    useEditor.getState().toast('error', `Lưu thất bại: ${(err as Error).message}`)
+    void acquireLock()
+    return false
+  }
+}
+
+// ======================= Themes =======================
+
+export interface ThemeApiDoc {
+  id: string | number
+  name: string
+  isPreset?: boolean | null
+  owner?: string | number | { id: string | number } | null
+  updatedAt: string
+  [key: string]: unknown
+}
+
+export function toThemeDoc(doc: ThemeApiDoc): ThemeDoc {
+  const owner = doc.owner == null ? null : typeof doc.owner === 'object' ? String(doc.owner.id) : String(doc.owner)
+  return { id: String(doc.id), name: doc.name, isPreset: !!doc.isPreset, owner, tokens: normalizeTheme(doc), updatedAt: doc.updatedAt }
+}
+
+/** Token -> body gửi lên collection themes (group field phẳng) */
+function themeBody(name: string, tokens: ThemeTokens) {
+  return { name, colors: tokens.colors, fonts: tokens.fonts, radius: tokens.radius, button: tokens.button, fontUrl: tokens.fontUrl ?? null }
+}
+
+export async function listThemes(): Promise<ThemeDoc[]> {
+  const res = await fetch('/api/themes?limit=100&depth=0&sort=name', { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const { docs } = (await res.json()) as { docs: ThemeApiDoc[] }
+  return docs.map(toThemeDoc)
+}
+
+export async function getSiteThemeId(): Promise<string | null> {
+  const res = await fetch('/api/globals/site-settings?depth=0', { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const doc = await res.json()
+  const t = doc?.theme
+  return t == null ? null : String(typeof t === 'object' ? t.id : t)
+}
+
+export async function setSiteTheme(id: string | null): Promise<void> {
+  const res = await fetch('/api/globals/site-settings?depth=0', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme: relValue(id) }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export async function createTheme(name: string, tokens: ThemeTokens): Promise<ThemeDoc> {
+  const res = await fetch('/api/themes?depth=0', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(themeBody(name, tokens)),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return toThemeDoc((await res.json()).doc)
+}
+
+export async function updateTheme(id: string, name: string, tokens: ThemeTokens): Promise<ThemeDoc> {
+  const res = await fetch(`/api/themes/${encodeURIComponent(id)}?depth=0`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(themeBody(name, tokens)),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return toThemeDoc((await res.json()).doc)
+}
+
+export async function deleteTheme(id: string): Promise<void> {
+  const res = await fetch(`/api/themes/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+/** Nạp thư viện theme + theme của site vào store */
+export async function refreshThemes(): Promise<void> {
+  const s = useEditor.getState()
+  if (s.themesStatus === 'loading') return
+  s.setThemesStatus('loading')
+  try {
+    const [list, siteId] = await Promise.all([listThemes(), getSiteThemeId()])
+    useEditor.getState().setThemes(list, siteId)
+  } catch (err) {
+    useEditor.getState().setThemesStatus('error')
+    useEditor.getState().toast('error', `Không tải được theme: ${(err as Error).message}`)
+  }
+}
+
+// ======================= Lịch sử phiên bản =======================
+
+export interface PageVersion {
+  id: string
+  title: string
+  slug: string
+  status: SaveStatus
+  content: PageContent
+  updatedAt: string
+}
+
+export async function listVersions(pageId: string): Promise<PageVersion[]> {
+  const q = new URLSearchParams({ 'where[parent][equals]': pageId, sort: '-updatedAt', limit: '40', depth: '0' })
+  const res = await fetch(`/api/pages/versions?${q}`, { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const { docs } = (await res.json()) as { docs: { id: string | number; updatedAt: string; version: { title?: string; slug?: string; _status?: string; content?: unknown } }[] }
+  return docs.map((d) => ({
+    id: String(d.id),
+    title: d.version.title ?? '',
+    slug: d.version.slug ?? '',
+    status: d.version._status === 'published' ? 'published' : 'draft',
+    content: normalizeContent(d.version.content),
+    updatedAt: d.updatedAt,
+  }))
 }
