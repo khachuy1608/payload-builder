@@ -6,7 +6,7 @@ import { memo } from 'react'
 import { BuilderRuntime } from './blocks/Runtime'
 import type { NodeAttrs, RenderMode } from './blocks/types'
 import { compileTreeCss } from './css'
-import { type DataLookup, type DataMap, resolveData, type UrlParams } from './data'
+import { type DataLookup, type DataMap, type DataRecord, resolveData, type UrlParams } from './data'
 import { normalizeFx } from './effects'
 import type { BlockLookup } from './refs'
 import { resolveRefs } from './refs'
@@ -38,6 +38,7 @@ function buildAttrs(node: BuilderNode, mode: RenderMode): NodeAttrs {
     if (fx.hover === 'spotlight') attrs['data-fx-hover'] = 'spotlight'
   }
   if (mode === 'editor') {
+    if (node.props.condHidden === true) attrs['data-cond-hidden'] = ''
     if (node.linked === 'inner') {
       // phần tử bên trong block liên kết: không có data-node-id nên bấm/kéo vào đâu cũng trỏ về cả block
       attrs['data-linked'] = ''
@@ -88,6 +89,7 @@ export function PageRenderer({
   theme = defaultTheme,
   data,
   params,
+  user,
 }: {
   content: PageContent
   mode?: RenderMode
@@ -97,10 +99,12 @@ export function PageRenderer({
   data?: DataMap | DataLookup
   /** Tham số URL hiện tại (phân trang, tìm kiếm, lọc) */
   params?: UrlParams
+  /** Người đang đăng nhập (đã lọc trường công khai) – cho {{user.*}} và điều kiện hiển thị */
+  user?: DataRecord | null
 }) {
   const lookup: BlockLookup = typeof blocks === 'function' ? blocks : (id) => blocks?.get(id)
   const dataLookup: DataLookup = typeof data === 'function' ? data : (id) => data?.[id]
-  const root = resolveData(resolveRefs(content.root, lookup), dataLookup, { params })
+  const root = resolveData(resolveRefs(content.root, lookup), dataLookup, { params, user: user ?? null, keepHidden: mode === 'editor' })
   const css = compileTreeCss(root)
   return (
     <>

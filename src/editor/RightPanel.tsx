@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Database, ExternalLink, Monitor, Palette, Pl
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
-import { type DataFilter, type DataSource, FILTER_OPS, type SourceInfo, dataSourceOf, fieldPaths, normalizeDataSource } from '@/builder/data'
+import { type DataFilter, type DataSource, FILTER_OPS, SHOW_OPS, type ShowCondition, type SourceInfo, dataSourceOf, fieldPaths, normalizeDataSource, showOf } from '@/builder/data'
 import { EASING_OPTIONS, type FxProps, HOVER_OPTIONS, REVEAL_OPTIONS, TEXT_FX_OPTIONS, DEFAULT_SPRING, springEasing } from '@/builder/effects'
 import { getSchema } from '@/builder/schema'
 import { refBlockId } from '@/builder/refs'
@@ -388,28 +388,96 @@ function useDataContext(node: BuilderNode): { source: DataSource; info?: SourceI
 /** Nút ⚡ chèn {{trường}} từ nguồn dữ liệu bao quanh */
 function BindPicker({ node, onPick }: { node: BuilderNode; onPick: (template: string) => void }) {
   const ctx = useDataContext(node)
+  const usersInfo = useEditor((s) => s.sources.find((x) => x.slug === 'users'))
   const [open, setOpen] = useState(false)
-  if (!ctx) return null
-  const paths = ctx.info ? fieldPaths(ctx.info) : []
+  if (!ctx && !usersInfo) return null
+  const paths = ctx?.info ? fieldPaths(ctx.info) : []
+  const userPaths = usersInfo ? fieldPaths(usersInfo) : []
   return (
     <span className="ed-bind">
-      <button type="button" className="ed-bind-btn" title={`Lấy từ dữ liệu: ${ctx.info?.label ?? ctx.source.collection}`} onClick={(e) => (e.preventDefault(), setOpen((o) => !o))}>
+      <button type="button" className="ed-bind-btn" title={ctx ? `Lấy từ dữ liệu: ${ctx.info?.label ?? ctx.source.collection}` : 'Lấy từ người đang đăng nhập'} onClick={(e) => (e.preventDefault(), setOpen((o) => !o))}>
         <Zap size={12} />
       </button>
       {open && (
         <span className="ed-popover ed-bind-pop" onMouseDown={(e) => e.preventDefault()}>
-          <span className="ed-label">Trường của {ctx.info?.label ?? ctx.source.collection}</span>
-          {paths.map((p) => (
-            <button key={p.path} type="button" className="ed-token" onClick={() => (onPick(`{{${p.path}}}`), setOpen(false))}>
-              {p.label} <code>{`{{${p.path}}}`}</code>
-            </button>
-          ))}
-          <button type="button" className="ed-token" onClick={() => (onPick('{{index}}'), setOpen(false))}>
-            Số thứ tự <code>{'{{index}}'}</code>
-          </button>
+          {ctx && (
+            <>
+              <span className="ed-label">Trường của {ctx.info?.label ?? ctx.source.collection}</span>
+              {paths.map((p) => (
+                <button key={p.path} type="button" className="ed-token" onClick={() => (onPick(`{{${p.path}}}`), setOpen(false))}>
+                  {p.label} <code>{`{{${p.path}}}`}</code>
+                </button>
+              ))}
+              <button type="button" className="ed-token" onClick={() => (onPick('{{index}}'), setOpen(false))}>
+                Số thứ tự <code>{'{{index}}'}</code>
+              </button>
+            </>
+          )}
+          {userPaths.length > 0 && (
+            <>
+              <span className="ed-label">Người đang đăng nhập</span>
+              {userPaths.map((p) => (
+                <button key={'u' + p.path} type="button" className="ed-token" onClick={() => (onPick(`{{user.${p.path}}}`), setOpen(false))}>
+                  {p.label} <code>{`{{user.${p.path}}}`}</code>
+                </button>
+              ))}
+            </>
+          )}
         </span>
       )}
     </span>
+  )
+}
+
+/** Hiển thị có điều kiện (props.show) – tab Nâng cao */
+function ShowPanel({ node }: { node: BuilderNode }) {
+  const show = showOf(node) ?? {}
+  const ctx = useDataContext(node)
+  const usersInfo = useEditor((s) => s.sources.find((x) => x.slug === 'users'))
+  const hidden = node.props.condHidden === true
+  const set = (patch: Partial<ShowCondition>) => {
+    const next: ShowCondition = { ...show, ...patch }
+    if (next.auth === 'any') delete next.auth
+    if (!next.field) {
+      delete next.field
+      delete next.op
+      delete next.value
+    }
+    useEditor.getState().updateProps(node.id, { show: Object.keys(next).length ? next : undefined })
+  }
+  const fieldOptions = [...(ctx?.info ? fieldPaths(ctx.info).map((p) => ({ path: p.path, label: `${ctx.info!.label}: ${p.label}` })) : []), ...(usersInfo ? fieldPaths(usersInfo).map((p) => ({ path: `user.${p.path}`, label: `Người đăng nhập: ${p.label}` })) : [])]
+  return (
+    <div className="ed-field">
+      <span className="ed-label">Hiển thị có điều kiện</span>
+      <select className="ed-input" value={show.auth ?? 'any'} onChange={(e) => set({ auth: e.target.value as ShowCondition['auth'] })}>
+        <option value="any">Mọi người</option>
+        <option value="user">Chỉ khi đã đăng nhập</option>
+        <option value="guest">Chỉ khi là khách</option>
+      </select>
+      <div className="ed-row">
+        <select className="ed-input" value={show.field ?? ''} onChange={(e) => set({ field: e.target.value || undefined, op: show.op ?? 'exists' })}>
+          <option value="">— không theo trường —</option>
+          {fieldOptions.map((f) => (
+            <option key={f.path} value={f.path}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {show.field && (
+        <div className="ed-row">
+          <select className="ed-input" value={show.op ?? 'exists'} onChange={(e) => set({ op: e.target.value as ShowCondition['op'] })}>
+            {SHOW_OPS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          {!['exists', 'not_exists'].includes(show.op ?? 'exists') && <input className="ed-input" placeholder="giá trị" value={show.value ?? ''} onChange={(e) => set({ value: e.target.value })} />}
+        </div>
+      )}
+      <span className="ed-help">{hidden ? 'Đang bị ẩn theo điều kiện (canvas hiện mờ để sửa; trang thật không render).' : 'Điều kiện theo bản ghi bao quanh hoặc người đang đăng nhập. Dùng “Xem như khách” ở Cài đặt trang để thử.'}</span>
+    </div>
   )
 }
 
@@ -730,8 +798,22 @@ function PageSettings() {
       </Field>
       <ThemeField />
       <TemplateField />
+      <GuestPreviewField />
       <p className="ed-hint">Màu nền, font và lề của cả trang chỉnh ở tab “Kiểu”.</p>
     </div>
+  )
+}
+
+/** Xem canvas như khách để thử điều kiện đăng nhập và {{user.*}} */
+function GuestPreviewField() {
+  const on = useEditor((s) => s.previewAsGuest)
+  const user = useEditor((s) => s.currentUser)
+  return (
+    <label className="ed-toggle">
+      <input type="checkbox" checked={on} onChange={(e) => useEditor.getState().setPreviewAsGuest(e.target.checked)} />
+      <span className="ed-toggle-ui" />
+      Xem như khách (chưa đăng nhập){!on && user ? ` – đang xem như ${String(user.name ?? user.id)}` : ''}
+    </label>
   )
 }
 
@@ -1221,6 +1303,7 @@ function AdvancedTab({ node }: { node: BuilderNode }) {
           <span className="ed-help">Trong editor phần tử bị ẩn sẽ biến mất khi xem ở thiết bị tương ứng.</span>
         </div>
       )}
+      {node.type !== 'root' && <ShowPanel node={node} />}
       <p className="ed-hint">ID phần tử: <code>{node.id}</code></p>
     </div>
   )

@@ -35,6 +35,7 @@ body{user-select:none;-webkit-user-select:none}
 body.is-dragging,body.is-dragging *{cursor:grabbing!important}
 a[data-node-id]{cursor:default}
 [data-linked]{cursor:default}
+[data-cond-hidden]{opacity:.35;outline:1px dashed #f59e0b;outline-offset:-1px}
 [data-linked] [contenteditable]{cursor:default}
 `
 
@@ -112,8 +113,14 @@ function CanvasContent() {
   const root = useEditor((s) => s.root)
   const blocks = useEditor((s) => s.blocks)
   const dataCache = useEditor((s) => s.dataCache)
-  // triển khai My Block liên kết rồi gắn dữ liệu thật trước khi biên dịch CSS và render
-  const resolved = useMemo(() => resolveData(resolveRefs(root, blockLookup(blocks)), (id) => dataCache[id]), [root, blocks, dataCache])
+  const currentUser = useEditor((s) => s.currentUser)
+  const previewAsGuest = useEditor((s) => s.previewAsGuest)
+  // triển khai My Block liên kết rồi gắn dữ liệu thật (và người đang đăng nhập) trước khi biên dịch CSS và render;
+  // phần tử bị điều kiện ẩn vẫn giữ lại để chọn/sửa (đánh dấu data-cond-hidden)
+  const resolved = useMemo(
+    () => resolveData(resolveRefs(root, blockLookup(blocks)), (id) => dataCache[id], { user: previewAsGuest ? null : currentUser, keepHidden: true }),
+    [root, blocks, dataCache, currentUser, previewAsGuest],
+  )
   const css = useMemo(() => compileTreeCss(resolved), [resolved])
   const theme = useEditor(effectiveTheme)
   return (

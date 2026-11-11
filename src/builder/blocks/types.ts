@@ -19,6 +19,7 @@ export interface NodeAttrs {
   'data-fx-parallax'?: string
   'data-fx-hide'?: string
   'data-fx-hover'?: string
+  'data-cond-hidden'?: string
   style?: Record<string, string>
 }
 

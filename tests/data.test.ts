@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { bindString, buildWhere, collectDataNodes, dataResult, fieldPaths, normalizeDataSource, normalizeParams, pageFromParams, pageHrefPattern, projectRecord, resolveData, withParam } from '../src/builder/data'
+import { bindString, buildWhere, normalizeShow, shouldShow, usesUser, collectDataNodes, dataResult, fieldPaths, normalizeDataSource, normalizeParams, pageFromParams, pageHrefPattern, projectRecord, resolveData, withParam } from '../src/builder/data'
 import { createRoot, walk } from '../src/builder/tree'
 import type { BuilderNode } from '../src/builder/types'
 import { validateContent } from '../src/builder/validate'
@@ -104,4 +104,42 @@ test('tham số URL: tìm kiếm, lọc theo trường cho phép, phân trang, l
   assert.deepEqual(out.children![2].props, { value: 'bo', total: '7' })
   assert.equal(out.children![3].props.currentValue, 'Thiết kế')
   assert.equal(out.children![3].props.baseQuery, '?q=bo')
+})
+
+test('điều kiện hiển thị: auth, trường bản ghi, trường user; editor giữ lại và đánh dấu', () => {
+  assert.deepEqual(normalizeShow({ auth: 'user', field: 'title', op: 'bad', value: 'x', junk: 1 }), { auth: 'user', field: 'title', op: 'exists', value: 'x' })
+  assert.equal(normalizeShow({ auth: 'any' }), undefined)
+  const me = { id: 1, name: 'An', title: 'Dev' }
+  assert.equal(shouldShow({ auth: 'user' }, {}, { user: me }), true)
+  assert.equal(shouldShow({ auth: 'user' }, {}, { user: null }), false)
+  assert.equal(shouldShow({ auth: 'guest' }, {}, { user: me }), false)
+  assert.equal(shouldShow({ field: 'avatar', op: 'exists' }, users[1], {}), false)
+  assert.equal(shouldShow({ field: 'title', op: 'contains', value: 'des' }, users[1], {}), true)
+  assert.equal(shouldShow({ field: 'user.title', op: 'equals', value: 'Dev' }, {}, { user: me }), true)
+  assert.equal(shouldShow({ field: 'id', op: 'greater_than', value: '2' }, users[2], {}), true)
+  assert.equal(usesUser({ text: 'Chào {{user.name}}' }), true)
+  assert.equal(usesUser({ text: '{{name}}' }), false)
+
+  const root = createRoot()
+  root.children = [
+    { id: 'hi', type: 'heading', props: { text: 'Xin chào {{user.name}}', show: { auth: 'user' } }, styles: {} },
+    { id: 'guest', type: 'paragraph', props: { text: 'Hãy đăng nhập', show: { auth: 'guest' } }, styles: {} },
+    { id: 'list', type: 'dataList', props: { data: { collection: 'users', mode: 'list' } }, styles: {}, children: [{ id: 'c', type: 'div', props: {}, styles: {}, children: [{ id: 'n', type: 'heading', props: { text: '{{name}}' }, styles: {} }, { id: 'av', type: 'paragraph', props: { text: 'có ảnh', show: { field: 'avatar', op: 'exists' } }, styles: {} }] }] },
+  ]
+  const lookup = (id: string) => (id === 'list' ? dataResult(users.slice(0, 2)) : undefined)
+  const asUser = resolveData(root, lookup, { user: me })
+  assert.deepEqual(asUser.children!.map((c) => c.id), ['hi', 'list'])
+  assert.equal(asUser.children![0].props.text, 'Xin chào An')
+  assert.equal(asUser.children![1].children![0].children!.length, 2, 'An có ảnh -> hiện')
+  assert.equal(asUser.children![1].children![1].children!.length, 1, 'Bình không ảnh -> ẩn')
+  const asGuest = resolveData(root, lookup, { user: null })
+  assert.deepEqual(asGuest.children!.map((c) => c.id), ['guest', 'list'])
+  const editor = resolveData(root, lookup, { user: null, keepHidden: true })
+  assert.deepEqual(editor.children!.map((c) => [c.id, c.props.condHidden === true]), [['hi', true], ['guest', false], ['list', false]])
+  assert.equal(editor.children![0].props.text, 'Xin chào ')
+})
+
+test('validate: show được làm sạch, condHidden không bao giờ lưu', () => {
+  const out = validateContent({ version: 1, root: { id: 'root', type: 'root', props: {}, styles: {}, children: [{ id: 'a', type: 'heading', props: { text: 'x', show: { auth: 'guest' }, condHidden: true }, styles: {} }] } })
+  assert.deepEqual(out.root.children![0].props, { text: 'x', show: { auth: 'guest' } })
 })

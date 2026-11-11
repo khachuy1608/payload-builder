@@ -227,7 +227,7 @@ export const FORM_BLOCKS: BlockDefinition[] = [
       { type: 'text', prop: 'forgotText', label: 'Link quên mật khẩu' },
       { type: 'url', prop: 'forgotHref', label: 'Link quên mật khẩu (URL)' },
       { type: 'text', prop: 'submitText', label: 'Nút đăng nhập' },
-      { type: 'url', prop: 'action', label: 'URL xử lý đăng nhập (action)', help: 'Form POST tới URL này. Để trống chỉ là giao diện mẫu.' },
+      { type: 'url', prop: 'action', label: 'URL xử lý đăng nhập (action)', help: 'Để trống: đăng nhập vào tài khoản của site này (Payload users) và tải lại trang. Đặt URL để POST tới hệ thống khác.' },
       { type: 'text', prop: 'footerText', label: 'Chân form' },
       { type: 'text', prop: 'footerLinkText', label: 'Link chân form' },
       { type: 'url', prop: 'footerHref', label: 'URL chân form' },
@@ -290,7 +290,7 @@ export const FORM_BLOCKS: BlockDefinition[] = [
               {text(node.props.footerText)} <a href={safeHref(node.props.footerHref) ?? '#'}>{text(node.props.footerLinkText)}</a>
             </p>
           )}
-          {mode === 'editor' && !action && <EditorOnly label="Chưa đặt URL xử lý đăng nhập – form chỉ là giao diện mẫu">{null}</EditorOnly>}
+          {mode === 'editor' && !action && <EditorOnly label="Đăng nhập vào tài khoản của site (Payload users). Dùng link #logout để đăng xuất.">{null}</EditorOnly>}
         </form>
       )
     },

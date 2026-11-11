@@ -10,7 +10,7 @@ import { immer } from 'zustand/middleware/immer'
 import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { canContain } from '@/builder/schema'
-import type { DataMap, SourceInfo } from '@/builder/data'
+import type { DataMap, DataRecord, SourceInfo } from '@/builder/data'
 import { defaultTheme, type ThemeTokens } from '@/builder/theme'
 import {
   cloneWithNewIds,
@@ -142,6 +142,10 @@ export interface EditorState {
   sources: SourceInfo[]
   /** Bản ghi đã nạp theo id node có nguồn (canvas dùng để hiện dữ liệu thật) */
   dataCache: DataMap
+  /** Người đang đăng nhập (đã lọc trường công khai) cho {{user.*}} trên canvas */
+  currentUser: DataRecord | null
+  /** Xem thử canvas như khách (chưa đăng nhập) */
+  previewAsGuest: boolean
 
   selectedId: string | null
   hoveredId: string | null
@@ -215,6 +219,8 @@ export interface EditorActions {
 
   setLock(lock: LockState): void
   setSources(sources: SourceInfo[]): void
+  setCurrentUser(user: DataRecord | null): void
+  setPreviewAsGuest(on: boolean): void
   setData(nodeId: string, records: DataMap[string]): void
   openContextMenu(menu: EditorState['contextMenu']): void
   openHistory(open: boolean): void
@@ -330,6 +336,8 @@ export const useEditor = create<Store>()(
       lock: { state: 'checking' },
       sources: [],
       dataCache: {},
+      currentUser: null,
+      previewAsGuest: false,
       template: null,
       selectedId: null,
       hoveredId: null,
@@ -526,6 +534,14 @@ export const useEditor = create<Store>()(
         set((s) => {
           s.template = template
           s.dirty = true
+        }),
+      setCurrentUser: (user) =>
+        set((s) => {
+          s.currentUser = user
+        }),
+      setPreviewAsGuest: (on) =>
+        set((s) => {
+          s.previewAsGuest = on
         }),
       setSources: (sources) =>
         set((s) => {

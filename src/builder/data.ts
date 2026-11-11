@@ -84,6 +84,77 @@ export function pageHrefPattern(params: UrlParams | undefined): string {
 }
 
 export const DATA_LIST_TYPE = 'dataList'
+
+/** Điều kiện hiển thị (props.show) – đánh giá lúc render với bản ghi bao quanh và người đang đăng nhập */
+export type ShowOp = 'exists' | 'not_exists' | 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than'
+export interface ShowCondition {
+  /** any = mọi người, user = chỉ đã đăng nhập, guest = chỉ khách */
+  auth?: 'any' | 'user' | 'guest'
+  /** đường dẫn trường (vd title, avatar, user.name) */
+  field?: string
+  op?: ShowOp
+  value?: string
+}
+export const SHOW_OPS: { value: ShowOp; label: string }[] = [
+  { value: 'exists', label: 'có giá trị' },
+  { value: 'not_exists', label: 'trống' },
+  { value: 'equals', label: 'bằng' },
+  { value: 'not_equals', label: 'khác' },
+  { value: 'contains', label: 'chứa' },
+  { value: 'greater_than', label: 'lớn hơn' },
+  { value: 'less_than', label: 'nhỏ hơn' },
+]
+
+export function normalizeShow(input: unknown): ShowCondition | undefined {
+  if (!input || typeof input !== 'object') return undefined
+  const src = input as Record<string, unknown>
+  const out: ShowCondition = {}
+  if (src.auth === 'user' || src.auth === 'guest') out.auth = src.auth
+  if (typeof src.field === 'string' && /^[A-Za-z_][A-Za-z0-9_.-]{0,80}$/.test(src.field)) {
+    out.field = src.field
+    out.op = SHOW_OPS.some((o) => o.value === src.op) ? (src.op as ShowOp) : 'exists'
+    if (typeof src.value === 'string' && src.value !== '') out.value = src.value.slice(0, 300)
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+function isEmpty(v: unknown): boolean {
+  return v == null || v === '' || v === false || (Array.isArray(v) && v.length === 0)
+}
+
+/** Node có được hiển thị không, với bản ghi bao quanh (có thể rỗng), các giá trị phụ (user, index…) */
+export function shouldShow(show: ShowCondition | undefined, record: DataRecord, extra: Record<string, unknown>): boolean {
+  if (!show) return true
+  const user = extra.user
+  if (show.auth === 'user' && !user) return false
+  if (show.auth === 'guest' && user) return false
+  if (!show.field) return true
+  const first = show.field.split('.')[0]
+  const v = first in extra ? getPath(extra, show.field) : getPath(record, show.field)
+  const str = toText(v)
+  const want = show.value ?? ''
+  switch (show.op ?? 'exists') {
+    case 'exists':
+      return !isEmpty(v)
+    case 'not_exists':
+      return isEmpty(v)
+    case 'equals':
+      return str === want || (typeof v === 'boolean' && String(v) === want)
+    case 'not_equals':
+      return str !== want
+    case 'contains':
+      return str.toLowerCase().includes(want.toLowerCase())
+    case 'greater_than':
+      return Number(str) > Number(want)
+    case 'less_than':
+      return Number(str) < Number(want)
+  }
+  return true
+}
+
+export function showOf(node: BuilderNode): ShowCondition | undefined {
+  return normalizeShow((node.props as { show?: unknown }).show)
+}
 export const FIELD_PATTERN = /^[A-Za-z_][A-Za-z0-9_.-]{0,80}$/
 export const FILTER_OPS: { value: FilterOp; label: string }[] = [
   { value: 'equals', label: 'bằng' },
@@ -199,9 +270,15 @@ function toText(v: unknown): string {
 /** Thay `{{...}}` trong chuỗi bằng dữ liệu; ngữ cảnh có thêm index (1-based) và count */
 export function bindString(template: string, record: DataRecord, extra: Record<string, unknown> = {}): string {
   return template.replace(TEMPLATE, (_, path: string) => {
-    if (path in extra) return toText(extra[path])
+    const first = path.split('.')[0]
+    if (first in extra) return toText(getPath(extra, path))
     return toText(getPath(record, path))
   })
+}
+
+/** Chuỗi/props có dùng {{user...}} không (để bind cả ngoài nguồn dữ liệu) */
+export function usesUser(value: unknown): boolean {
+  return typeof value === 'string' ? /\{\{\s*user(\.|\s*\}\})/.test(value) : Array.isArray(value) ? value.some(usesUser) : !!value && typeof value === 'object' ? Object.values(value as Record<string, unknown>).some(usesUser) : false
 }
 
 /** Giá trị prop sau khi gắn dữ liệu: chuỗi được thay thế; prop media dạng "{{truong}}" trỏ tới object upload sẽ thành MediaValue */
@@ -209,7 +286,7 @@ function bindValue(value: unknown, record: DataRecord, extra: Record<string, unk
   if (typeof value === 'string') {
     const m = value.match(/^\{\{\s*([A-Za-z_][A-Za-z0-9_.-]*)\s*\}\}$/)
     if (m) {
-      const raw = m[1] in extra ? extra[m[1]] : getPath(record, m[1])
+      const raw = m[1].split('.')[0] in extra ? getPath(extra, m[1]) : getPath(record, m[1])
       if (raw && typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as { url?: unknown }).url === 'string') {
         const u = raw as Record<string, unknown>
         return { id: u.id, url: u.url, alt: u.alt ?? '', width: u.width, height: u.height, mimeType: u.mimeType }
@@ -220,28 +297,46 @@ function bindValue(value: unknown, record: DataRecord, extra: Record<string, unk
   if (Array.isArray(value)) return value.map((v) => bindValue(v, record, extra))
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = k === 'data' || k === 'fx' ? v : bindValue(v, record, extra)
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = k === 'data' || k === 'fx' || k === 'show' ? v : bindValue(v, record, extra)
     return out
   }
   return value
 }
 
 /** Gắn một bản ghi vào cây con: props chứa {{...}} được thay; id giữ nguyên (bản mẫu) hoặc thêm hậu tố */
-export function bindSubtree(node: BuilderNode, record: DataRecord, extra: Record<string, unknown>, suffix: string, inner: boolean): BuilderNode {
+export function bindSubtree(node: BuilderNode, record: DataRecord, extra: Record<string, unknown>, suffix: string, inner: boolean, keepHidden = false): BuilderNode {
+  // điều kiện hiển thị đã được đánh giá ở cha (applyShow) -> bỏ `show` để các lượt duyệt sau không đánh giá lại với ngữ cảnh rỗng
+  const { show: _show, ...rest } = node.props
+  void _show
   const out: BuilderNode = {
     id: suffix ? `${node.id}${suffix}` : node.id,
     type: node.type,
-    props: bindValue(node.props, record, extra) as Record<string, unknown>,
+    props: bindValue(rest, record, extra) as Record<string, unknown>,
     styles: node.styles,
-    ...(node.children ? { children: node.children.map((c) => bindSubtree(c, record, extra, suffix, inner)) } : {}),
+    ...(node.children ? { children: applyShow(node.children, record, extra, keepHidden).map((c) => bindSubtree(c, record, extra, suffix, inner, keepHidden)) } : {}),
   }
   if (inner) out.linked = 'inner'
   else if (node.linked) out.linked = node.linked
   return out
 }
 
+/** Lọc (live) hoặc đánh dấu (editor: props.condHidden) các con bị điều kiện hiển thị ẩn */
+function applyShow(children: BuilderNode[], record: DataRecord, extra: Record<string, unknown>, keepHidden: boolean): BuilderNode[] {
+  const out: BuilderNode[] = []
+  for (const c of children) {
+    const show = showOf(c)
+    if (!show || shouldShow(show, record, extra)) out.push(c)
+    else if (keepHidden) out.push({ ...c, props: { ...c.props, condHidden: true } })
+  }
+  return out
+}
+
 export interface ResolveContext {
   params?: UrlParams
+  /** Người đang đăng nhập (đã lọc trường công khai) hoặc null */
+  user?: DataRecord | null
+  /** editor: giữ phần tử bị điều kiện ẩn (đánh dấu) thay vì bỏ */
+  keepHidden?: boolean
 }
 
 /**
@@ -253,6 +348,9 @@ export interface ResolveContext {
  */
 export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveContext = {}): BuilderNode {
   const params = ctx.params ?? {}
+  const user = ctx.user ?? null
+  const keepHidden = !!ctx.keepHidden
+  const base = { user }
   const primaryId = collectDataNodes(root).find((n) => n.source.urlParams)?.id
   const primary = primaryId ? lookup(primaryId) : undefined
   const visit = (node: BuilderNode): BuilderNode => {
@@ -260,21 +358,23 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
     if (source) {
       const result = lookup(node.id)
       const records = result?.records ?? []
-      const pageExtra = { total: result?.total ?? records.length, page: result?.page ?? 1, totalPages: result?.totalPages ?? 1 }
+      const pageExtra = { ...base, total: result?.total ?? records.length, page: result?.page ?? 1, totalPages: result?.totalPages ?? 1 }
       if (node.type === DATA_LIST_TYPE) {
         const template = node.children ?? []
         const children: BuilderNode[] = []
         records.forEach((rec, i) => {
           const extra = { index: i + 1, count: records.length, ...pageExtra }
-          for (const child of template) children.push(bindSubtree(child, rec, extra, i === 0 ? '' : `_${i}`, i > 0))
+          for (const child of applyShow(template, rec, extra, keepHidden)) children.push(bindSubtree(child, rec, extra, i === 0 ? '' : `_${i}`, i > 0, keepHidden))
         })
         return { ...node, children: children.map(visit) }
       }
       const rec = records[0]
       if (!rec) return visitChildren(node)
-      const bound = bindSubtree(node, rec, { index: 1, count: records.length, ...pageExtra }, '', false)
+      const bound = bindSubtree(node, rec, { index: 1, count: records.length, ...pageExtra }, '', false, keepHidden)
       return visitChildren(bound)
     }
+    // ngoài nguồn dữ liệu: vẫn bind {{user.*}}
+    if (usesUser(node.props)) return visitChildren({ ...node, props: bindValue(node.props, {}, base) as Record<string, unknown> })
     // block điều khiển theo URL
     if (node.type === 'pagination' && node.props.auto === true) {
       return { ...node, props: { ...node.props, pages: String(primary?.totalPages ?? 1), current: String(primary?.page ?? pageFromParams(params)), hrefPattern: pageHrefPattern(params) } }
@@ -289,11 +389,12 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
   const visitChildren = (node: BuilderNode): BuilderNode => {
     if (!node.children?.length) return node
     let changed = false
-    const children = node.children.map((c) => {
+    const children = applyShow(node.children, {}, base, keepHidden).map((c) => {
       const next = visit(c)
       if (next !== c) changed = true
       return next
     })
+    if (children.length !== node.children.length || children.some((c, i) => c !== node.children![i])) changed = true
     return changed ? { ...node, children } : node
   }
   return visit(root)

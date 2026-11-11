@@ -12,6 +12,7 @@ Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu E
   - Undo/redo, nhân bản, copy/paste, phím tắt, nhấp đúp để sửa chữ trực tiếp.
 - **P2** – Front-end render bằng **cùng một renderer** với canvas. Có responsive (Desktop/Tablet/Mobile), trạng thái Hover, ẩn theo thiết bị, lưu nháp, xem trước bản nháp và xuất bản.
 - **P3** – **My Blocks**: lưu một phần tử/vùng đã dựng thành block riêng (collection `my-blocks`), chèn lại vào trang dạng **bản sao** hoặc **liên kết** (sửa bản gốc thì mọi trang cập nhật, có nút *Tách*), sửa bản gốc bằng chính Visual Builder tại `/builder/block/:id`, chặn vòng lặp tham chiếu.
+- **Trang động & người dùng** – trang mẫu theo slug (`/slug/<giá trị>` bind cả trang vào bản ghi), phân trang/tìm kiếm/lọc thật qua tham số URL, điều kiện hiển thị theo đăng nhập hoặc theo trường, `{{user.*}}`, Sign-in Form đăng nhập thật và `#logout`.
 - **Data Binding** – block chứa khai báo **nguồn dữ liệu** (collection, danh sách/một bản ghi, lọc, sắp xếp, giới hạn); ô nhập nào cũng có nút ⚡ chèn `{{truong}}`; block **Danh sách dữ liệu** lặp phần tử mẫu cho từng bản ghi. Collection nào cũng dùng được chỉ bằng một khai báo `custom.builder` (whitelist trường công khai). Canvas hiện dữ liệu thật, trang công khai render phía server và tự làm mới cache khi dữ liệu đổi.
 - **UI Kit (theo namethatui.com)** – 36 block UI mới (header/navbar có hamburger, carousel, accordion, card, bento, masonry, marquee, breadcrumbs, pagination, steps, toggle group, bottom navigation, floating button, scrollspy, waffle menu, submenu/cascader/drill-down, overflow menu, command palette, product tour, data table, pie/donut chart, timeline, avatar group, status dot, chat bubble, badge/chip/pill/tag, progress/spinner, skeleton, empty state, alert/callout/banner, toast, modal/drawer/sheet, popover/dropdown/tooltip/hover card, lightbox, form + form field, sign-in form) và hệ **hiệu ứng** chọn được cho mọi phần tử (scroll reveal, spring/easing, hover highlight/lift/spotlight, text scramble/typewriter/rotating words/shimmer, parallax, stacking cards, hide-on-scroll header, sticky/fixed, truncation, scrim, focus ring).
 - **P5** – **Hoàn thiện**: rich text cho Paragraph (đậm/nghiêng/gạch chân/link, thanh công cụ nổi khi sửa trực tiếp), menu chuột phải trên canvas và cây Cấu trúc, kéo thả trực tiếp phần tử trên canvas không cần tay cầm, lịch sử phiên bản trong editor (xem trước, khôi phục, hoàn tác được), cache trang công khai + làm mới tự động khi xuất bản/sửa block/theme.
@@ -110,7 +111,13 @@ hooks: { afterChange: [({ doc }) => (revalidatePages(), doc)], afterDelete: [({ 
 
 **3. Cách chạy** – `src/builder/data.ts` (thuần dữ liệu: chuẩn hoá nguồn, `buildWhere`, `bindString`, `resolveData`), `src/lib/data.ts` (server: `getSources`, `loadDataForTree`). Thứ tự render: `resolveRefs` → nạp dữ liệu → `resolveData` → biên dịch CSS. Editor nạp qua REST của chính collection (quyền của người đăng nhập) và cũng chỉ giữ trường expose.
 
-**Gợi ý bước sau:** trang mẫu động theo slug (`/bai-viet/[slug]` bind "bản ghi hiện tại"), phân trang/lọc thật trên trang, điều kiện hiển thị, dữ liệu theo người đang đăng nhập.
+**4. Trang mẫu động** – trong *Cài đặt trang* bật **Trang mẫu động**, chọn collection và trường khớp URL (mặc định `id`). Trang phục vụ `/<slug>/<giá trị>` (ví dụ `/thanh-vien/12` hoặc `/thanh-vien/Bob%20Tr%E1%BA%A7n` khi khớp theo `name`); toàn bộ trang bind vào bản ghi khớp, không có bản ghi → 404; tiêu đề trang cũng nhận `{{trường}}`. Chọn *Xem thử với bản ghi* để canvas hiện dữ liệu thật. Từ Danh sách dữ liệu, đặt link `/thanh-vien/{{id}}` (nút ⚡ nối vào ô Link) là có trang chi tiết. Route: `src/app/(frontend)/[slug]/[param]/page.tsx`.
+
+**5. Phân trang, tìm kiếm, lọc thật** – ở nguồn dữ liệu chế độ danh sách bật **Nhận tham số URL** và chọn trường tìm kiếm. Trang sẽ đọc `?page=N`, `?q=từ khoá` (like trên các trường đã chọn) và `?<trường>=<giá trị>` (bằng; chỉ trường trong `expose`). Các block điều khiển: **Pagination** (bật *Theo nguồn dữ liệu trên trang* → số trang/trang hiện tại tự tính, link giữ tham số), **Ô tìm kiếm** (form GET `?q=`, giữ từ khoá, hiện số kết quả), **Toggle Group** với *Lọc theo tham số URL* (mỗi lựa chọn là link `?trường=giá trị`, tự đánh dấu mục đang chọn; giá trị trống = bỏ lọc). Trong danh sách có thêm `{{page}}`, `{{totalPages}}`, `{{total}}`. Cache trang theo cả tham số URL; canvas luôn hiện trang 1.
+
+**6. Điều kiện hiển thị & người đang đăng nhập** – tab *Nâng cao* của mọi phần tử có **Hiển thị có điều kiện**: *Mọi người / Chỉ đã đăng nhập / Chỉ khách* và/hoặc điều kiện theo trường (của bản ghi bao quanh hoặc `user.*`): có giá trị, trống, bằng, khác, chứa, lớn hơn, nhỏ hơn. Trang thật bỏ hẳn phần tử bị ẩn; canvas hiện mờ (viền vàng) để vẫn sửa được. `{{user.name}}`, `{{user.avatar.url}}`… dùng được ở mọi nơi (nút ⚡ có nhóm *Người đang đăng nhập*); người dùng lấy từ cookie Payload và chỉ gồm trường `expose` của `users`. *Cài đặt trang → Xem như khách* để thử. **Sign-in Form** để trống `action` sẽ đăng nhập vào `users` của site (cookie) và tải lại trang; link `#logout` đăng xuất. Dữ liệu trang vẫn được cache; chỉ phần render theo người dùng chạy mỗi request.
+
+**Gợi ý bước sau:** đăng ký tài khoản công khai (collection khách hàng riêng, không dùng users admin), dữ liệu theo người dùng (`where owner = {{user.id}}`), sitemap/SEO cho trang mẫu động.
 
 ## UI Kit & hiệu ứng (theo namethatui.com)
 
@@ -175,7 +182,8 @@ src/
 ├── globals/SiteSettings.ts  # theme đang dùng của site
 ├── lib/pages.ts             # server: lấy trang (cache theo tag `pages`, draft mode đọc tươi)
 ├── lib/revalidate.ts        # làm mới cache sau khi xuất bản / sửa block / theme / dữ liệu nguồn
-├── lib/data.ts              # server: danh sách nguồn (custom.builder) + nạp bản ghi cho cây
+├── lib/data.ts              # server: danh sách nguồn (custom.builder) + nạp bản ghi cho cây (kèm tham số URL)
+├── lib/user.ts              # server: người đang đăng nhập đã lọc trường công khai
 ├── lib/blocks.ts            # server: nạp cây block được trang tham chiếu (kể cả lồng nhau)
 ├── lib/themes.ts            # server: theme hiệu lực của trang (ghi đè → site → mặc định)
 ├── app/

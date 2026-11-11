@@ -373,6 +373,13 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
         tourStep(tnav.hasAttribute('data-tour-skip') ? Infinity : tnav.hasAttribute('data-tour-next') ? 1 : -1)
         return
       }
+      // link #logout: đăng xuất khỏi Payload rồi tải lại
+      const logout = hit('a[href="#logout"]')
+      if (logout) {
+        e.preventDefault()
+        fetch('/api/users/logout', { method: 'POST', credentials: 'include' }).finally(() => win.location.reload())
+        return
+      }
       // bấm ngoài: đóng menu; bấm vào backdrop của dialog: đóng
       if (!t.closest('[data-menu]')) closeMenus()
       if (t instanceof win.HTMLDialogElement && t.matches('.b-dialog-el, .b-lightbox-dlg, .b-cmdk-dialog')) t.close()
@@ -455,7 +462,28 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
         return
       }
       if (form.matches('[data-signin]')) {
+        // Sign-in Form không có action: đăng nhập vào Payload (cookie) rồi tải lại trang
         e.preventDefault()
+        const fd = new FormData(form)
+        const btn = form.querySelector<HTMLButtonElement>('.b-signin-submit')
+        let msg = form.querySelector<HTMLElement>('.b-form-msg')
+        if (!msg) {
+          msg = doc.createElement('p')
+          msg.className = 'b-form-msg'
+          form.append(msg)
+        }
+        if (btn) btn.disabled = true
+        try {
+          const res = await fetch('/api/users/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: fd.get('email'), password: fd.get('password') }) })
+          if (!res.ok) throw new Error(String(res.status))
+          msg.textContent = 'Đăng nhập thành công, đang tải lại…'
+          msg.classList.remove('is-error')
+          win.location.reload()
+        } catch {
+          msg.textContent = 'Email hoặc mật khẩu không đúng.'
+          msg.classList.add('is-error')
+          if (btn) btn.disabled = false
+        }
         return
       }
       if (!form.matches('[data-form]')) return

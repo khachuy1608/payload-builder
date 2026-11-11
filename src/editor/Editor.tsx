@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { collectDataNodes } from '@/builder/data'
+import { collectDataNodes, projectRecord } from '@/builder/data'
 import { collectRefIds, resolveRefs } from '@/builder/refs'
 import type { PageContent } from '@/builder/types'
 import { fetchData, fetchSources, getMyBlock, refreshBlockLibrary, refreshThemes } from './api'
@@ -136,7 +136,14 @@ function useDataSync() {
   const last = useRef<Record<string, string>>({})
   useEffect(() => {
     fetchSources()
-      .then((list) => useEditor.getState().setSources(list))
+      .then((list) => {
+        useEditor.getState().setSources(list)
+        // người đang đăng nhập cho {{user.*}} – chỉ giữ trường công khai như trang thật
+        const expose = list.find((x) => x.slug === 'users')?.fields.map((f) => f.name) ?? ['id', 'name']
+        return fetch('/api/users/me?depth=1', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((me) => useEditor.getState().setCurrentUser(me?.user ? projectRecord(me.user, expose) : null))
+      })
       .catch(() => useEditor.getState().toast('error', 'Không tải được danh sách nguồn dữ liệu.'))
   }, [])
   useEffect(() => {

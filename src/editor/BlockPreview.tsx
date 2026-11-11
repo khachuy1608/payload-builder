@@ -25,7 +25,8 @@ export function BlockPreview({ tree, height = 96 }: { tree: BuilderNode; height?
   const blocks = useEditor((s) => s.blocks)
   const theme = useEditor(effectiveTheme)
   const dataCache = useEditor((s) => s.dataCache)
-  const resolved = resolveData(resolveRefs(tree, blockLookup(blocks)), (id) => dataCache[id])
+  const currentUser = useEditor((s) => s.currentUser)
+  const resolved = resolveData(resolveRefs(tree, blockLookup(blocks)), (id) => dataCache[id], { user: currentUser })
   const css = compileTreeCss(resolved)
 
   useEffect(() => {
