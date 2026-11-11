@@ -1,4 +1,4 @@
-# Payload Page Builder (P0 → P4)
+# Payload Page Builder (P0 → P5)
 
 Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu Elementor** tự xây (không dùng thư viện page builder bên ngoài).
 
@@ -12,6 +12,7 @@ Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu E
   - Undo/redo, nhân bản, copy/paste, phím tắt, nhấp đúp để sửa chữ trực tiếp.
 - **P2** – Front-end render bằng **cùng một renderer** với canvas. Có responsive (Desktop/Tablet/Mobile), trạng thái Hover, ẩn theo thiết bị, lưu nháp, xem trước bản nháp và xuất bản.
 - **P3** – **My Blocks**: lưu một phần tử/vùng đã dựng thành block riêng (collection `my-blocks`), chèn lại vào trang dạng **bản sao** hoặc **liên kết** (sửa bản gốc thì mọi trang cập nhật, có nút *Tách*), sửa bản gốc bằng chính Visual Builder tại `/builder/block/:id`, chặn vòng lặp tham chiếu.
+- **P5** – **Hoàn thiện**: rich text cho Paragraph (đậm/nghiêng/gạch chân/link, thanh công cụ nổi khi sửa trực tiếp), menu chuột phải trên canvas và cây Cấu trúc, kéo thả trực tiếp phần tử trên canvas không cần tay cầm, lịch sử phiên bản trong editor (xem trước, khôi phục, hoàn tác được), cache trang công khai + làm mới tự động khi xuất bản/sửa block/theme.
 - **P4** – **Themes**: collection `themes` (màu, font, bo góc, kiểu nút, link Google Fonts) với 4 preset chỉ đọc, nhân bản thành My Theme để chỉnh; global `site-settings` chọn theme của site, trang có thể ghi đè; hộp thoại *Quản lý theme* trong editor xem thử ngay trên canvas; bộ chọn màu lấy token theo theme đang dùng.
 
 ## Chạy thử
@@ -73,16 +74,27 @@ Chạy production không dùng Docker: `npm run build && npm start`. Migration t
 - **Áp dụng:** global **Cài đặt site** chọn theme của site; field *Ghi đè theme* trên trang (hoặc ô *Theme* trong Cài đặt trang của editor) ghi đè riêng cho trang đó. Thứ tự ưu tiên khi render: ghi đè của trang → theme site → mặc định (src/lib/themes.ts). Xoá theme đang dùng thì tự quay về bậc tiếp theo.
 - **Editor:** hộp thoại *Quản lý theme* xem thử ngay trên canvas khi chọn hoặc chỉnh theme (chưa lưu thì không ảnh hưởng gì). Bộ chọn màu trong tab Kiểu hiện đúng màu token của theme đang dùng. Mọi giá trị token được làm sạch (`normalizeTheme`) trước khi phát CSS.
 
+## Hoàn thiện (P5)
+
+- **Rich text:** Paragraph lưu HTML inline đã làm sạch bằng `sanitizeRichText` (chỉ `b/strong/i/em/u/s/a/br/code`, link chỉ http(s)/mailto/tel) ở cả hook lưu lẫn lúc render; văn bản thuần cũ hiển thị như trước. Nhấp đúp để sửa trực tiếp: thanh công cụ nổi B/I/U/S/Link, Ctrl+B/I/U, Enter xuống dòng, Ctrl+Enter xong. Panel phải có ô soạn tương tự.
+- **Menu chuột phải:** trên canvas và cây Cấu trúc: chọn cha, nhân bản, sao chép/dán, lưu thành My Block, tách block liên kết, xoá.
+- **Kéo thả trực tiếp:** nhấn giữ một phần tử trên canvas và kéo quá 6px là bắt đầu di chuyển (vẫn dùng thuật toán thả hiện có), Esc để huỷ. Tay cầm trên thanh công cụ và kéo từ panel vẫn hoạt động.
+- **Lịch sử phiên bản:** nút 🕘 ở thanh trên liệt kê các bản nháp/xuất bản của Payload, xem trước và *Khôi phục vào editor* như một bước chỉnh sửa (Ctrl+Z hoàn tác được); trang chỉ đổi khi bạn Lưu nháp/Xuất bản.
+- **Cache:** trang công khai đọc từ `unstable_cache` theo tag `pages`; hook `afterChange`/`afterDelete` của Pages, My Blocks, Themes và Site Settings gọi `revalidateTag` (hết hạn ngay) kèm `revalidatePath` của trang. Draft mode luôn đọc bản nháp mới nhất, không cache.
+
 ## Phím tắt trong Builder
 
 | Phím | Tác dụng |
 |---|---|
+| Chuột phải | Menu ngữ cảnh của phần tử |
+| Nhấn giữ + kéo | Di chuyển phần tử trên canvas |
+| Ctrl/⌘ + B / I / U (khi sửa chữ) | Đậm / nghiêng / gạch chân (Paragraph) |
 | Ctrl/⌘ + S | Lưu nháp |
 | Ctrl/⌘ + Z / Ctrl/⌘ + Shift + Z | Hoàn tác / làm lại |
 | Ctrl/⌘ + D | Nhân bản phần tử đang chọn |
 | Ctrl/⌘ + C / V | Sao chép / dán phần tử |
 | Delete | Xoá phần tử |
-| Nhấp đúp vào chữ | Sửa trực tiếp. Enter để lưu, Esc để huỷ (Paragraph dùng Ctrl+Enter để lưu) |
+| Nhấp đúp vào chữ | Sửa trực tiếp. Enter để lưu, Esc để huỷ (Paragraph: Enter xuống dòng, Ctrl+Enter để lưu) |
 | Esc | Bỏ chọn |
 
 ## Kiến trúc
@@ -100,7 +112,7 @@ src/
 │   ├── refs.ts              # My Block liên kết: resolveRefs (triển khai blockRef), chặn vòng lặp, nạp block lồng nhau
 │   ├── tree.ts              # thao tác cây: tìm, chèn, di chuyển, nhân bản
 │   ├── validate.ts          # kiểm tra/làm sạch nội dung trang và cây block trước khi lưu
-│   ├── sanitize.ts          # làm sạch mã SVG
+│   ├── sanitize.ts          # làm sạch mã SVG và rich text của Paragraph
 │   └── blocks/TabsRender.tsx
 ├── editor/                  # Visual Builder (client)
 │   ├── store.ts             # zustand + immer: cây, chọn, thiết bị, lịch sử, kéo thả
@@ -112,11 +124,16 @@ src/
 │   ├── BlockPreview.tsx     # preview thu nhỏ của block (iframe dùng chung renderer, lazy)
 │   ├── SaveBlockDialog.tsx  # hộp thoại "Lưu thành My Block"
 │   ├── ThemeDialog.tsx      # quản lý theme: preset, nhân bản, chỉnh token, xem thử trên canvas
+│   ├── HistoryDialog.tsx    # lịch sử phiên bản: xem trước, khôi phục vào editor
+│   ├── ContextMenu.tsx      # menu chuột phải (canvas + cây Cấu trúc)
+│   ├── RichToolbar.tsx      # thanh công cụ rich text dùng chung
 │   ├── RightPanel.tsx       # Nội dung / Kiểu / Nâng cao (+ panel blockRef, cài đặt block)
 │   ├── MediaPicker.tsx      # thư viện ảnh + upload
 │   ├── TopBar.tsx, Editor.tsx, api.ts, shortcuts.ts, labels.ts, editor.css
 ├── collections/             # Pages, MyBlocks, Themes, Media, Users
 ├── globals/SiteSettings.ts  # theme đang dùng của site
+├── lib/pages.ts             # server: lấy trang (cache theo tag `pages`, draft mode đọc tươi)
+├── lib/revalidate.ts        # làm mới cache sau khi xuất bản / sửa block / theme
 ├── lib/blocks.ts            # server: nạp cây block được trang tham chiếu (kể cả lồng nhau)
 ├── lib/themes.ts            # server: theme hiệu lực của trang (ghi đè → site → mặc định)
 ├── app/
@@ -190,17 +207,16 @@ Không cần viết UI cho panel: editor tự sinh control từ `contentControls
 ## Kiểm thử
 
 ```bash
-npm test          # unit test lõi: cây, CSS, validate, sanitize SVG, link/YouTube, My Blocks (resolveRefs, vòng lặp…), theme
+npm test          # unit test lõi: cây, CSS, validate, sanitize SVG/rich text, link/YouTube, My Blocks (resolveRefs, vòng lặp…), theme
 npm run typecheck
 ```
 
 ## Giới hạn hiện tại và việc tiếp theo
 
-- **Front-end đang render động** (`force-dynamic`) để luôn thấy bản mới sau khi xuất bản. Khi cần hiệu năng cao: chuyển sang cache và gọi `revalidatePath()` trong hook `afterChange` của Pages.
+- **Cache:** dữ liệu trang được cache (xem P5) nhưng route vẫn render động vì phải kiểm tra draft mode; muốn tĩnh hoàn toàn cần tách preview sang route riêng.
 - **Ảnh trong block Image lưu kèm `url`** (bản chụp tại lúc chọn). Nếu thay file trong thư viện media thì cần chọn lại ảnh. Sau này có thể populate theo `id` trong hook `afterRead`.
-- **Paragraph là văn bản thuần** (giữ xuống dòng). Rich text (đậm, nghiêng, link trong đoạn) sẽ làm sau.
+- **Rich text** chỉ gồm định dạng inline (chưa có danh sách, tiêu đề trong đoạn).
 - **Đổi schema** (thêm field hoặc collection): ở dev, schema tự push. Trước khi deploy, chạy `npm run payload migrate:create <tên>`.
 - **My Blocks:** preview trong thư viện dựng bằng iframe nhỏ (không chụp ảnh). Field `thumbnail` có sẵn trong admin nếu muốn gắn ảnh thủ công. Xoá block đang được trang dùng dạng liên kết không bị chặn (trang thật bỏ qua phần tử đó).
 - **Themes:** font ngoài chỉ nạp qua `fontUrl` (một stylesheet); chưa có bộ chọn Google Fonts tích hợp. Theme không có lịch sử phiên bản.
-- Lộ trình tiếp theo:
-  - **P5:** context menu, lịch sử phiên bản trong editor, kéo thả trực tiếp trên canvas không cần handle.
+- Gợi ý tiếp theo: rich text có danh sách, bộ chọn Google Fonts, khoá trang khi nhiều người cùng sửa, xuất/nhập block giữa các site.

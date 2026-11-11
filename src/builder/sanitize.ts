@@ -44,3 +44,56 @@ export function sanitizeSvg(input: unknown): string {
   cache.set(source, clean)
   return clean
 }
+
+// ---------- Rich text (Paragraph) ----------
+
+const RICH_TAGS = ['b', 'strong', 'i', 'em', 'u', 's', 'a', 'br', 'code']
+const richCache = new Map<string, string>()
+
+/**
+ * Làm sạch HTML inline của Paragraph: chỉ giữ đậm/nghiêng/gạch chân/gạch ngang/link/code/xuống dòng.
+ * Văn bản thuần đi qua đây được escape (&, <, >) nên render bằng innerHTML vẫn an toàn và giữ nguyên nội dung.
+ */
+export function sanitizeRichText(input: unknown): string {
+  if (typeof input !== 'string') return ''
+  const source = input.slice(0, 50_000)
+  const hit = richCache.get(source)
+  if (hit !== undefined) return hit
+  const clean = sanitizeHtml(source, {
+    allowedTags: RICH_TAGS,
+    allowedAttributes: { a: ['href', 'target', 'rel'] },
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    allowProtocolRelative: false,
+    transformTags: {
+      a: (tagName, attribs) => ({
+        tagName,
+        attribs: attribs.target === '_blank' ? { ...attribs, rel: 'noopener noreferrer' } : attribs,
+      }),
+      // contentEditable của trình duyệt hay sinh <div>/<p>: đổi thành xuống dòng
+      div: () => ({ tagName: 'br', attribs: {} }),
+      p: () => ({ tagName: 'br', attribs: {} }),
+    },
+    textFilter: (text) => text,
+  })
+    // <br> do div/p sinh ra bị bọc nội dung: "<br>abc</br>" -> "<br>abc"; bỏ <br> thừa cuối
+    .replace(/<\/br>/g, '')
+    .replace(/^(<br\s*\/?>)+/, '')
+    .replace(/(<br\s*\/?>)+$/, '')
+  if (richCache.size > 500) richCache.clear()
+  richCache.set(source, clean)
+  return clean
+}
+
+/** Văn bản thuần từ rich text (nhãn ở cây Cấu trúc, gợi ý tên block…) */
+export function richToPlain(input: unknown): string {
+  if (typeof input !== 'string') return ''
+  return input
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}

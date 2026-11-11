@@ -5,6 +5,8 @@ import { collectRefIds } from '@/builder/refs'
 import type { PageContent } from '@/builder/types'
 import { getMyBlock, refreshBlockLibrary, refreshThemes } from './api'
 import { Canvas } from './Canvas'
+import { ContextMenu } from './ContextMenu'
+import { HistoryDialog } from './HistoryDialog'
 import { LeftPanel } from './LeftPanel'
 import { RightPanel } from './RightPanel'
 import { SaveBlockDialog } from './SaveBlockDialog'
@@ -61,6 +63,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
   useBlockLibrary()
   const saveBlockFor = useEditor((s) => s.saveBlockFor)
   const themeDialog = useEditor((s) => s.themeDialog)
+  const historyDialog = useEditor((s) => s.historyDialog)
 
   return (
     <div className="ed">
@@ -72,6 +75,8 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       </div>
       {saveBlockFor && <SaveBlockDialog nodeId={saveBlockFor} />}
       {themeDialog && <ThemeDialog />}
+      {historyDialog && <HistoryDialog />}
+      <ContextMenu />
       <Toasts />
     </div>
   )

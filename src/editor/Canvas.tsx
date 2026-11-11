@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom'
 import { compileTreeCss } from '@/builder/css'
 import { resolveRefs } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
+import { sanitizeRichText } from '@/builder/sanitize'
 import { RenderNode } from '@/builder/Renderer'
 import { BASE_CSS, themeToCss } from '@/builder/theme'
 import { findNode, getAncestors } from '@/builder/tree'
@@ -28,6 +29,8 @@ body{user-select:none;-webkit-user-select:none}
 .bld-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;background:#f1f5f9;color:#64748b;font:13px/1.4 system-ui,sans-serif;border:1px dashed #cbd5e1;border-radius:6px;text-align:center;padding:12px}
 [data-node-id] iframe{pointer-events:none}
 [contenteditable]{outline:none;cursor:text;user-select:text;-webkit-user-select:text}
+[contenteditable] a{pointer-events:none}
+body.is-dragging,body.is-dragging *{cursor:grabbing!important}
 a[data-node-id]{cursor:default}
 [data-linked]{cursor:default}
 [data-linked] [contenteditable]{cursor:default}
@@ -49,12 +52,12 @@ function startInlineEdit(doc: Document, el: HTMLElement, nodeId: string) {
   const node = findNode(s.root, nodeId)
   const def = node ? getBlock(node.type) : undefined
   if (!node || !def?.inlineEdit || s.editingId) return
-  const { prop, multiline } = def.inlineEdit
+  const { prop, multiline, rich } = def.inlineEdit
   const original = String(node.props[prop] ?? '')
 
   s.select(nodeId)
   s.setEditing(nodeId)
-  el.setAttribute('contenteditable', 'plaintext-only')
+  el.setAttribute('contenteditable', rich ? 'true' : 'plaintext-only')
   if (!el.isContentEditable) el.setAttribute('contenteditable', 'true')
   el.focus()
   const range = doc.createRange()
@@ -64,27 +67,36 @@ function startInlineEdit(doc: Document, el: HTMLElement, nodeId: string) {
   sel?.addRange(range)
 
   let cancelled = false
+  const RICH_KEYS: Record<string, string> = { b: 'bold', i: 'italic', u: 'underline' }
   const onKey = (e: KeyboardEvent) => {
     e.stopPropagation()
+    const mod = e.metaKey || e.ctrlKey
     if (e.key === 'Escape') {
       cancelled = true
       el.blur()
-    } else if (e.key === 'Enter' && (!multiline || e.metaKey || e.ctrlKey)) {
+    } else if (e.key === 'Enter' && (!multiline || mod)) {
       e.preventDefault()
       el.blur()
+    } else if (e.key === 'Enter' && rich) {
+      // xuống dòng bằng <br> thay vì <div> của trình duyệt
+      e.preventDefault()
+      doc.execCommand('insertLineBreak')
+    } else if (rich && mod && RICH_KEYS[e.key.toLowerCase()]) {
+      e.preventDefault()
+      doc.execCommand(RICH_KEYS[e.key.toLowerCase()])
     }
   }
   const finish = () => {
     el.removeEventListener('keydown', onKey)
     el.removeAttribute('contenteditable')
     doc.getSelection()?.removeAllRanges()
-    const value = (el.innerText ?? '').replace(/\n$/, '')
     useEditor.getState().setEditing(null)
     if (cancelled) {
-      el.textContent = original
+      if (rich) el.innerHTML = sanitizeRichText(original)
+      else el.textContent = original
       return
     }
-    const next = multiline ? value : value.replace(/\s*\n\s*/g, ' ')
+    const next = rich ? sanitizeRichText(el.innerHTML) : multiline ? (el.innerText ?? '').replace(/\n$/, '') : (el.innerText ?? '').replace(/\s*\n\s*/g, ' ')
     if (next !== original) useEditor.getState().updateProps(nodeId, { [prop]: next })
   }
   el.addEventListener('keydown', onKey)
@@ -129,19 +141,80 @@ export function Canvas() {
     const store = useEditor.getState
     let raf = 0
     let lastPoint: { x: number; y: number } | null = null
+    /** Tính vị trí thả theo rAF cho cả kéo HTML5 (từ panel) lẫn kéo bằng chuột trên canvas */
+    const scheduleDrop = (x: number, y: number) => {
+      lastPoint = { x, y }
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const s = store()
+        if (!s.drag || !lastPoint) return
+        s.setDrop(computeDrop(doc, s.root, s.drag, lastPoint.x, lastPoint.y))
+      })
+    }
+
+    // ----- kéo thả trực tiếp: nhấn giữ một phần tử rồi kéo quá 6px -----
+    let press: { id: string; x: number; y: number } | null = null
+    let pointerDrag = false
+    const endPointerDrag = (commit: boolean) => {
+      if (!pointerDrag) return
+      pointerDrag = false
+      doc.body.classList.remove('is-dragging')
+      if (commit) store().commitDrop()
+      else store().endDrag()
+    }
+    const onMouseDown = (e: MouseEvent) => {
+      press = null
+      if (e.button !== 0 || store().editingId || (e.target as HTMLElement).isContentEditable) return
+      const id = nodeElement(e.target)?.dataset.nodeId
+      if (id && id !== 'root') press = { id, x: e.clientX, y: e.clientY }
+    }
+    const onMouseUp = () => {
+      press = null
+      endPointerDrag(true)
+    }
 
     const onMove = (e: MouseEvent) => {
-      if (store().drag || store().editingId) return
+      if (press && !store().drag && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 6) {
+        store().select(press.id)
+        store().startDrag({ kind: 'move', nodeId: press.id })
+        pointerDrag = true
+        doc.body.classList.add('is-dragging')
+        press = null
+      }
+      if (store().drag) {
+        if (pointerDrag) scheduleDrop(e.clientX, e.clientY)
+        return
+      }
+      if (store().editingId) return
       store().hover(nodeElement(e.target)?.dataset.nodeId ?? null)
     }
     const onLeave = () => store().hover(null)
     const onClick = (e: MouseEvent) => {
       const t = e.target as HTMLElement
+      if (t.closest('a')) e.preventDefault() // không bao giờ điều hướng trong canvas
       if (t.isContentEditable) return
       e.preventDefault() // chặn điều hướng của link/nút trong canvas
       const el = nodeElement(t)
       if (el) store().select(el.dataset.nodeId!)
     }
+    const onContextMenu = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).isContentEditable) return
+      e.preventDefault()
+      const id = nodeElement(e.target)?.dataset.nodeId ?? 'root'
+      store().select(id)
+      // toạ độ trong iframe -> toạ độ cửa sổ editor (iframe có thể bị thu nhỏ)
+      const frame = iframeRef.current?.getBoundingClientRect()
+      const scale = frame ? frame.width / (doc.documentElement.clientWidth || 1) : 1
+      store().openContextMenu({ x: (frame?.left ?? 0) + e.clientX * scale, y: (frame?.top ?? 0) + e.clientY * scale, nodeId: id })
+    }
+    const onKeyCapture = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && pointerDrag) {
+        e.stopPropagation()
+        endPointerDrag(false)
+      }
+    }
+    const onWindowUp = () => endPointerDrag(false)
     const onDblClick = (e: MouseEvent) => {
       const el = nodeElement(e.target)
       if (el) startInlineEdit(doc, el, el.dataset.nodeId!)
@@ -150,15 +223,8 @@ export function Canvas() {
       const drag = store().drag
       if (!drag) return
       e.preventDefault()
-      if (e.dataTransfer) e.dataTransfer.dropEffect = drag.kind === 'new' ? 'copy' : 'move'
-      lastPoint = { x: e.clientX, y: e.clientY }
-      if (raf) return
-      raf = requestAnimationFrame(() => {
-        raf = 0
-        const s = store()
-        if (!s.drag || !lastPoint) return
-        s.setDrop(computeDrop(doc, s.root, s.drag, lastPoint.x, lastPoint.y))
-      })
+      if (e.dataTransfer) e.dataTransfer.dropEffect = drag.kind === 'move' ? 'move' : 'copy'
+      scheduleDrop(e.clientX, e.clientY)
     }
     const onDrop = (e: DragEvent) => {
       if (!store().drag) return
@@ -170,6 +236,11 @@ export function Canvas() {
     }
     const onSubmit = (e: Event) => e.preventDefault()
 
+    doc.addEventListener('mousedown', onMouseDown)
+    doc.addEventListener('mouseup', onMouseUp)
+    doc.addEventListener('contextmenu', onContextMenu)
+    doc.addEventListener('keydown', onKeyCapture, true)
+    window.addEventListener('mouseup', onWindowUp)
     doc.addEventListener('mousemove', onMove)
     doc.addEventListener('mouseleave', onLeave)
     doc.addEventListener('click', onClick, true)
@@ -181,6 +252,11 @@ export function Canvas() {
     doc.addEventListener('submit', onSubmit, true)
     return () => {
       cancelAnimationFrame(raf)
+      doc.removeEventListener('mousedown', onMouseDown)
+      doc.removeEventListener('mouseup', onMouseUp)
+      doc.removeEventListener('contextmenu', onContextMenu)
+      doc.removeEventListener('keydown', onKeyCapture, true)
+      window.removeEventListener('mouseup', onWindowUp)
       doc.removeEventListener('mousemove', onMove)
       doc.removeEventListener('mouseleave', onLeave)
       doc.removeEventListener('click', onClick, true)

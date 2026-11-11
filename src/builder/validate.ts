@@ -4,7 +4,7 @@
  */
 import { BLOCK_REF_TYPE, refBlockId } from './refs'
 import { canContain, canSaveAsBlock, getSchema, ID_PATTERN, MAX_DEPTH, MAX_NODES } from './schema'
-import { sanitizeSvg } from './sanitize'
+import { sanitizeRichText, sanitizeSvg } from './sanitize'
 import type { BuilderNode, NodeStyles, PageContent, StyleMap } from './types'
 import { createEmptyContent } from './tree'
 
@@ -60,6 +60,7 @@ export function validateContent(input: unknown): PageContent {
     const props: Record<string, unknown> =
       raw.props && typeof raw.props === 'object' && !Array.isArray(raw.props) ? { ...raw.props } : {}
     if (raw.type === 'svg') props.code = sanitizeSvg(props.code)
+    if (raw.type === 'paragraph') props.text = sanitizeRichText(props.text)
     if (raw.type === BLOCK_REF_TYPE) {
       // blockRef chỉ giữ id block và tên hiển thị; cờ `linked`/`refError` của cây render không bao giờ được lưu
       const blockId = refBlockId({ ...raw, props })

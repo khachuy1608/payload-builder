@@ -166,6 +166,11 @@ function Navigator() {
           onDragLeave={() => setOver(null)}
           onDrop={(e) => onDrop(e, node)}
           onClick={() => useEditor.getState().select(node.id)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            useEditor.getState().select(node.id)
+            useEditor.getState().openContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id })
+          }}
           onMouseEnter={() => useEditor.getState().hover(node.id)}
           onMouseLeave={() => useEditor.getState().hover(null)}
         >

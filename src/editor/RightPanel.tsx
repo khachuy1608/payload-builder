@@ -1,10 +1,11 @@
 'use client'
 
 import { ChevronDown, ChevronRight, ExternalLink, Monitor, Palette, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
 import { refBlockId } from '@/builder/refs'
+import { sanitizeRichText } from '@/builder/sanitize'
 import { getBlock } from '@/builder/registry'
 import { COLOR_TOKEN_LABELS } from '@/builder/theme'
 import { findNode, genId, getAncestors } from '@/builder/tree'
@@ -12,6 +13,7 @@ import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@
 import { slugify } from '@/lib/slug'
 import { nodeLabel } from './labels'
 import { MediaPicker } from './MediaPicker'
+import { RichToolbar } from './RichToolbar'
 import { type BlockScope, effectiveTheme, useEditor } from './store'
 
 type Tab = 'content' | 'style' | 'advanced'
@@ -113,6 +115,12 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
           />
         </Field>
       )
+    case 'richtext':
+      return (
+        <Field label={control.label} help={control.help ?? 'Đậm, nghiêng, gạch chân, liên kết. Enter để xuống dòng.'}>
+          <RichTextField value={String(node.props[control.prop] ?? '')} onChange={(v) => update(v)} />
+        </Field>
+      )
     case 'textarea':
     case 'code':
       return (
@@ -150,6 +158,51 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
     case 'media':
       return <MediaField label={control.label} value={(node.props[control.prop] as MediaValue | null) ?? null} onChange={(v) => update(v, false)} />
   }
+}
+
+/** Ô soạn rich text (contentEditable) – không điều khiển hoàn toàn để con trỏ không bị nhảy khi gõ */
+function RichTextField({ value, onChange }: { value: string; onChange: (html: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const last = useRef<string | null>(null)
+  useEffect(() => {
+    if (ref.current && value !== last.current) {
+      ref.current.innerHTML = sanitizeRichText(value)
+      last.current = value
+    }
+  }, [value])
+  const emit = () => {
+    if (!ref.current) return
+    const html = sanitizeRichText(ref.current.innerHTML)
+    last.current = html
+    onChange(html)
+  }
+  return (
+    <div className="ed-rich">
+      <RichToolbar
+        compact
+        exec={(cmd, v) => {
+          ref.current?.focus()
+          document.execCommand(cmd, false, v)
+          emit()
+        }}
+      />
+      <div
+        ref={ref}
+        className="ed-input ed-rich-area"
+        contentEditable
+        suppressContentEditableWarning
+        onInput={emit}
+        onBlur={emit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !(e.ctrlKey || e.metaKey)) {
+            e.preventDefault()
+            document.execCommand('insertLineBreak')
+            emit()
+          }
+        }}
+      />
+    </div>
+  )
 }
 
 function Field({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {

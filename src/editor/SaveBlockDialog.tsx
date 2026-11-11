@@ -4,6 +4,7 @@ import { Loader2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { BLOCK_REF_TYPE } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
+import { richToPlain } from '@/builder/sanitize'
 import { findNode, genId } from '@/builder/tree'
 import { createMyBlock } from './api'
 import { BlockPreview } from './BlockPreview'
@@ -102,6 +103,6 @@ export function SaveBlockDialog({ nodeId }: { nodeId: string }) {
 
 function suggestName(type: string, props: Record<string, unknown>): string {
   const label = getBlock(type)?.label ?? type
-  const txt = typeof props.text === 'string' ? props.text.trim().slice(0, 40) : ''
+  const txt = typeof props.text === 'string' ? richToPlain(props.text).trim().slice(0, 40) : ''
   return txt ? `${label}: ${txt}` : label
 }

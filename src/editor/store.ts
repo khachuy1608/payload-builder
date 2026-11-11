@@ -122,6 +122,10 @@ export interface EditorState {
   themePreview: ThemeTokens | null
   themeDialog: boolean
 
+  /** Menu chuột phải (toạ độ theo cửa sổ editor) */
+  contextMenu: { x: number; y: number; nodeId: string } | null
+  historyDialog: boolean
+
   selectedId: string | null
   hoveredId: string | null
   editingId: string | null
@@ -189,6 +193,11 @@ export interface EditorActions {
   setPageTheme(id: string | null): void
   setThemePreview(tokens: ThemeTokens | null): void
   openThemeDialog(open: boolean): void
+
+  openContextMenu(menu: EditorState['contextMenu']): void
+  openHistory(open: boolean): void
+  /** Đưa nội dung một phiên bản cũ vào editor như một bước chỉnh sửa (hoàn tác được) */
+  restoreVersion(data: { root: BuilderNode; title: string; slug: string }): void
 
   insertBlock(type: string, target?: DropTarget): string | null
   insertNode(node: BuilderNode, target: DropTarget): boolean
@@ -294,6 +303,8 @@ export const useEditor = create<Store>()(
       pageThemeId: null,
       themePreview: null,
       themeDialog: false,
+      contextMenu: null,
+      historyDialog: false,
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -479,6 +490,26 @@ export const useEditor = create<Store>()(
           s.themeDialog = open
           if (!open) s.themePreview = null
         }),
+
+      openContextMenu: (menu) =>
+        set((s) => {
+          s.contextMenu = menu
+        }),
+      openHistory: (open) =>
+        set((s) => {
+          s.historyDialog = open
+        }),
+      restoreVersion: (data) => {
+        commit((_root, state) => {
+          state.root = data.root
+          state.title = data.title
+          state.slug = data.slug
+        })
+        set((s) => {
+          s.selectedId = null
+          s.hoveredId = null
+        })
+      },
 
       detach: (id) => {
         const state = get()
