@@ -3,6 +3,7 @@
 import { ArrowLeft, ChevronDown, ExternalLink, History, LayoutTemplate, Loader2, Monitor, Redo2, Smartphone, Tablet, Undo2 } from 'lucide-react'
 import { PublishMenu } from './PublishMenu'
 import type { Device } from '@/builder/types'
+import { LOCALES } from '@/lib/locale'
 import { saveBlock, savePage } from './api'
 import { useEditor } from './store'
 
@@ -49,6 +50,7 @@ export function TopBar() {
         </div>
         <DeviceSwitch device={device} />
         <div className="ed-top-right">
+          <LocaleSwitch />
           <UndoRedo canUndo={canUndo} canRedo={canRedo} />
           <button className="ed-btn ed-btn--primary" onClick={() => saveBlock()} disabled={saving || readOnly} title={readOnly ? 'Chỉ chủ sở hữu mới lưu được' : 'Ctrl+S'}>
             {saving && <Loader2 size={15} className="ed-spin" />} Lưu block
@@ -72,7 +74,7 @@ export function TopBar() {
         return
       }
     }
-    const url = `/preview?slug=${encodeURIComponent(useEditor.getState().slug)}`
+    const url = `/preview?slug=${encodeURIComponent(useEditor.getState().slug)}&locale=${encodeURIComponent(useEditor.getState().locale)}`
     if (win) win.location.href = url
     else window.open(url, '_blank')
   }
@@ -94,6 +96,7 @@ export function TopBar() {
       <DeviceSwitch device={device} />
 
       <div className="ed-top-right">
+        <LocaleSwitch />
         <UndoRedo canUndo={canUndo} canRedo={canRedo} />
         <button className="ed-icon-btn" title="Mẫu trang" onClick={() => useEditor.getState().openTemplateDialog(true)}>
           <LayoutTemplate size={17} />
@@ -118,6 +121,27 @@ export function TopBar() {
         </div>
       </div>
     </header>
+  )
+}
+
+/** Ngôn ngữ đang sửa: đổi = tải lại editor với ?locale= (nội dung localized của ngôn ngữ đó, thiếu thì lấy bản mặc định) */
+function LocaleSwitch() {
+  const locale = useEditor((s) => s.locale)
+  if (LOCALES.length < 2) return null
+  const change = (code: string) => {
+    if (useEditor.getState().dirty && !confirm('Có thay đổi chưa lưu. Đổi ngôn ngữ sẽ bỏ các thay đổi này?')) return
+    const url = new URL(window.location.href)
+    url.searchParams.set('locale', code)
+    window.location.href = url.toString()
+  }
+  return (
+    <select className="ed-input ed-locale" value={locale} title="Ngôn ngữ đang sửa" aria-label="Ngôn ngữ" onChange={(e) => change(e.target.value)}>
+      {LOCALES.map((l) => (
+        <option key={l.code} value={l.code}>
+          {l.label}
+        </option>
+      ))}
+    </select>
   )
 }
 

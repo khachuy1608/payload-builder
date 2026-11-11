@@ -13,6 +13,7 @@ import {
   Heading as HeadingIcon,
   Image as ImageIcon,
   ChevronsDown,
+  Languages,
   ScrollText,
   LayoutTemplate,
   Minus,
@@ -30,6 +31,7 @@ import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
 import { richHasBlock, sanitizeContentHtml, sanitizeRichText, sanitizeSvg } from './sanitize'
+import { DEFAULT_LOCALE, LOCALES } from '../lib/locale'
 import { genId } from './tree'
 import type { BlockRefProps, BuilderNode, MediaValue } from './types'
 
@@ -411,6 +413,47 @@ const BLOCK_LIST: BlockDefinition[] = [
             </a>
           )}
         </div>
+      )
+    },
+  },
+  {
+    type: 'languageSwitcher',
+    label: 'Chuyển ngôn ngữ',
+    category: 'nav',
+    icon: Languages,
+    defaults: () => ({ props: { variant: 'links', showLabel: true }, styles: { desktop: { display: 'inline-flex', gap: '8px', alignItems: 'center' } } }),
+    contentControls: [
+      { type: 'select', prop: 'variant', label: 'Kiểu', options: [{ value: 'links', label: 'Các link (VI | EN)' }, { value: 'select', label: 'Hộp chọn' }] },
+      { type: 'toggle', prop: 'showLabel', label: 'Hiện tên đầy đủ (Tiếng Việt / English) thay vì mã', help: 'Link trỏ tới cùng trang ở ngôn ngữ khác (/en/...). Nội dung từng ngôn ngữ sửa bằng ô chọn ngôn ngữ trên thanh trên của builder.' },
+    ],
+    styleGroups: ['layout', 'typography', 'spacing', 'background', 'border'],
+    Render: ({ node, attrs }) => {
+      const options = Array.isArray(node.props.options) ? (node.props.options as { code: string; label: string; href: string; current: boolean }[]) : LOCALES.map((l) => ({ code: l.code, label: l.label, href: l.code === DEFAULT_LOCALE ? '/' : `/${l.code}`, current: l.code === DEFAULT_LOCALE }))
+      const label = (o: { code: string; label: string }) => (node.props.showLabel === false ? o.code.toUpperCase() : o.label)
+      if (text(node.props.variant) === 'select') {
+        return (
+          <div {...attrs} className={`${attrs.className} b-lang`}>
+            <select className="b-input b-lang-select" data-lang-switch="" defaultValue={options.find((o) => o.current)?.href ?? ''} aria-label="Ngôn ngữ">
+              {options.map((o) => (
+                <option key={o.code} value={o.href}>
+                  {label(o)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+      return (
+        <nav {...attrs} className={`${attrs.className} b-lang`} aria-label="Ngôn ngữ">
+          {options.map((o, i) => (
+            <span key={o.code} className="b-lang-item">
+              {i > 0 && <span className="b-lang-sep">|</span>}
+              <a href={o.href} hrefLang={o.code} lang={o.code} className={`b-lang-link${o.current ? ' is-active' : ''}`} aria-current={o.current ? 'page' : undefined}>
+                {label(o)}
+              </a>
+            </span>
+          ))}
+        </nav>
       )
     },
   },

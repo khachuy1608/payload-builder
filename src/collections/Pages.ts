@@ -34,7 +34,7 @@ export const Pages: CollectionConfig = {
     maxPerDoc: 50,
   },
   fields: [
-    { name: 'title', label: 'Tiêu đề', type: 'text', required: true },
+    { name: 'title', label: 'Tiêu đề', type: 'text', required: true, localized: true },
     {
       name: 'slug',
       label: 'Đường dẫn (slug)',
@@ -66,8 +66,8 @@ export const Pages: CollectionConfig = {
       label: 'SEO',
       type: 'group',
       fields: [
-        { name: 'metaTitle', label: 'Tiêu đề (meta title)', type: 'text', maxLength: 120, admin: { description: 'Để trống dùng tiêu đề trang. Trang mẫu động nhận {{trường}}.' } },
-        { name: 'metaDescription', label: 'Mô tả (meta description)', type: 'textarea', maxLength: 320 },
+        { name: 'metaTitle', label: 'Tiêu đề (meta title)', type: 'text', maxLength: 120, localized: true, admin: { description: 'Để trống dùng tiêu đề trang. Trang mẫu động nhận {{trường}}.' } },
+        { name: 'metaDescription', label: 'Mô tả (meta description)', type: 'textarea', maxLength: 320, localized: true },
         { name: 'ogImage', label: 'Ảnh chia sẻ (Open Graph)', type: 'upload', relationTo: 'media' },
         { name: 'noIndex', label: 'Không cho máy tìm kiếm lập chỉ mục (noindex)', type: 'checkbox', defaultValue: false },
         { name: 'canonical', label: 'Canonical URL', type: 'text' },
@@ -114,6 +114,7 @@ export const Pages: CollectionConfig = {
       name: 'content',
       label: 'Nội dung (JSON từ Visual Builder)',
       type: 'json',
+      localized: true,
       admin: { hidden: true },
     },
   ],

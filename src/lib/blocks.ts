@@ -2,6 +2,7 @@ import type { Payload, PayloadRequest } from 'payload'
 import { collectRefIds, loadRefTrees } from '../builder/refs'
 import type { BuilderNode, PageContent } from '../builder/types'
 import { validateBlockTree } from '../builder/validate'
+import { DEFAULT_LOCALE, type LocaleCode } from './locale'
 
 /** Cây gốc đã làm sạch của một doc my-blocks; null nếu dữ liệu hỏng */
 export function normalizeBlockTree(input: unknown): BuilderNode | null {
@@ -20,12 +21,14 @@ export async function loadBlockTrees(
   payload: Payload,
   ids: Iterable<string>,
   req?: PayloadRequest,
+  locale?: LocaleCode,
 ): Promise<Map<string, BuilderNode>> {
   return loadRefTrees(ids, async (batch) => {
     const res = await payload.find({
       collection: 'my-blocks',
       where: { id: { in: batch.map((id) => (/^\d+$/.test(id) ? Number(id) : id)) } },
       depth: 0,
+      ...(locale ? { locale, fallbackLocale: DEFAULT_LOCALE } : {}),
       limit: batch.length,
       pagination: false,
       overrideAccess: true,
@@ -39,7 +42,7 @@ export async function loadBlockTrees(
 }
 
 /** Các block mà nội dung trang tham chiếu tới, sẵn sàng truyền cho PageRenderer */
-export async function loadBlocksForContent(payload: Payload, content: PageContent): Promise<Map<string, BuilderNode>> {
+export async function loadBlocksForContent(payload: Payload, content: PageContent, locale?: LocaleCode): Promise<Map<string, BuilderNode>> {
   const ids = collectRefIds(content.root)
-  return ids.size ? loadBlockTrees(payload, ids) : new Map()
+  return ids.size ? loadBlockTrees(payload, ids, undefined, locale) : new Map()
 }

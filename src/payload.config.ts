@@ -18,6 +18,7 @@ import { Themes } from './collections/Themes'
 import { SiteSettings } from './globals/SiteSettings'
 import { Users } from './collections/Users'
 import { isStaffUser } from './lib/access'
+import { DEFAULT_LOCALE, LOCALES } from './lib/locale'
 import { getSources } from './lib/data'
 import { presenceEndpoints } from './lib/presence'
 import { scheduleEndpoints } from './lib/schedule'
@@ -35,6 +36,8 @@ export default buildConfig({
   },
   collections: [Pages, MyBlocks, Themes, StylePresets, Comments, FormSubmissions, Redirects, Media, Users, Customers, Bookings, ...CONTENT_COLLECTIONS],
   editor: lexicalEditor(),
+  // Đa ngôn ngữ: trường localized có bản riêng cho từng ngôn ngữ, thiếu thì fallback về mặc định
+  localization: { locales: LOCALES.map((l) => ({ code: l.code, label: l.label })), defaultLocale: DEFAULT_LOCALE, fallback: true },
   // Email: SMTP qua biến môi trường (quên mật khẩu, thông báo form); không cấu hình thì ghi ra console
   email: process.env.SMTP_HOST
     ? nodemailerAdapter({

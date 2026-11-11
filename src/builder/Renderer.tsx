@@ -93,6 +93,8 @@ export function PageRenderer({
   data,
   params,
   user,
+  locale,
+  path,
 }: {
   content: PageContent
   mode?: RenderMode
@@ -104,10 +106,13 @@ export function PageRenderer({
   params?: UrlParams
   /** Người đang đăng nhập (đã lọc trường công khai) – cho {{user.*}} và điều kiện hiển thị */
   user?: DataRecord | null
+  /** Ngôn ngữ + đường dẫn hiện tại (block Chuyển ngôn ngữ) */
+  locale?: string
+  path?: string
 }) {
   const lookup: BlockLookup = typeof blocks === 'function' ? blocks : (id) => blocks?.get(id)
   const dataLookup: DataLookup = typeof data === 'function' ? data : (id) => data?.[id]
-  const root = resolveData(resolveRefs(content.root, lookup), dataLookup, { params, user: user ?? null, keepHidden: mode === 'editor' })
+  const root = resolveData(resolveRefs(content.root, lookup), dataLookup, { params, user: user ?? null, keepHidden: mode === 'editor', locale, path })
   const css = compileTreeCss(root)
   return (
     <>

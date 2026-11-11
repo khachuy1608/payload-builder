@@ -11,6 +11,7 @@ import * as migration_20261111_135634_phase2_versions from './20261111_135634_ph
 import * as migration_20261111_140719_phase2_roles_comments from './20261111_140719_phase2_roles_comments';
 import * as migration_20261111_141528_phase2_tokens from './20261111_141528_phase2_tokens';
 import * as migration_20261111_143107_phase3_content from './20261111_143107_phase3_content';
+import * as migration_20261111_144735_phase4_i18n from './20261111_144735_phase4_i18n';
 
 export const migrations = [
   {
@@ -76,6 +77,11 @@ export const migrations = [
   {
     up: migration_20261111_143107_phase3_content.up,
     down: migration_20261111_143107_phase3_content.down,
-    name: '20261111_143107_phase3_content'
+    name: '20261111_143107_phase3_content',
+  },
+  {
+    up: migration_20261111_144735_phase4_i18n.up,
+    down: migration_20261111_144735_phase4_i18n.down,
+    name: '20261111_144735_phase4_i18n'
   },
 ];

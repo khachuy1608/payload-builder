@@ -2,6 +2,7 @@ import config from '@payload-config'
 import { draftMode, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
+import { isLocale, localePath } from '@/lib/locale'
 import { slugify } from '@/lib/slug'
 
 /** Bật draft mode (chỉ khi đã đăng nhập admin) rồi chuyển tới trang cần xem */
@@ -14,5 +15,6 @@ export async function GET(request: Request) {
     return new Response('Bạn cần đăng nhập trang quản trị để xem bản nháp.', { status: 401 })
   }
   ;(await draftMode()).enable()
-  redirect(!slug || slug === 'home' ? '/' : `/${slug}`)
+  const locale = url.searchParams.get('locale')
+  redirect(localePath(isLocale(locale) ? locale : 'vi', slug || 'home'))
 }

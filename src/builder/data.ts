@@ -7,6 +7,7 @@
  * - `resolveData()` chạy sau `resolveRefs()`: thay node tĩnh bằng node đã gắn dữ liệu. Bản sao thứ 2 trở đi nhận cờ
  *   `linked: 'inner'` nên trong editor chỉ phần tử mẫu (bản đầu) chọn/sửa được.
  */
+import { DEFAULT_LOCALE, LOCALES, switchLocalePath } from '../lib/locale'
 import type { BuilderNode } from './types'
 
 export type DataMode = 'list' | 'one'
@@ -345,6 +346,9 @@ export interface ResolveContext {
   user?: DataRecord | null
   /** editor: giữ phần tử bị điều kiện ẩn (đánh dấu) thay vì bỏ */
   keepHidden?: boolean
+  /** Ngôn ngữ và đường dẫn hiện tại (cho block Chuyển ngôn ngữ) */
+  locale?: string
+  path?: string
 }
 
 /**
@@ -390,6 +394,13 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
       return { ...node, props: { ...node.props, pages: String(primary?.totalPages ?? 1), current: String(primary?.page ?? pageFromParams(params)), hrefPattern: pageHrefPattern(params) } }
     }
     if (node.type === 'searchBox') return { ...node, props: { ...node.props, value: params.q ?? '', total: primary ? String(primary.total) : '' } }
+    if (node.type === 'languageSwitcher') {
+      const cur = ctx.locale ?? DEFAULT_LOCALE
+      const path = ctx.path ?? '/'
+      const query = Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : ''
+      const options = LOCALES.map((l) => ({ code: l.code, label: l.label, href: switchLocalePath(path + query, l.code), current: l.code === cur }))
+      return { ...node, props: { ...node.props, options, current: cur } }
+    }
     // form hồ sơ: luôn nhận người đang đăng nhập từ ngữ cảnh (không phụ thuộc props có {{user.*}} hay không)
     if (node.type === 'accountForm') {
       const u = (user ?? {}) as Record<string, unknown>

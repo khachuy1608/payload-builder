@@ -39,7 +39,7 @@ export function pageSeoFrom(seo: Record<string, unknown> | null | undefined): Pa
 const abs = (site: SiteInfo, u: string | null | undefined) => (!u ? undefined : /^https?:/.test(u) ? u : site.url + u)
 
 /** Metadata của Next từ SEO trang + cài đặt site; trang mẫu động bind {{trường}} theo bản ghi */
-export function buildMetadata(args: { site: SiteInfo; seo: PageSeo; title: string; path: string; record?: DataRecord | null; draft?: boolean }): Metadata {
+export function buildMetadata(args: { site: SiteInfo; seo: PageSeo; title: string; path: string; record?: DataRecord | null; draft?: boolean; locale?: string; languages?: { code: string; path: string }[] }): Metadata {
   const { site, seo, record } = args
   const bind = (v: string | null | undefined) => (v && record ? bindString(v, record) : v) ?? undefined
   const metaTitle = (bind(seo.metaTitle) ?? '').replace(/\{\{[^}]*\}\}/g, '').trim()
@@ -51,9 +51,9 @@ export function buildMetadata(args: { site: SiteInfo; seo: PageSeo; title: strin
   return {
     title: metaTitle ? { absolute: metaTitle } : title,
     description,
-    alternates: { canonical },
+    alternates: { canonical, ...(args.languages?.length ? { languages: Object.fromEntries(args.languages.map((l) => [l.code, site.url + l.path])) } : {}) },
     robots: seo.noIndex || args.draft ? { index: false, follow: false } : undefined,
-    openGraph: { title, description, url: canonical, siteName: site.siteName, type: 'website', ...(image ? { images: [{ url: image }] } : {}) },
+    openGraph: { title, description, url: canonical, siteName: site.siteName, type: 'website', ...(args.locale ? { locale: args.locale } : {}), ...(image ? { images: [{ url: image }] } : {}) },
     twitter: { card: image ? 'summary_large_image' : 'summary', title, description, ...(image ? { images: [image] } : {}) },
     icons: site.favicon ? { icon: site.favicon } : undefined,
   }

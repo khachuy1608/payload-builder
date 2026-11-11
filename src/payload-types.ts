@@ -121,14 +121,14 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
-  fallbackLocale: null;
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('vi' | 'en') | ('vi' | 'en')[];
   globals: {
     'site-settings': SiteSetting;
   };
   globalsSelect: {
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
   };
-  locale: null;
+  locale: 'vi' | 'en';
   widgets: {
     collections: CollectionsWidget;
   };

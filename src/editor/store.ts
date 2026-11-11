@@ -164,6 +164,8 @@ export interface EditorState {
   publishMenu: boolean
   /** Vai trò của người đang dùng editor */
   role: Role
+  /** Ngôn ngữ đang sửa (Payload localization) */
+  locale: string
   /** Người khác đang mở cùng tài liệu */
   presence: PresenceUser[]
   comments: CommentDoc[]
@@ -214,6 +216,7 @@ export interface EditorActions {
     siteParts?: SiteParts
     layout?: Partial<PageLayout>
     role?: Role
+    locale?: string
   }): void
   setPresence(list: PresenceUser[]): void
   setComments(list: CommentDoc[]): void
@@ -400,6 +403,7 @@ export const useEditor = create<Store>()(
       versionNote: '',
       publishMenu: false,
       role: 'editor',
+      locale: 'vi',
       presence: [],
       comments: [],
       selectedId: null,
@@ -439,6 +443,7 @@ export const useEditor = create<Store>()(
           s.template = data.template ?? null
           s.seo = { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '', ...(data.seo ?? {}) }
           s.role = data.role ?? 'editor'
+          s.locale = data.locale ?? 'vi'
           s.presence = []
           s.comments = []
           s.siteParts = data.siteParts ?? { header: null, footer: null }

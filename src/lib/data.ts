@@ -1,6 +1,7 @@
 import type { CollectionConfig, Field, Payload } from 'payload'
 import { buildWhere, collectDataNodes, type DataMap, type DataRecord, type DataSource, pageFromParams, type SourceInfo, type UrlParams } from '../builder/data'
 import type { BuilderNode } from '../builder/types'
+import { DEFAULT_LOCALE } from './locale'
 import { lexicalToHtml } from './richtext'
 
 /** Giới hạn tối đa của ?take= (tải thêm) */
@@ -128,7 +129,7 @@ async function templatePages(payload: Payload): Promise<Map<string, { slug: stri
 const getPath = (o: unknown, path: string): unknown => path.split('.').reduce<unknown>((cur, k) => (cur && typeof cur === 'object' ? (cur as Record<string, unknown>)[k] : undefined), o)
 
 /** Tìm kiếm toàn site trên các collection có `custom.builder.search` */
-export async function siteSearch(payload: Payload, q: string, limit = 20): Promise<{ records: DataRecord[]; total: number }> {
+export async function siteSearch(payload: Payload, q: string, limit = 20, locale?: string): Promise<{ records: DataRecord[]; total: number }> {
   const query = q.trim().slice(0, 100)
   if (!query) return { records: [], total: 0 }
   const pages = await templatePages(payload)
@@ -140,7 +141,7 @@ export async function siteSearch(payload: Payload, q: string, limit = 20): Promi
     if (!cfg?.search) continue
     const where: Record<string, unknown> = { or: cfg.search.fields.map((f) => ({ [f]: { like: query } })) }
     if (col.fields.some((f) => 'name' in f && f.name === 'published')) where.and = [{ published: { equals: true } }]
-    const res = await find({ collection: col.slug, where, limit, depth: 1, overrideAccess: true }).catch(() => ({ docs: [], totalDocs: 0 }))
+    const res = await find({ collection: col.slug, where, limit, depth: 1, overrideAccess: true, ...(locale ? { locale, fallbackLocale: DEFAULT_LOCALE } : {}) }).catch(() => ({ docs: [], totalDocs: 0 }))
     total += res.totalDocs
     const page = pages.get(col.slug)
     for (const doc of res.docs) {
@@ -167,6 +168,7 @@ export interface LoadDataOptions {
   onlyOwned?: boolean
   /** Bỏ qua nguồn ownerOnly (phần cache dùng chung) */
   skipOwned?: boolean
+  locale?: string
 }
 
 /** Nguồn chỉ trả bản ghi của người đăng nhập? */
@@ -192,7 +194,7 @@ export async function loadDataForTree(payload: Payload, root: BuilderNode, param
       if (source.collection === SEARCH_SOURCE) {
         if (opts.onlyOwned) return
         const limit = effectiveLimit(source, params)
-        const r = await siteSearch(payload, source.urlParams ? (params.q ?? '') : '', limit)
+        const r = await siteSearch(payload, source.urlParams ? (params.q ?? '') : '', limit, opts.locale)
         map[id] = { records: r.records, total: r.total, page: 1, totalPages: 1, limit }
         return
       }
@@ -218,6 +220,7 @@ export async function loadDataForTree(payload: Payload, root: BuilderNode, param
           page,
           depth: cfg.depth ?? 1,
           overrideAccess: true,
+          ...(opts.locale ? { locale: opts.locale, fallbackLocale: DEFAULT_LOCALE } : {}),
         })
         map[id] = { records: res.docs.map((d) => projectDoc(payload, source.collection, d)), total: res.totalDocs, page: res.page ?? page, totalPages: Math.max(1, res.totalPages ?? 1), limit }
       } catch (err) {

@@ -13,6 +13,7 @@ import { hasOwnedSources, loadDataForTree } from './data'
 import { pageLayoutFrom, sitePartsFrom, withSiteParts } from '../builder/siteParts'
 import { PAGES_TAG } from './revalidate'
 import { loadThemeForPage } from './themes'
+import { DEFAULT_LOCALE, isLocale, type LocaleCode } from './locale'
 import { type PageSeo, pageSeoFrom, type SiteInfo, siteInfoFrom } from './seo'
 
 export interface LoadedPage {
@@ -36,6 +37,7 @@ export interface LoadedPage {
   needsUser: boolean
   /** Có nguồn dữ liệu “chỉ của tôi” -> PageView nạp riêng theo người dùng (ngoài cache) */
   hasOwned: boolean
+  locale: string
 }
 
 /** Cài đặt site (cache theo tag pages, làm mới khi đổi) */
@@ -48,11 +50,13 @@ export async function getSiteSettings() {
  * @param param đoạn cuối URL của trang mẫu động (/slug/param). Root được gắn nguồn "một bản ghi" khớp param;
  *   không có bản ghi -> null (404).
  */
-async function fetchPage(slug: string, draft: boolean, param?: string, params: UrlParams = {}): Promise<LoadedPage | null> {
+async function fetchPage(slug: string, draft: boolean, param?: string, params: UrlParams = {}, locale: LocaleCode = DEFAULT_LOCALE): Promise<LoadedPage | null> {
   const payload = await getPayload({ config })
   const result = await payload.find({
     collection: 'pages',
     draft,
+    locale,
+    fallbackLocale: DEFAULT_LOCALE,
     limit: 1,
     depth: 0,
     pagination: false,
@@ -71,14 +75,14 @@ async function fetchPage(slug: string, draft: boolean, param?: string, params: U
     const saved = (content.root.props.data ?? {}) as Record<string, unknown>
     content.root.props.data = param !== undefined ? { collection: template.collection, mode: 'one', byField: template.field, byValue: param } : { ...saved, collection: template.collection, mode: 'one' }
   }
-  const settings = (await payload.findGlobal({ slug: 'site-settings', depth: 1, overrideAccess: true }).catch(() => null)) as Record<string, unknown> | null
+  const settings = (await payload.findGlobal({ slug: 'site-settings', depth: 1, overrideAccess: true, locale, fallbackLocale: DEFAULT_LOCALE }).catch(() => null)) as Record<string, unknown> | null
   // header/footer toàn site chèn vào cây trước khi nạp block và dữ liệu
   content.root = withSiteParts(content.root, sitePartsFrom(settings), pageLayoutFrom(doc as unknown as Record<string, unknown>))
-  const [blocks, theme] = await Promise.all([loadBlocksForContent(payload, content), loadThemeForPage(payload, doc.theme)])
+  const [blocks, theme] = await Promise.all([loadBlocksForContent(payload, content, locale), loadThemeForPage(payload, doc.theme)])
   // nguồn dữ liệu có thể nằm trong My Block liên kết -> thu thập trên cây đã triển khai
   const resolvedTree = resolveRefs(content.root, (id) => blocks.get(id))
   const hasOwned = hasOwnedSources(payload, resolvedTree)
-  const data = await loadDataForTree(payload, resolvedTree, params, { skipOwned: true })
+  const data = await loadDataForTree(payload, resolvedTree, params, { skipOwned: true, locale })
   const record = data.root?.records[0]
   if (param !== undefined && !record) return null
   const title = record ? bindString(doc.title, record) : doc.title.replace(/\{\{[^}]*\}\}/g, '').trim()
@@ -99,6 +103,7 @@ async function fetchPage(slug: string, draft: boolean, param?: string, params: U
     record: record ?? null,
     needsUser,
     hasOwned,
+    locale,
   }
 }
 
@@ -107,16 +112,17 @@ async function fetchPage(slug: string, draft: boolean, param?: string, params: U
  * gọi revalidateTag nên cache chỉ mới lại khi có thay đổi (xem lib/revalidate.ts).
  */
 // revalidate 60s làm lưới an toàn cho thay đổi xảy ra ngoài ngữ cảnh request (job lên lịch xuất bản, CLI import) – khi đó revalidateTag không chạy được
-const getPublishedPage = unstable_cache((slug: string, param: string | undefined, paramsKey: string) => fetchPage(slug, false, param, JSON.parse(paramsKey)), ['published-page'], { tags: [PAGES_TAG], revalidate: 60 })
+const getPublishedPage = unstable_cache((slug: string, param: string | undefined, paramsKey: string, locale: LocaleCode) => fetchPage(slug, false, param, JSON.parse(paramsKey), locale), ['published-page'], { tags: [PAGES_TAG], revalidate: 60 })
 
 /**
  * Lấy trang theo slug cho front-end.
  * - Bình thường: trang đã xuất bản, từ cache.
  * - Draft mode (bật qua /preview khi đã đăng nhập): luôn đọc bản nháp mới nhất, không cache.
  */
-export const getPageBySlug = cache(async (slug: string, param?: string, params: UrlParams = {}): Promise<LoadedPage | null> => {
+export const getPageBySlug = cache(async (slug: string, param?: string, params: UrlParams = {}, locale: string = DEFAULT_LOCALE): Promise<LoadedPage | null> => {
   const { isEnabled: draft } = await draftMode()
+  const loc = isLocale(locale) ? locale : DEFAULT_LOCALE
   // tham số URL là một phần của khoá cache (sắp xếp khoá để ổn định)
   const key = JSON.stringify(Object.fromEntries(Object.entries(params).sort(([a], [b]) => a.localeCompare(b))))
-  return draft ? fetchPage(slug, true, param, params) : getPublishedPage(slug, param, key)
+  return draft ? fetchPage(slug, true, param, params, loc) : getPublishedPage(slug, param, key, loc)
 })

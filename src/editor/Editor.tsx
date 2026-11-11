@@ -37,6 +37,7 @@ export interface EditorInitial {
   siteParts?: SiteParts
   layout?: Partial<PageLayout>
   role?: Role
+  locale?: string
 }
 
 export function Editor({ initial }: { initial: EditorInitial }) {
@@ -59,6 +60,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       siteParts: initial.siteParts,
       layout: initial.layout,
       role: initial.role,
+      locale: initial.locale,
     })
     ready.current = true
   }

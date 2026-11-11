@@ -594,6 +594,12 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
         if (btn) btn.disabled = false
       }
     }
+    const onLangChange = (e: Event) => {
+      const sel = e.target as HTMLSelectElement
+      if (sel.matches('[data-lang-switch]') && sel.value && !editor) win.location.href = sel.value
+    }
+    doc.addEventListener('change', onLangChange)
+    cleanups.push(() => doc.removeEventListener('change', onLangChange))
     doc.addEventListener('submit', onSubmit)
     cleanups.push(() => doc.removeEventListener('submit', onSubmit))
 

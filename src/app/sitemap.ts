@@ -1,6 +1,7 @@
 import config from '@payload-config'
 import type { MetadataRoute } from 'next'
 import { getPayload } from 'payload'
+import { LOCALES, localePath } from '@/lib/locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const out: MetadataRoute.Sitemap = []
   for (const p of pages.docs) {
     if ((p.seo as { noIndex?: boolean } | null)?.noIndex || ['404', 'maintenance'].includes(p.slug)) continue
-    const path = p.slug === 'home' ? '' : `/${p.slug}`
     if (p.templateCollection) {
       const field = String(p.templateField || 'id')
       const find = payload.find as unknown as (args: Record<string, unknown>) => Promise<{ docs: Record<string, unknown>[] }>
@@ -20,11 +20,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       for (const r of recs.docs) {
         const v = r[field]
         if (v == null || v === '') continue
-        out.push({ url: `${base}${path}/${encodeURIComponent(String(v))}`, lastModified: String(r.updatedAt ?? p.updatedAt), changeFrequency: 'weekly', priority: 0.6 })
+        for (const l of LOCALES) out.push({ url: `${base}${localePath(l.code, p.slug, String(v))}`, lastModified: String(r.updatedAt ?? p.updatedAt), changeFrequency: 'weekly', priority: 0.6 })
       }
       continue
     }
-    out.push({ url: `${base}${path || '/'}`, lastModified: p.updatedAt, changeFrequency: p.slug === 'home' ? 'daily' : 'weekly', priority: p.slug === 'home' ? 1 : 0.7 })
+    for (const l of LOCALES) out.push({ url: `${base}${localePath(l.code, p.slug)}`, lastModified: p.updatedAt, changeFrequency: p.slug === 'home' ? 'daily' : 'weekly', priority: p.slug === 'home' ? 1 : 0.7 })
   }
   return out
 }

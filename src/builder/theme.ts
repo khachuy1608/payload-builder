@@ -306,6 +306,7 @@ img,svg,video,iframe{display:block;max-width:100%}
 .b-rich code{font-family:var(--font-mono);font-size:.92em}.b-rich p code{background:var(--color-surface);padding:.1em .35em;border-radius:4px}
 .b-rich table{border-collapse:collapse;width:100%;margin:1em 0}.b-rich th,.b-rich td{border:1px solid var(--color-border);padding:.5em .75em;text-align:left}.b-rich th{background:var(--color-surface)}
 .b-rich a{color:var(--color-primary)}.b-rich hr{border:0;border-top:1px solid var(--color-border);margin:2em 0}
+.b-lang{font-size:14px}.b-lang-item{display:inline-flex;align-items:center;gap:6px}.b-lang-sep{color:var(--color-border)}.b-lang-link{color:var(--color-muted);text-decoration:none}.b-lang-link.is-active{color:var(--color-primary);font-weight:600}.b-lang-select{padding:6px 10px;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-background);font:inherit}
 .b-load-more .b-button{background:var(--color-primary);color:#fff;padding:12px 24px}
 .b-load-more-done{color:var(--color-muted);font-size:14px}
 ` + FX_CSS + BLOCKS_CSS

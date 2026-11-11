@@ -9,6 +9,9 @@ import { acquireLock } from './lock'
 import { type BlockKind, type BlockScope, type MyBlock, type SaveStatus, type ThemeDoc, useEditor } from './store'
 
 /** id quan hệ gửi lên Payload: số nếu là số (Postgres serial) */
+/** ?locale= của ngôn ngữ đang sửa cho các request đọc/ghi nội dung localized */
+const loc = () => `locale=${encodeURIComponent(useEditor.getState().locale || 'vi')}`
+
 const relValue = (id: string | null) => (id == null ? null : /^\d+$/.test(id) ? Number(id) : id)
 
 async function readError(res: Response): Promise<string> {
@@ -32,7 +35,7 @@ export async function savePage(publish: boolean): Promise<boolean> {
   const content: PageContent = { version: 1, root: s.root }
   try {
     // overrideLock=false: Payload từ chối (423) nếu người khác đang giữ khoá
-    const res = await fetch(`/api/pages/${s.pageId}?depth=0&overrideLock=false${publish ? '' : '&draft=true'}`, {
+    const res = await fetch(`/api/pages/${s.pageId}?depth=0&overrideLock=false&${loc()}${publish ? '' : '&draft=true'}`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -125,7 +128,7 @@ export function toMyBlock(doc: MyBlockDoc): MyBlock | null {
 }
 
 export async function listMyBlocks(): Promise<MyBlock[]> {
-  const res = await fetch('/api/my-blocks?limit=300&depth=1&sort=-updatedAt', { credentials: 'include' })
+  const res = await fetch(`/api/my-blocks?limit=300&depth=1&sort=-updatedAt&${loc()}`, { credentials: 'include' })
   if (!res.ok) throw new Error(await readError(res))
   const { docs } = (await res.json()) as { docs: MyBlockDoc[] }
   return docs.map(toMyBlock).filter((b): b is MyBlock => b !== null)
@@ -133,14 +136,14 @@ export async function listMyBlocks(): Promise<MyBlock[]> {
 
 /** Lấy một block theo id; null nếu không tồn tại / không có quyền */
 export async function getMyBlock(id: string): Promise<MyBlock | null> {
-  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1`, { credentials: 'include' })
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1&${loc()}`, { credentials: 'include' })
   if (res.status === 404 || res.status === 403) return null
   if (!res.ok) throw new Error(await readError(res))
   return toMyBlock(await res.json())
 }
 
 export async function createMyBlock(data: { name: string; scope: BlockScope; tree: BuilderNode; kind?: BlockKind }): Promise<MyBlock> {
-  const res = await fetch('/api/my-blocks?depth=1', {
+  const res = await fetch(`/api/my-blocks?depth=1&${loc()}`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -154,7 +157,7 @@ export async function createMyBlock(data: { name: string; scope: BlockScope; tre
 }
 
 export async function updateMyBlock(id: string, data: Partial<{ name: string; scope: BlockScope; tree: BuilderNode }>, respectLock = false): Promise<MyBlock> {
-  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1${respectLock ? '&overrideLock=false' : ''}`, {
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1&${loc()}${respectLock ? '&overrideLock=false' : ''}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -331,7 +334,7 @@ export interface PageVersion {
 }
 
 export async function listVersions(pageId: string): Promise<PageVersion[]> {
-  const q = new URLSearchParams({ 'where[parent][equals]': pageId, sort: '-updatedAt', limit: '40', depth: '0' })
+  const q = new URLSearchParams({ 'where[parent][equals]': pageId, sort: '-updatedAt', limit: '40', depth: '0', locale: useEditor.getState().locale || 'vi' })
   const res = await fetch(`/api/pages/versions?${q}`, { credentials: 'include' })
   if (!res.ok) throw new Error(await readError(res))
   const { docs } = (await res.json()) as { docs: { id: string | number; updatedAt: string; version: { title?: string; slug?: string; _status?: string; content?: unknown; versionNote?: string | null } }[] }
@@ -384,7 +387,7 @@ export async function fetchSources(): Promise<SourceInfo[]> {
 /** Lấy bản ghi cho một nguồn dữ liệu qua REST (người dùng đã đăng nhập); chỉ giữ trường công khai như server */
 export async function fetchData(source: DataSource, info: SourceInfo | undefined): Promise<DataResult> {
   const limit = source.mode === 'one' ? 1 : (source.limit ?? 12)
-  const q = new URLSearchParams({ limit: String(limit), depth: '1', page: '1' })
+  const q = new URLSearchParams({ limit: String(limit), depth: '1', page: '1', locale: useEditor.getState().locale || 'vi' })
   if (source.sort) q.set('sort', source.sort)
   const where = buildWhere(source)
   if (where) q.set('where', JSON.stringify(where))

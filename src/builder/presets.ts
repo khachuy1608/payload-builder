@@ -134,6 +134,11 @@ Object.assign(PRESETS, {
     P('framed', 'Khung viền', {}, { desktop: { width: '100%', padding: '8px', backgroundColor: '#ffffff', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-md)' } }),
     P('autoplay', 'Tự phát (tắt tiếng)', { autoplay: true, controls: false }, { desktop: { width: '100%' } }),
   ],
+  languageSwitcher: [
+    P('links', 'VI | EN', { variant: 'links', showLabel: false }, { desktop: { display: 'inline-flex', gap: '6px', alignItems: 'center', fontSize: '14px' } }),
+    P('names', 'Tên đầy đủ', { variant: 'links', showLabel: true }, { desktop: { display: 'inline-flex', gap: '8px', alignItems: 'center' } }),
+    P('select', 'Hộp chọn', { variant: 'select' }, { desktop: { display: 'inline-flex' } }),
+  ],
   richContent: [
     P('article', 'Bài viết (hẹp, căn giữa)', {}, { desktop: { maxWidth: 'var(--narrow)', margin: '0 auto', fontSize: '18px' } }),
     P('wide', 'Rộng', {}, { desktop: { maxWidth: 'var(--container)', margin: '0 auto' } }),

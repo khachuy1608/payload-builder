@@ -78,6 +78,7 @@ export const MyBlocks: CollectionConfig = {
       name: 'tree',
       label: 'Nội dung block (JSON từ Visual Builder)',
       type: 'json',
+      localized: true,
       required: true,
       admin: { hidden: true },
     },

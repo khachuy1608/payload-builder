@@ -59,7 +59,7 @@ export const Categories: CollectionConfig = {
   access: { read: () => true, create: canEdit, update: canEdit, delete: canEdit },
   custom: { builder: { label: 'Danh mục', expose: ['name', 'slug', 'description'] } },
   hooks,
-  fields: [{ name: 'name', label: 'Tên', type: 'text', required: true }, slugField('name'), { name: 'description', label: 'Mô tả', type: 'textarea' }],
+  fields: [{ name: 'name', label: 'Tên', type: 'text', required: true, localized: true }, slugField('name'), { name: 'description', label: 'Mô tả', type: 'textarea', localized: true }],
 }
 
 export const Posts: CollectionConfig = {
@@ -76,17 +76,17 @@ export const Posts: CollectionConfig = {
   },
   hooks,
   fields: [
-    { name: 'title', label: 'Tiêu đề', type: 'text', required: true },
+    { name: 'title', label: 'Tiêu đề', type: 'text', required: true, localized: true },
     slugField('title'),
     publishedField,
     { name: 'publishedAt', label: 'Ngày đăng', type: 'date', admin: { position: 'sidebar', date: { pickerAppearance: 'dayOnly' } }, defaultValue: () => new Date().toISOString() },
-    { name: 'excerpt', label: 'Tóm tắt', type: 'textarea', maxLength: 400 },
+    { name: 'excerpt', label: 'Tóm tắt', type: 'textarea', maxLength: 400, localized: true },
     { name: 'cover', label: 'Ảnh bìa', type: 'upload', relationTo: 'media' },
     { name: 'category', label: 'Danh mục', type: 'relationship', relationTo: 'categories', admin: { position: 'sidebar' } },
     { name: 'author', label: 'Tác giả', type: 'relationship', relationTo: 'users', admin: { position: 'sidebar' } },
     { name: 'tags', label: 'Thẻ', type: 'array', fields: [{ name: 'tag', type: 'text', required: true }], admin: { position: 'sidebar' } },
     { name: 'readingMinutes', label: 'Phút đọc', type: 'number', min: 1, admin: { position: 'sidebar' } },
-    { name: 'content', label: 'Nội dung', type: 'richText' },
+    { name: 'content', label: 'Nội dung', type: 'richText', localized: true },
   ],
 }
 
@@ -104,7 +104,7 @@ export const Products: CollectionConfig = {
   },
   hooks,
   fields: [
-    { name: 'name', label: 'Tên sản phẩm', type: 'text', required: true },
+    { name: 'name', label: 'Tên sản phẩm', type: 'text', required: true, localized: true },
     slugField('name'),
     publishedField,
     { name: 'sku', label: 'Mã (SKU)', type: 'text', admin: { position: 'sidebar' } },
@@ -113,9 +113,9 @@ export const Products: CollectionConfig = {
     { name: 'inStock', label: 'Còn hàng', type: 'checkbox', defaultValue: true, admin: { position: 'sidebar' } },
     { name: 'featured', label: 'Nổi bật', type: 'checkbox', defaultValue: false, admin: { position: 'sidebar' } },
     { name: 'category', label: 'Danh mục', type: 'relationship', relationTo: 'categories', admin: { position: 'sidebar' } },
-    { name: 'summary', label: 'Mô tả ngắn', type: 'textarea', maxLength: 300 },
+    { name: 'summary', label: 'Mô tả ngắn', type: 'textarea', maxLength: 300, localized: true },
     { name: 'images', label: 'Ảnh', type: 'array', fields: [{ name: 'image', type: 'upload', relationTo: 'media', required: true }] },
-    { name: 'description', label: 'Mô tả chi tiết', type: 'richText' },
+    { name: 'description', label: 'Mô tả chi tiết', type: 'richText', localized: true },
   ],
 }
 
@@ -129,7 +129,7 @@ export const Events: CollectionConfig = {
   },
   hooks,
   fields: [
-    { name: 'title', label: 'Tên sự kiện', type: 'text', required: true },
+    { name: 'title', label: 'Tên sự kiện', type: 'text', required: true, localized: true },
     slugField('title'),
     publishedField,
     { name: 'startAt', label: 'Bắt đầu', type: 'date', required: true, admin: { position: 'sidebar', date: { pickerAppearance: 'dayAndTime' } } },
@@ -137,9 +137,9 @@ export const Events: CollectionConfig = {
     { name: 'location', label: 'Địa điểm', type: 'text' },
     { name: 'capacity', label: 'Sức chứa', type: 'number', min: 0, admin: { position: 'sidebar' } },
     { name: 'price', label: 'Giá vé (0 = miễn phí)', type: 'number', min: 0, defaultValue: 0, admin: { position: 'sidebar' } },
-    { name: 'summary', label: 'Tóm tắt', type: 'textarea', maxLength: 300 },
+    { name: 'summary', label: 'Tóm tắt', type: 'textarea', maxLength: 300, localized: true },
     { name: 'cover', label: 'Ảnh bìa', type: 'upload', relationTo: 'media' },
-    { name: 'description', label: 'Chi tiết', type: 'richText' },
+    { name: 'description', label: 'Chi tiết', type: 'richText', localized: true },
   ],
 }
 
@@ -151,11 +151,11 @@ export const Faqs: CollectionConfig = {
   custom: { builder: { label: 'FAQ', expose: ['question', 'answer', 'order', 'category'], search: { title: 'question', fields: ['question'] } } },
   hooks,
   fields: [
-    { name: 'question', label: 'Câu hỏi', type: 'text', required: true },
+    { name: 'question', label: 'Câu hỏi', type: 'text', required: true, localized: true },
     publishedField,
     { name: 'order', label: 'Thứ tự', type: 'number', defaultValue: 0, admin: { position: 'sidebar' } },
     { name: 'category', label: 'Danh mục', type: 'relationship', relationTo: 'categories', admin: { position: 'sidebar' } },
-    { name: 'answer', label: 'Trả lời', type: 'richText' },
+    { name: 'answer', label: 'Trả lời', type: 'richText', localized: true },
   ],
 }
 
@@ -167,11 +167,11 @@ export const Testimonials: CollectionConfig = {
   custom: { builder: { label: 'Cảm nhận', expose: ['name', 'role', 'company', 'quote', 'avatar', 'rating'] } },
   hooks,
   fields: [
-    { name: 'name', label: 'Tên', type: 'text', required: true },
+    { name: 'name', label: 'Tên', type: 'text', required: true, localized: true },
     publishedField,
-    { name: 'role', label: 'Chức danh', type: 'text' },
+    { name: 'role', label: 'Chức danh', type: 'text', localized: true },
     { name: 'company', label: 'Công ty', type: 'text' },
-    { name: 'quote', label: 'Cảm nhận', type: 'textarea', required: true },
+    { name: 'quote', label: 'Cảm nhận', type: 'textarea', required: true, localized: true },
     { name: 'avatar', label: 'Ảnh', type: 'upload', relationTo: 'media' },
     { name: 'rating', label: 'Số sao (1–5)', type: 'number', min: 1, max: 5, defaultValue: 5, admin: { position: 'sidebar' } },
   ],
@@ -188,10 +188,10 @@ export const TeamMembers: CollectionConfig = {
     { name: 'name', label: 'Họ tên', type: 'text', required: true },
     slugField('name'),
     publishedField,
-    { name: 'role', label: 'Chức danh', type: 'text' },
+    { name: 'role', label: 'Chức danh', type: 'text', localized: true },
     { name: 'order', label: 'Thứ tự', type: 'number', defaultValue: 0, admin: { position: 'sidebar' } },
     { name: 'email', label: 'Email liên hệ (công khai)', type: 'email' },
-    { name: 'bio', label: 'Giới thiệu', type: 'textarea' },
+    { name: 'bio', label: 'Giới thiệu', type: 'textarea', localized: true },
     { name: 'photo', label: 'Ảnh', type: 'upload', relationTo: 'media' },
     {
       name: 'links',

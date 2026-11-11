@@ -158,6 +158,16 @@ npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redir
 npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
 ```
 
+## Đa ngôn ngữ & nhiều site (đợt 4)
+
+- **Ngôn ngữ:** khai báo một chỗ trong `src/lib/locale.ts` (`vi` mặc định, `en`); Payload localization bật với fallback về mặc định. Trường localized: tiêu đề/nội dung/SEO của trang, cây My Block (header/footer dịch được), tên/mô tả site, các trường văn bản của collection nội dung.
+- **URL:** ngôn ngữ phụ có tiền tố `/en/...` (`/en`, `/en/gioi-thieu`, `/en/bai-viet/<slug>`); ngôn ngữ mặc định không tiền tố. Route duy nhất `src/app/(frontend)/[[...path]]`. `<head>` có `hreflang` cho từng ngôn ngữ, `og:locale`; sitemap liệt kê mọi ngôn ngữ.
+- **Editor:** ô chọn ngôn ngữ trên thanh trên (tải lại với `?locale=`); nội dung ngôn ngữ chưa có sẽ hiện bản mặc định để dịch từ đó; Lưu nháp / Xuất bản chỉ ghi ngôn ngữ đang chọn. Nguồn dữ liệu và My Block cũng theo ngôn ngữ đang sửa. Xem trước giữ ngôn ngữ.
+- **Block Chuyển ngôn ngữ** (nhóm Điều hướng): link hoặc hộp chọn tới cùng trang ở ngôn ngữ khác, giữ tham số URL.
+- **Thêm ngôn ngữ:** thêm vào `LOCALES`, chạy `npm run payload migrate:create` (các bảng `*_locales` dùng enum `_locales`).
+- **Migration đa ngôn ngữ** (`phase4_i18n`) tự chép dữ liệu cũ sang ngôn ngữ mặc định nên DB đang chạy không mất nội dung. Với DB dev từng dùng chế độ push, cần đánh dấu các migration cũ là đã chạy (bảng `payload_migrations`) trước khi `npm run payload migrate`.
+- **Nhiều site:** repo này là nền cho một site/triển khai. Cách khuyên dùng: mỗi site một deployment (container riêng) với `DATABASE_URI`, `NEXT_PUBLIC_SERVER_URL`, `SMTP_*` riêng; dùng `npm run export` / `npm run import` để nhân bản trang, block, theme, media giữa các site. Nếu muốn nhiều domain trên một DB, hướng mở rộng là thêm trường `site` (select theo biến môi trường `SITE_KEY`) vào pages/my-blocks/site-settings và lọc theo `host` trong `lib/pages.ts`.
+
 ## Nội dung & dữ liệu (đợt 3)
 
 - **Collection mẫu** (`src/collections/content.ts`): danh mục, bài viết (Lexical rich text), sản phẩm, sự kiện, FAQ, cảm nhận, đội ngũ – có dữ liệu seed, `published` để ẩn/hiện, `custom.builder` khai báo trường công khai và trường tìm kiếm. Repo mới chỉ cần sửa/thêm collection ở đây.

@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import { resolveRefs } from '@/builder/refs'
 import { loadDataForTree } from '@/lib/data'
 import { getAuthUser, getCurrentUser } from '@/lib/user'
+import { LangSetter } from './LangSetter'
 import { buildJsonLd } from '@/lib/seo'
 import { getPageBySlug } from '@/lib/pages'
 
@@ -15,7 +16,7 @@ import { getPageBySlug } from '@/lib/pages'
 export async function PageView({ page, path }: { page: LoadedPage; path: string }) {
   const user = page.needsUser || page.site.maintenance ? await getCurrentUser() : null
   if (page.site.maintenance && !user && page.slug !== 'maintenance') {
-    const maint = await getPageBySlug('maintenance').catch(() => null)
+    const maint = await getPageBySlug('maintenance', undefined, {}, page.locale).catch(() => null)
     if (maint) return <PageRenderer content={maint.content} blocks={(id) => maint.blocks[id]} theme={maint.theme} data={maint.data} params={{}} />
     return (
       <main style={{ padding: 48, textAlign: 'center', fontFamily: 'var(--font-body)' }}>
@@ -35,7 +36,8 @@ export async function PageView({ page, path }: { page: LoadedPage; path: string 
   }
   return (
     <>
-      <PageRenderer content={page.content} blocks={(id) => page.blocks[id]} theme={page.theme} data={data} params={page.params} user={user} />
+      <PageRenderer content={page.content} blocks={(id) => page.blocks[id]} theme={page.theme} data={data} params={page.params} user={user} locale={page.locale} path={path} />
+      <LangSetter lang={page.locale} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
     </>
   )
