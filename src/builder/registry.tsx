@@ -22,7 +22,7 @@ import {
 import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
-import { sanitizeRichText, sanitizeSvg } from './sanitize'
+import { richHasBlock, sanitizeRichText, sanitizeSvg } from './sanitize'
 import { genId } from './tree'
 import type { BlockRefProps, MediaValue } from './types'
 
@@ -165,8 +165,12 @@ const BLOCK_LIST: BlockDefinition[] = [
     contentControls: [{ type: 'richtext', prop: 'text', label: 'Nội dung' }],
     styleGroups: TEXT_GROUPS,
     inlineEdit: { prop: 'text', multiline: true, rich: true },
-    // text là HTML inline đã làm sạch (đậm, nghiêng, link, xuống dòng); văn bản thuần cũ vẫn hiển thị như trước
-    Render: ({ node, attrs }) => <p {...attrs} dangerouslySetInnerHTML={{ __html: sanitizeRichText(text(node.props.text)) }} />,
+    // text là HTML đã làm sạch (đậm, nghiêng, link, xuống dòng, danh sách); văn bản thuần cũ vẫn hiển thị như trước
+    Render: ({ node, attrs }) => {
+      const html = sanitizeRichText(text(node.props.text))
+      const Tag = richHasBlock(html) ? 'div' : 'p'
+      return <Tag {...attrs} dangerouslySetInnerHTML={{ __html: html }} />
+    },
   },
   {
     type: 'button',

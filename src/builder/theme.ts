@@ -124,6 +124,8 @@ img,svg,video,iframe{display:block;max-width:100%}
 .bld-root{min-height:100vh}
 .b-heading{margin:0;font-family:var(--font-heading);line-height:1.2;color:var(--color-secondary)}
 .b-paragraph{margin:0;white-space:pre-line}
+.b-paragraph ul,.b-paragraph ol{margin:0;padding-left:1.5em}
+.b-paragraph li{white-space:pre-line}
 .b-image{height:auto}
 .b-image-link{display:block}
 .b-svg{display:inline-flex;line-height:0}

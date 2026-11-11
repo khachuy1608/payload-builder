@@ -319,3 +319,4 @@ select.ed-input + .ed-reset { right: 22px; }
 .ed-ctx-item kbd { font: 11px/1 var(--ed-font); color: var(--ed-ink-3); }
 
 .ed-version-row .ed-theme-name { justify-content: space-between; }
+.ed-rich-area ul, .ed-rich-area ol { margin: 0; padding-left: 1.4em; }

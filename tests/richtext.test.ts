@@ -26,3 +26,12 @@ test('validate: paragraph được làm sạch khi lưu', () => {
   })
   assert.equal(out.root.children![0].props.text, 'Hi  <u>u</u>')
 })
+
+test('sanitizeRichText: giữ danh sách ul/ol/li, bỏ khoảng trắng giữa các mục, richHasBlock', async () => {
+  const { richHasBlock } = await import('../src/builder/sanitize')
+  const html = sanitizeRichText('Mục:\n<ul>\n  <li>Một <b>đậm</b></li>\n  <li onclick="x">Hai</li>\n</ul>\n<ol><li>Ba</li></ol>')
+  assert.equal(html, 'Mục:\n<ul><li>Một <b>đậm</b></li><li>Hai</li></ul><ol><li>Ba</li></ol>')
+  assert.equal(richHasBlock(html), true)
+  assert.equal(richHasBlock('a <b>b</b><br />c'), false)
+  assert.equal(richToPlain(html), 'Mục:\nMột đậm\nHai\nBa')
+})

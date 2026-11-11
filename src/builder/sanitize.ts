@@ -47,11 +47,11 @@ export function sanitizeSvg(input: unknown): string {
 
 // ---------- Rich text (Paragraph) ----------
 
-const RICH_TAGS = ['b', 'strong', 'i', 'em', 'u', 's', 'a', 'br', 'code']
+const RICH_TAGS = ['b', 'strong', 'i', 'em', 'u', 's', 'a', 'br', 'code', 'ul', 'ol', 'li']
 const richCache = new Map<string, string>()
 
 /**
- * Làm sạch HTML inline của Paragraph: chỉ giữ đậm/nghiêng/gạch chân/gạch ngang/link/code/xuống dòng.
+ * Làm sạch HTML của Paragraph: chỉ giữ đậm/nghiêng/gạch chân/gạch ngang/link/code/xuống dòng và danh sách (ul/ol/li).
  * Văn bản thuần đi qua đây được escape (&, <, >) nên render bằng innerHTML vẫn an toàn và giữ nguyên nội dung.
  */
 export function sanitizeRichText(input: unknown): string {
@@ -77,6 +77,9 @@ export function sanitizeRichText(input: unknown): string {
   })
     // <br> do div/p sinh ra bị bọc nội dung: "<br>abc</br>" -> "<br>abc"; bỏ <br> thừa cuối
     .replace(/<\/br>/g, '')
+    // khoảng trắng giữa các thẻ danh sách sẽ thành dòng trống vì white-space: pre-line
+    .replace(/>\s+<(\/?(?:ul|ol|li)\b)/g, '><$1')
+    .replace(/(<\/(?:ul|ol|li)>)\s+</g, '$1<')
     .replace(/^(<br\s*\/?>)+/, '')
     .replace(/(<br\s*\/?>)+$/, '')
   if (richCache.size > 500) richCache.clear()
@@ -89,6 +92,8 @@ export function richToPlain(input: unknown): string {
   if (typeof input !== 'string') return ''
   return input
     .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/li>\s*<li[^>]*>/gi, '\n')
+    .replace(/<\/(ul|ol)>\s*<(ul|ol)[^>]*>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
@@ -96,4 +101,9 @@ export function richToPlain(input: unknown): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+}
+
+/** Paragraph có danh sách thì phải render bằng <div> (ul/ol không được nằm trong <p>) */
+export function richHasBlock(html: string): boolean {
+  return /<(ul|ol)\b/i.test(html)
 }
