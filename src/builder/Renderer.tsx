@@ -6,7 +6,7 @@ import { memo } from 'react'
 import { BuilderRuntime } from './blocks/Runtime'
 import type { NodeAttrs, RenderMode } from './blocks/types'
 import { compileTreeCss } from './css'
-import { type DataLookup, type DataMap, resolveData } from './data'
+import { type DataLookup, type DataMap, resolveData, type UrlParams } from './data'
 import { normalizeFx } from './effects'
 import type { BlockLookup } from './refs'
 import { resolveRefs } from './refs'
@@ -87,6 +87,7 @@ export function PageRenderer({
   blocks,
   theme = defaultTheme,
   data,
+  params,
 }: {
   content: PageContent
   mode?: RenderMode
@@ -94,10 +95,12 @@ export function PageRenderer({
   theme?: ThemeTokens
   /** Dữ liệu đã nạp cho các node có nguồn (lib/data.ts) */
   data?: DataMap | DataLookup
+  /** Tham số URL hiện tại (phân trang, tìm kiếm, lọc) */
+  params?: UrlParams
 }) {
   const lookup: BlockLookup = typeof blocks === 'function' ? blocks : (id) => blocks?.get(id)
   const dataLookup: DataLookup = typeof data === 'function' ? data : (id) => data?.[id]
-  const root = resolveData(resolveRefs(content.root, lookup), dataLookup)
+  const root = resolveData(resolveRefs(content.root, lookup), dataLookup, { params })
   const css = compileTreeCss(root)
   return (
     <>

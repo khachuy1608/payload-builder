@@ -325,7 +325,7 @@ export async function listVersions(pageId: string): Promise<PageVersion[]> {
 
 // ======================= Nguồn dữ liệu (data binding) =======================
 
-import { buildWhere, type DataRecord, type DataSource, projectRecord, type SourceInfo } from '@/builder/data'
+import { buildWhere, type DataResult, type DataSource, projectRecord, type SourceInfo } from '@/builder/data'
 
 export async function fetchSources(): Promise<SourceInfo[]> {
   const res = await fetch('/api/builder/sources', { credentials: 'include' })
@@ -334,14 +334,15 @@ export async function fetchSources(): Promise<SourceInfo[]> {
 }
 
 /** Lấy bản ghi cho một nguồn dữ liệu qua REST (người dùng đã đăng nhập); chỉ giữ trường công khai như server */
-export async function fetchData(source: DataSource, info: SourceInfo | undefined): Promise<DataRecord[]> {
-  const q = new URLSearchParams({ limit: String(source.mode === 'one' ? 1 : (source.limit ?? 12)), depth: '1', pagination: 'false' })
+export async function fetchData(source: DataSource, info: SourceInfo | undefined): Promise<DataResult> {
+  const limit = source.mode === 'one' ? 1 : (source.limit ?? 12)
+  const q = new URLSearchParams({ limit: String(limit), depth: '1', page: '1' })
   if (source.sort) q.set('sort', source.sort)
   const where = buildWhere(source)
   if (where) q.set('where', JSON.stringify(where))
   const res = await fetch(`/api/${encodeURIComponent(source.collection)}?${q}`, { credentials: 'include' })
   if (!res.ok) throw new Error(await readError(res))
-  const { docs } = (await res.json()) as { docs: Record<string, unknown>[] }
+  const body = (await res.json()) as { docs: Record<string, unknown>[]; totalDocs: number; totalPages: number; page: number }
   const expose = info ? info.fields.map((f) => f.name) : []
-  return docs.map((d) => (expose.length ? projectRecord(d, expose) : d))
+  return { records: body.docs.map((d) => (expose.length ? projectRecord(d, expose) : d)), total: body.totalDocs, totalPages: Math.max(1, body.totalPages), page: body.page ?? 1, limit }
 }

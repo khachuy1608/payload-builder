@@ -335,6 +335,12 @@ textarea.b-input{resize:none}
 .b-signin-submit{background:var(--color-primary);color:#fff;padding:11px 18px;text-align:center;cursor:pointer}
 .b-signin-foot{margin:0;text-align:center;font-size:14px;color:var(--color-muted)}
 .b-signin-foot a{color:var(--color-primary)}
+/* ---- tìm kiếm ---- */
+.b-search-row{display:flex;align-items:center;gap:8px;position:relative}
+.b-search-icon{position:absolute;left:12px;color:var(--color-muted);pointer-events:none}
+.b-search-input{padding-left:38px}
+.b-search-btn{background:var(--color-primary);color:#fff;padding:10px 16px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center}
+.b-search-total{margin:8px 0 0;font-size:13px;color:var(--color-muted)}
 /* ---- divider ---- */
 .b-divider--labeled{display:flex;align-items:center;gap:12px;color:var(--color-muted);font-size:13px;background:none!important;height:auto!important}
 .b-divider--labeled::before,.b-divider--labeled::after{content:'';flex:1;height:1px;background:var(--color-border)}

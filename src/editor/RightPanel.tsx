@@ -416,7 +416,8 @@ function BindPicker({ node, onPick }: { node: BuilderNode; onPick: (template: st
 /** Panel "Nguồn dữ liệu" cho block chứa (control custom: 'data') */
 function DataSourcePanel({ node }: { node: BuilderNode }) {
   const sources = useEditor((s) => s.sources)
-  const records = useEditor((s) => s.dataCache[node.id])
+  const records = useEditor((s) => s.dataCache[node.id]?.records)
+  const total = useEditor((s) => s.dataCache[node.id]?.total)
   const source = dataSourceOf(node)
   const s = useEditor.getState
   const set = (patch: Partial<DataSource>) => s().updateProps(node.id, { data: normalizeDataSource({ ...(source ?? { collection: sources[0]?.slug ?? 'users', mode: 'list', limit: 8 }), ...patch }) })
@@ -491,6 +492,31 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
               </label>
             </div>
           )}
+          {source.mode === 'list' && (
+            <div className="ed-field">
+              <label className="ed-toggle">
+                <input type="checkbox" checked={!!source.urlParams} onChange={(e) => set({ urlParams: e.target.checked || undefined })} />
+                <span className="ed-toggle-ui" />
+                Nhận tham số URL (?page, ?q, ?trường=giá trị)
+              </label>
+              {source.urlParams && (
+                <>
+                  <span className="ed-help">Trường tìm kiếm cho ?q= (chọn nhiều)</span>
+                  <div className="ed-tokens">
+                    {(info?.fields ?? []).filter((f) => f.name !== 'id').map((f) => {
+                      const on = source.searchFields?.includes(f.name)
+                      return (
+                        <button key={f.name} className={`ed-token${on ? ' is-active' : ''}`} onClick={() => set({ searchFields: on ? (source.searchFields ?? []).filter((x) => x !== f.name) : [...(source.searchFields ?? []), f.name] })}>
+                          {f.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <span className="ed-help">Thêm block Pagination (bật “Theo nguồn dữ liệu”), Ô tìm kiếm và Toggle Group có tham số để điều khiển. Canvas luôn hiện trang 1.</span>
+                </>
+              )}
+            </div>
+          )}
           <div className="ed-field">
             <span className="ed-label">Bộ lọc</span>
             {filters.map((f, i) => (
@@ -520,7 +546,7 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
             </button>
           </div>
           <span className="ed-help">
-            {records ? `Đã nạp ${records.length} bản ghi.` : 'Đang nạp…'} Trường dùng được: {fields.map((f) => `{{${f.path}}}`).join(', ') || '—'}. Bấm ⚡ cạnh ô nhập của phần tử con để chèn.
+            {records ? `Đã nạp ${records.length}/${total ?? records.length} bản ghi.` : 'Đang nạp…'} Trường dùng được: {fields.map((f) => `{{${f.path}}}`).join(', ') || '—'}. Bấm ⚡ cạnh ô nhập của phần tử con để chèn.
           </span>
         </div>
       )}
@@ -715,7 +741,7 @@ function TemplateField() {
   const sources = useEditor((s) => s.sources)
   const slug = useEditor((s) => s.slug)
   const root = useEditor((s) => s.root)
-  const records = useEditor((s) => s.dataCache.root)
+  const records = useEditor((s) => s.dataCache.root?.records)
   const [options, setOptions] = useState<{ value: string; label: string }[]>([])
   const s = useEditor.getState
   const info = sources.find((x) => x.slug === template?.collection)
@@ -730,7 +756,7 @@ function TemplateField() {
     if (!template) return setOptions([])
     import('./api').then(({ fetchData }) =>
       fetchData({ collection: template.collection, mode: 'list', limit: 50 }, info)
-        .then((docs) => setOptions(docs.map((d) => ({ value: String(d[template.field] ?? ''), label: String(d.name ?? d.title ?? d.label ?? d.id) }))))
+        .then((res) => setOptions(res.records.map((d) => ({ value: String(d[template.field] ?? ''), label: String(d.name ?? d.title ?? d.label ?? d.id) }))))
         .catch(() => setOptions([])),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps

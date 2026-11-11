@@ -1,5 +1,5 @@
 import type { CollectionConfig, Field, Payload } from 'payload'
-import { buildWhere, collectDataNodes, type DataMap, type DataRecord, projectRecord, type SourceInfo } from '../builder/data'
+import { buildWhere, collectDataNodes, type DataMap, type DataRecord, pageFromParams, projectRecord, type SourceInfo, type UrlParams } from '../builder/data'
 import type { BuilderNode } from '../builder/types'
 
 /**
@@ -42,7 +42,7 @@ export function getSources(payload: Payload): SourceInfo[] {
 }
 
 /** Nạp dữ liệu cho mọi node có nguồn trong cây (gọi sau resolveRefs). Chỉ trả về trường được expose. */
-export async function loadDataForTree(payload: Payload, root: BuilderNode): Promise<DataMap> {
+export async function loadDataForTree(payload: Payload, root: BuilderNode, params: UrlParams = {}): Promise<DataMap> {
   const nodes = collectDataNodes(root)
   const map: DataMap = {}
   const configs = new Map<string, BuilderSourceConfig | null>(payload.config.collections.map((c) => [c.slug as string, sourceConfig(c)]))
@@ -51,20 +51,22 @@ export async function loadDataForTree(payload: Payload, root: BuilderNode): Prom
       const cfg = configs.get(source.collection)
       if (!cfg) return
       try {
-        const find = payload.find as unknown as (args: Record<string, unknown>) => Promise<{ docs: Record<string, unknown>[] }>
+        const find = payload.find as unknown as (args: Record<string, unknown>) => Promise<{ docs: Record<string, unknown>[]; totalDocs: number; page?: number; totalPages?: number }>
+        const limit = source.mode === 'one' ? 1 : (source.limit ?? 12)
+        const page = source.urlParams ? pageFromParams(params) : 1
         const res = await find({
           collection: source.collection,
-          where: buildWhere(source),
+          where: buildWhere(source, source.urlParams ? params : undefined, cfg.expose),
           sort: source.sort,
-          limit: source.mode === 'one' ? 1 : (source.limit ?? 12),
+          limit,
+          page,
           depth: cfg.depth ?? 1,
-          pagination: false,
           overrideAccess: true,
         })
-        map[id] = res.docs.map((d) => projectRecord(d, cfg.expose))
+        map[id] = { records: res.docs.map((d) => projectRecord(d, cfg.expose)), total: res.totalDocs, page: res.page ?? page, totalPages: Math.max(1, res.totalPages ?? 1), limit }
       } catch (err) {
         payload.logger.warn({ err, collection: source.collection }, 'Không nạp được nguồn dữ liệu cho builder')
-        map[id] = []
+        map[id] = { records: [], total: 0, page: 1, totalPages: 1, limit: 1 }
       }
     }),
   )

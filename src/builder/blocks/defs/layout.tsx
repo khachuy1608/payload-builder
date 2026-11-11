@@ -7,6 +7,7 @@
 import {
   ArrowUpCircle,
   ChevronsRight,
+  Search as SearchIcon,
   CreditCard,
   GalleryHorizontal,
   Grid3X3,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react'
 import { genId } from '../../tree'
 import type { BuilderNode, MediaValue } from '../../types'
+import { withParam } from '../../data'
 import { bool, ContainerRender, EditorOnly, Icon, items, num, safeHref, safeId, text } from '../helpers'
 import type { BlockDefinition } from '../types'
 
@@ -407,9 +409,10 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     label: 'Pagination',
     category: 'nav',
     icon: MoreHorizontal,
-    defaults: () => ({ props: { pages: '8', current: '1', variant: 'numbers', hrefPattern: '?page={n}', showPrevNext: true }, styles: {} }),
+    defaults: () => ({ props: { auto: true, pages: '8', current: '1', variant: 'numbers', hrefPattern: '?page={n}', showPrevNext: true }, styles: {} }),
     contentControls: [
-      { type: 'number', prop: 'pages', label: 'Tổng số trang', min: 1, max: 999 },
+      { type: 'toggle', prop: 'auto', label: 'Theo nguồn dữ liệu trên trang', help: 'Lấy số trang/trang hiện tại từ nguồn dữ liệu có bật “Nhận tham số URL” (canvas hiện trang 1).' },
+      { type: 'number', prop: 'pages', label: 'Tổng số trang (khi không tự động)', min: 1, max: 999 },
       { type: 'number', prop: 'current', label: 'Trang hiện tại', min: 1 },
       { type: 'select', prop: 'variant', label: 'Kiểu', options: [{ value: 'numbers', label: 'Số trang' }, { value: 'dots', label: 'Chấm (page control)' }] },
       { type: 'text', prop: 'hrefPattern', label: 'Mẫu link', placeholder: '?page={n}', help: '{n} được thay bằng số trang.' },
@@ -497,27 +500,32 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     label: 'Toggle Group',
     category: 'nav',
     icon: ToggleLeft,
-    defaults: () => ({ props: { items: [{ label: 'Trái' }, { label: 'Giữa' }, { label: 'Phải' }], selected: '2', variant: 'segmented' }, styles: {} }),
+    defaults: () => ({ props: { items: [{ label: 'Trái' }, { label: 'Giữa' }, { label: 'Phải' }], selected: '2', variant: 'segmented', param: '' }, styles: {} }),
     contentControls: [
-      { type: 'list', prop: 'items', label: 'Các lựa chọn', itemLabel: 'Lựa chọn', fields: [{ key: 'label', label: 'Nhãn', type: 'text' }, { key: 'href', label: 'Link (tuỳ chọn)', type: 'url' }] },
-      { type: 'number', prop: 'selected', label: 'Đang chọn (số thứ tự)', min: 1 },
+      { type: 'list', prop: 'items', label: 'Các lựa chọn', itemLabel: 'Lựa chọn', fields: [{ key: 'label', label: 'Nhãn', type: 'text' }, { key: 'href', label: 'Link (tuỳ chọn)', type: 'url' }, { key: 'value', label: 'Giá trị lọc (khi có tham số; trống = tất cả)', type: 'text' }] },
+      { type: 'text', prop: 'param', label: 'Lọc theo tham số URL (tên trường)', placeholder: 'title', help: 'Khi đặt: mỗi lựa chọn thành link ?trường=giá trị, mục đang chọn tự đánh dấu theo URL; dùng với nguồn dữ liệu bật “Nhận tham số URL”.' },
+      { type: 'number', prop: 'selected', label: 'Đang chọn (số thứ tự, khi không có tham số)', min: 1 },
       { type: 'select', prop: 'variant', label: 'Kiểu', options: [{ value: 'segmented', label: 'Segmented control' }, { value: 'pills', label: 'Pills rời' }] },
     ],
     styleGroups: BOX_GROUPS,
     Render: ({ node, attrs }) => {
-      const list = items<Link>(node.props.items)
+      const list = items<Link & { value?: string }>(node.props.items)
       const sel = num(node.props.selected, 1)
+      const param = text(node.props.param).trim()
+      const currentValue = text(node.props.currentValue)
       return (
         <div {...attrs} className={`${attrs.className} b-toggle-group b-toggle-group--${text(node.props.variant, 'segmented')}`} role="group" data-toggle-group="">
           {list.map((it, i) => {
-            const href = safeHref(it.href)
-            const cls = `b-toggle-btn${i + 1 === sel ? ' is-active' : ''}`
+            const value = text(it.value)
+            const href = param ? withParam(Object.fromEntries(new URLSearchParams(text(node.props.baseQuery, '?').slice(1))), param, value || null) : safeHref(it.href)
+            const active = param ? currentValue === value : i + 1 === sel
+            const cls = `b-toggle-btn${active ? ' is-active' : ''}`
             return href ? (
-              <a key={i} className={cls} href={href} aria-pressed={i + 1 === sel}>
+              <a key={i} className={cls} href={href} aria-pressed={active}>
                 {text(it.label)}
               </a>
             ) : (
-              <button key={i} type="button" className={cls} aria-pressed={i + 1 === sel}>
+              <button key={i} type="button" className={cls} aria-pressed={active}>
                 {text(it.label)}
               </button>
             )
@@ -630,6 +638,35 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
         </a>
       )
     },
+  },
+  {
+    type: 'searchBox',
+    label: 'Ô tìm kiếm',
+    category: 'nav',
+    icon: SearchIcon,
+    defaults: () => ({ props: { placeholder: 'Tìm kiếm…', buttonText: 'Tìm', showTotal: true }, styles: {} }),
+    contentControls: [
+      { type: 'text', prop: 'placeholder', label: 'Placeholder' },
+      { type: 'text', prop: 'buttonText', label: 'Nút (trống = chỉ icon)' },
+      { type: 'toggle', prop: 'showTotal', label: 'Hiện số kết quả', help: 'Gửi ?q= tới chính trang này; nguồn dữ liệu bật “Nhận tham số URL” và chọn trường tìm sẽ lọc theo.' },
+    ],
+    styleGroups: ['size', 'spacing', 'typography', 'effects', 'position', 'child'],
+    Render: ({ node, attrs }) => (
+      <form {...attrs} className={`${attrs.className} b-search`} method="get" role="search">
+        <div className="b-search-row">
+          <SearchIcon size={18} className="b-search-icon" />
+          <input type="search" name="q" className="b-input b-search-input" placeholder={text(node.props.placeholder)} defaultValue={text(node.props.value)} aria-label={text(node.props.placeholder) || 'Tìm kiếm'} />
+          <button type="submit" className="b-button b-search-btn" aria-label="Tìm">
+            {text(node.props.buttonText) || <Icon name="search" size={16} />}
+          </button>
+        </div>
+        {bool(node.props.showTotal, true) && text(node.props.value) && text(node.props.total) && (
+          <p className="b-search-total">
+            {text(node.props.total)} kết quả cho “{text(node.props.value)}”
+          </p>
+        )}
+      </form>
+    ),
   },
   {
     type: 'scrollspy',

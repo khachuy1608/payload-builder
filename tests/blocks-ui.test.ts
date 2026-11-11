@@ -85,7 +85,7 @@ test('chart: tổng phần trăm ~100, path cho mỗi phần', () => {
 
 test('pagination: rút gọn bằng dấu … và link theo mẫu', () => {
   const node = nodeFor('pagination')
-  node.props = { ...node.props, pages: '20', current: '10', hrefPattern: '/blog?p={n}' }
+  node.props = { ...node.props, auto: false, pages: '20', current: '10', hrefPattern: '/blog?p={n}' }
   const root = createRoot()
   root.children = [node]
   const html = renderToStaticMarkup(createElement(PageRenderer, { content: { version: 1, root }, mode: 'live' }))

@@ -50,6 +50,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   bottomNav: { isContainer: false },
   floatingButton: { isContainer: false },
   scrollspy: { isContainer: false },
+  searchBox: { isContainer: false },
   waffleMenu: { isContainer: false },
   cascadingMenu: { isContainer: false },
   overflowMenu: { isContainer: false },

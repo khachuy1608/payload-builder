@@ -149,9 +149,9 @@ function useDataSync() {
         last.current[id] = key
         const info = s.sources.find((x) => x.slug === source.collection)
         fetchData(source, info)
-          .then((records) => useEditor.getState().setData(id, records))
+          .then((result) => useEditor.getState().setData(id, result))
           .catch((err) => {
-            useEditor.getState().setData(id, [])
+            useEditor.getState().setData(id, { records: [], total: 0, page: 1, totalPages: 1, limit: 1 })
             useEditor.getState().toast('error', `Nguồn dữ liệu "${source.collection}": ${(err as Error).message}`)
           })
       }

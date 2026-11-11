@@ -29,13 +29,59 @@ export interface DataSource {
   /** mode = one: id hoặc giá trị của trường `byField` */
   byField?: string
   byValue?: string
+  /** Nhận tham số URL: ?page=N, ?q=... (tìm trên searchFields), ?<trường>=<giá trị> (bằng) */
+  urlParams?: boolean
+  searchFields?: string[]
 }
 
 /** Bản ghi đã lọc trường công khai */
 export type DataRecord = Record<string, unknown>
+/** Kết quả nạp cho một node có nguồn (kèm phân trang) */
+export interface DataResult {
+  records: DataRecord[]
+  total: number
+  page: number
+  totalPages: number
+  limit: number
+}
 /** Kết quả theo id node có nguồn dữ liệu */
-export type DataMap = Record<string, DataRecord[]>
-export type DataLookup = (nodeId: string) => DataRecord[] | undefined
+export type DataMap = Record<string, DataResult>
+export type DataLookup = (nodeId: string) => DataResult | undefined
+/** Tham số URL (chỉ chuỗi) của request hiện tại */
+export type UrlParams = Record<string, string>
+
+export const dataResult = (records: DataRecord[], page = 1, total = records.length, limit = records.length || 1): DataResult => ({ records, page, total, limit, totalPages: Math.max(1, Math.ceil(total / Math.max(1, limit))) })
+
+/** Giữ lại tham số URL hợp lệ (tên chữ/số, giá trị <= 200 ký tự) */
+export function normalizeParams(input: Record<string, string | string[] | undefined> | undefined): UrlParams {
+  const out: UrlParams = {}
+  for (const [k, v] of Object.entries(input ?? {})) {
+    const value = Array.isArray(v) ? v[0] : v
+    if (/^[A-Za-z_][A-Za-z0-9_.-]{0,40}$/.test(k) && typeof value === 'string' && value.length <= 200) out[k] = value
+  }
+  return out
+}
+
+/** Số trang từ ?page= */
+export function pageFromParams(params: UrlParams | undefined): number {
+  const n = parseInt(params?.page ?? '1', 10)
+  return isFinite(n) && n > 0 ? Math.min(n, 10000) : 1
+}
+
+/** Link giữ nguyên tham số hiện tại (bỏ ?page), thay/bỏ một tham số */
+export function withParam(params: UrlParams | undefined, key: string, value: string | null): string {
+  const q = new URLSearchParams()
+  for (const [k, v] of Object.entries(params ?? {})) if (k !== key && k !== 'page') q.set(k, v)
+  if (value !== null && value !== '') q.set(key, value)
+  const str = q.toString()
+  return str ? `?${str}` : '?'
+}
+
+/** Mẫu link phân trang giữ tham số hiện tại: "?q=x&page={n}" ({n} không bị mã hoá) */
+export function pageHrefPattern(params: UrlParams | undefined): string {
+  const base = withParam(params, 'page', null)
+  return base === '?' ? '?page={n}' : `${base}&page={n}`
+}
 
 export const DATA_LIST_TYPE = 'dataList'
 export const FIELD_PATTERN = /^[A-Za-z_][A-Za-z0-9_.-]{0,80}$/
@@ -70,11 +116,19 @@ export function normalizeDataSource(input: unknown): DataSource | undefined {
   }
   if (typeof src.byField === 'string' && FIELD_PATTERN.test(src.byField)) out.byField = src.byField
   if (typeof src.byValue === 'string' && src.byValue.trim()) out.byValue = src.byValue.trim().slice(0, 300)
+  if (src.urlParams === true) out.urlParams = true
+  if (Array.isArray(src.searchFields)) {
+    const fields = src.searchFields.filter((f): f is string => typeof f === 'string' && FIELD_PATTERN.test(f)).slice(0, 10)
+    if (fields.length) out.searchFields = fields
+  }
   return out
 }
 
-/** Điều kiện `where` của Payload từ nguồn dữ liệu */
-export function buildWhere(source: DataSource): Record<string, unknown> | undefined {
+/**
+ * Điều kiện `where` của Payload từ nguồn dữ liệu, cộng tham số URL khi `urlParams` bật:
+ * ?q= tìm (like) trên searchFields, ?<trường>=<giá trị> bằng (chỉ trường trong `allowedFields` nếu có).
+ */
+export function buildWhere(source: DataSource, params?: UrlParams, allowedFields?: string[]): Record<string, unknown> | undefined {
   const and: Record<string, unknown>[] = []
   for (const f of source.filters ?? []) {
     if (f.op === 'exists') and.push({ [f.field]: { exists: f.value !== 'false' && f.value !== '0' } })
@@ -82,6 +136,15 @@ export function buildWhere(source: DataSource): Record<string, unknown> | undefi
     else and.push({ [f.field]: { [f.op]: f.value } })
   }
   if (source.mode === 'one' && source.byValue) and.push({ [source.byField || 'id']: { equals: source.byValue } })
+  if (source.urlParams && params) {
+    const q = (params.q ?? '').trim()
+    if (q && source.searchFields?.length) and.push({ or: source.searchFields.map((f) => ({ [f]: { like: q } })) })
+    for (const [k, v] of Object.entries(params)) {
+      if (k === 'q' || k === 'page' || !v || !FIELD_PATTERN.test(k)) continue
+      if (allowedFields && !allowedFields.includes(k.split('.')[0])) continue
+      and.push({ [k]: { equals: v } })
+    }
+  }
   return and.length ? { and } : undefined
 }
 
@@ -177,30 +240,49 @@ export function bindSubtree(node: BuilderNode, record: DataRecord, extra: Record
   return out
 }
 
+export interface ResolveContext {
+  params?: UrlParams
+}
+
 /**
- * Áp dụng dữ liệu cho toàn cây. `lookup(nodeId)` trả về bản ghi đã nạp cho node có nguồn.
+ * Áp dụng dữ liệu cho toàn cây. `lookup(nodeId)` trả về kết quả đã nạp cho node có nguồn.
  * - dataList: lặp các con cho từng bản ghi (bản đầu giữ id gốc để editor chọn được).
  * - block chứa khác có nguồn: gắn bản ghi đầu tiên vào cây con.
+ * - Pagination `auto`, Ô tìm kiếm, Toggle Group có `param`: nhận trạng thái từ nguồn chính (nguồn đầu tiên bật urlParams) và URL.
  * Nhánh không có nguồn dữ liệu được trả về đúng object cũ (structural sharing).
  */
-export function resolveData(root: BuilderNode, lookup: DataLookup): BuilderNode {
+export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveContext = {}): BuilderNode {
+  const params = ctx.params ?? {}
+  const primaryId = collectDataNodes(root).find((n) => n.source.urlParams)?.id
+  const primary = primaryId ? lookup(primaryId) : undefined
   const visit = (node: BuilderNode): BuilderNode => {
     const source = dataSourceOf(node)
     if (source) {
-      const records = lookup(node.id) ?? []
+      const result = lookup(node.id)
+      const records = result?.records ?? []
+      const pageExtra = { total: result?.total ?? records.length, page: result?.page ?? 1, totalPages: result?.totalPages ?? 1 }
       if (node.type === DATA_LIST_TYPE) {
         const template = node.children ?? []
         const children: BuilderNode[] = []
         records.forEach((rec, i) => {
-          const extra = { index: i + 1, count: records.length }
+          const extra = { index: i + 1, count: records.length, ...pageExtra }
           for (const child of template) children.push(bindSubtree(child, rec, extra, i === 0 ? '' : `_${i}`, i > 0))
         })
         return { ...node, children: children.map(visit) }
       }
       const rec = records[0]
       if (!rec) return visitChildren(node)
-      const bound = bindSubtree(node, rec, { index: 1, count: records.length }, '', false)
+      const bound = bindSubtree(node, rec, { index: 1, count: records.length, ...pageExtra }, '', false)
       return visitChildren(bound)
+    }
+    // block điều khiển theo URL
+    if (node.type === 'pagination' && node.props.auto === true) {
+      return { ...node, props: { ...node.props, pages: String(primary?.totalPages ?? 1), current: String(primary?.page ?? pageFromParams(params)), hrefPattern: pageHrefPattern(params) } }
+    }
+    if (node.type === 'searchBox') return { ...node, props: { ...node.props, value: params.q ?? '', total: primary ? String(primary.total) : '' } }
+    if (node.type === 'toggleGroup' && typeof node.props.param === 'string' && node.props.param) {
+      const key = node.props.param
+      return { ...node, props: { ...node.props, currentValue: params[key] ?? '', baseQuery: withParam(params, key, null) } }
     }
     return visitChildren(node)
   }

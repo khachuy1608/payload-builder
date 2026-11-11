@@ -3,7 +3,7 @@ import { draftMode } from 'next/headers'
 import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import { cache } from 'react'
-import { bindString, type DataMap, FIELD_PATTERN } from '../builder/data'
+import { bindString, type DataMap, FIELD_PATTERN, type UrlParams } from '../builder/data'
 import { resolveRefs } from '../builder/refs'
 import type { ThemeTokens } from '../builder/theme'
 import type { BuilderNode, PageContent } from '../builder/types'
@@ -24,6 +24,7 @@ export interface LoadedPage {
   theme: ThemeTokens
   /** Bản ghi đã nạp cho các node có nguồn dữ liệu (kể cả trong My Block liên kết) */
   data: DataMap
+  params: UrlParams
   draft: boolean
 }
 
@@ -31,7 +32,7 @@ export interface LoadedPage {
  * @param param đoạn cuối URL của trang mẫu động (/slug/param). Root được gắn nguồn "một bản ghi" khớp param;
  *   không có bản ghi -> null (404).
  */
-async function fetchPage(slug: string, draft: boolean, param?: string): Promise<LoadedPage | null> {
+async function fetchPage(slug: string, draft: boolean, param?: string, params: UrlParams = {}): Promise<LoadedPage | null> {
   const payload = await getPayload({ config })
   const result = await payload.find({
     collection: 'pages',
@@ -56,25 +57,27 @@ async function fetchPage(slug: string, draft: boolean, param?: string): Promise<
   }
   const [blocks, theme] = await Promise.all([loadBlocksForContent(payload, content), loadThemeForPage(payload, doc.theme)])
   // nguồn dữ liệu có thể nằm trong My Block liên kết -> thu thập trên cây đã triển khai
-  const data = await loadDataForTree(payload, resolveRefs(content.root, (id) => blocks.get(id)))
-  const record = data.root?.[0]
+  const data = await loadDataForTree(payload, resolveRefs(content.root, (id) => blocks.get(id)), params)
+  const record = data.root?.records[0]
   if (param !== undefined && !record) return null
   const title = record ? bindString(doc.title, record) : doc.title.replace(/\{\{[^}]*\}\}/g, '').trim()
-  return { title, slug: doc.slug, template, content, blocks: Object.fromEntries(blocks), theme: theme.tokens, data, draft }
+  return { title, slug: doc.slug, template, content, blocks: Object.fromEntries(blocks), theme: theme.tokens, data, params, draft }
 }
 
 /**
  * Trang đã xuất bản được cache theo tag `pages`; hook afterChange của Pages / My Blocks / Themes / Site Settings
  * gọi revalidateTag nên cache chỉ mới lại khi có thay đổi (xem lib/revalidate.ts).
  */
-const getPublishedPage = unstable_cache((slug: string, param?: string) => fetchPage(slug, false, param), ['published-page'], { tags: [PAGES_TAG] })
+const getPublishedPage = unstable_cache((slug: string, param: string | undefined, paramsKey: string) => fetchPage(slug, false, param, JSON.parse(paramsKey)), ['published-page'], { tags: [PAGES_TAG] })
 
 /**
  * Lấy trang theo slug cho front-end.
  * - Bình thường: trang đã xuất bản, từ cache.
  * - Draft mode (bật qua /preview khi đã đăng nhập): luôn đọc bản nháp mới nhất, không cache.
  */
-export const getPageBySlug = cache(async (slug: string, param?: string): Promise<LoadedPage | null> => {
+export const getPageBySlug = cache(async (slug: string, param?: string, params: UrlParams = {}): Promise<LoadedPage | null> => {
   const { isEnabled: draft } = await draftMode()
-  return draft ? fetchPage(slug, true, param) : getPublishedPage(slug, param)
+  // tham số URL là một phần của khoá cache (sắp xếp khoá để ổn định)
+  const key = JSON.stringify(Object.fromEntries(Object.entries(params).sort(([a], [b]) => a.localeCompare(b))))
+  return draft ? fetchPage(slug, true, param, params) : getPublishedPage(slug, param, key)
 })
