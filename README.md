@@ -76,10 +76,12 @@ Chạy production không dùng Docker: `npm run build && npm start`. Migration t
 
 ## Hoàn thiện (P5)
 
-- **Rich text:** Paragraph lưu HTML inline đã làm sạch bằng `sanitizeRichText` (chỉ `b/strong/i/em/u/s/a/br/code`, link chỉ http(s)/mailto/tel) ở cả hook lưu lẫn lúc render; văn bản thuần cũ hiển thị như trước. Nhấp đúp để sửa trực tiếp: thanh công cụ nổi B/I/U/S/Link, Ctrl+B/I/U, Enter xuống dòng, Ctrl+Enter xong. Panel phải có ô soạn tương tự.
+- **Rich text:** Paragraph lưu HTML đã làm sạch bằng `sanitizeRichText` (chỉ `b/strong/i/em/u/s/a/br/code/ul/ol/li`, link chỉ http(s)/mailto/tel) ở cả hook lưu lẫn lúc render; văn bản thuần cũ hiển thị như trước. Nhấp đúp để sửa trực tiếp: thanh công cụ nổi B/I/U/S/Link/danh sách, Ctrl+B/I/U, Enter xuống dòng (trong danh sách: mục mới), Ctrl+Enter xong. Panel phải có ô soạn tương tự. Paragraph có danh sách render bằng `div` để HTML hợp lệ.
 - **Menu chuột phải:** trên canvas và cây Cấu trúc: chọn cha, nhân bản, sao chép/dán, lưu thành My Block, tách block liên kết, xoá.
 - **Kéo thả trực tiếp:** nhấn giữ một phần tử trên canvas và kéo quá 6px là bắt đầu di chuyển (vẫn dùng thuật toán thả hiện có), Esc để huỷ. Tay cầm trên thanh công cụ và kéo từ panel vẫn hoạt động.
 - **Lịch sử phiên bản:** nút 🕘 ở thanh trên liệt kê các bản nháp/xuất bản của Payload, xem trước và *Khôi phục vào editor* như một bước chỉnh sửa (Ctrl+Z hoàn tác được); trang chỉ đổi khi bạn Lưu nháp/Xuất bản.
+- **Google Fonts:** trong *Quản lý theme*, mỗi font chọn từ font hệ thống, ~55 Google Fonts theo nhóm (sans/serif/display/mono) hoặc stack tuỳ chỉnh, có dòng chữ mẫu. Chọn Google Font thì link stylesheet tự sinh từ các font đang dùng (`buildGoogleFontsUrl`); dán link tuỳ chỉnh (Typekit…) thì giữ nguyên, có nút *Tạo lại từ Google Fonts*.
+- **Khoá khi nhiều người cùng sửa:** dùng collection `payload-locked-documents` sẵn có của Payload (admin cũng dùng, nên admin và builder thấy khoá của nhau). Mở editor là giữ khoá, gia hạn mỗi 60s, thả khi rời trang (`pagehide` + `keepalive`); Payload coi khoá quá 300s là hết hạn. Người thứ hai thấy băng rôn "đang được X sửa", nút lưu bị vô hiệu, có *Kiểm tra lại* và *Chiếm quyền sửa*. Lưu gửi `overrideLock=false` nên server trả 423 nếu khoá thuộc người khác; vì Payload xoá khoá sau mỗi update, editor tự lấy lại khoá sau khi lưu.
 - **Cache:** trang công khai đọc từ `unstable_cache` theo tag `pages`; hook `afterChange`/`afterDelete` của Pages, My Blocks, Themes và Site Settings gọi `revalidateTag` (hết hạn ngay) kèm `revalidatePath` của trang. Draft mode luôn đọc bản nháp mới nhất, không cache.
 
 ## Phím tắt trong Builder
@@ -127,6 +129,7 @@ src/
 │   ├── HistoryDialog.tsx    # lịch sử phiên bản: xem trước, khôi phục vào editor
 │   ├── ContextMenu.tsx      # menu chuột phải (canvas + cây Cấu trúc)
 │   ├── RichToolbar.tsx      # thanh công cụ rich text dùng chung
+│   ├── lock.ts, LockBanner.tsx  # khoá tài liệu khi nhiều người cùng sửa
 │   ├── RightPanel.tsx       # Nội dung / Kiểu / Nâng cao (+ panel blockRef, cài đặt block)
 │   ├── MediaPicker.tsx      # thư viện ảnh + upload
 │   ├── TopBar.tsx, Editor.tsx, api.ts, shortcuts.ts, labels.ts, editor.css
@@ -215,8 +218,9 @@ npm run typecheck
 
 - **Cache:** dữ liệu trang được cache (xem P5) nhưng route vẫn render động vì phải kiểm tra draft mode; muốn tĩnh hoàn toàn cần tách preview sang route riêng.
 - **Ảnh trong block Image lưu kèm `url`** (bản chụp tại lúc chọn). Nếu thay file trong thư viện media thì cần chọn lại ảnh. Sau này có thể populate theo `id` trong hook `afterRead`.
-- **Rich text** chỉ gồm định dạng inline (chưa có danh sách, tiêu đề trong đoạn).
+- **Rich text** gồm định dạng inline và danh sách (chưa có tiêu đề/bảng trong đoạn).
+- **Khoá tài liệu**: nếu tab bị đóng đột ngột mà `pagehide` không kịp gửi, khoá tự hết hạn sau 300 giây hoặc người khác bấm *Chiếm quyền sửa*.
 - **Đổi schema** (thêm field hoặc collection): ở dev, schema tự push. Trước khi deploy, chạy `npm run payload migrate:create <tên>`.
 - **My Blocks:** preview trong thư viện dựng bằng iframe nhỏ (không chụp ảnh). Field `thumbnail` có sẵn trong admin nếu muốn gắn ảnh thủ công. Xoá block đang được trang dùng dạng liên kết không bị chặn (trang thật bỏ qua phần tử đó).
 - **Themes:** font ngoài chỉ nạp qua `fontUrl` (một stylesheet); chưa có bộ chọn Google Fonts tích hợp. Theme không có lịch sử phiên bản.
-- Gợi ý tiếp theo: rich text có danh sách, bộ chọn Google Fonts, khoá trang khi nhiều người cùng sửa, xuất/nhập block giữa các site.
+- Gợi ý tiếp theo: xuất/nhập block giữa các site, bảng trong rich text, cộng tác thời gian thực.

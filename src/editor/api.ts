@@ -5,12 +5,14 @@ import type { MediaValue } from '@/builder/types'
 import { normalizeTheme, type ThemeTokens } from '@/builder/theme'
 import { genId } from '@/builder/tree'
 import { normalizeContent, validateBlockTree } from '@/builder/validate'
+import { acquireLock } from './lock'
 import { type BlockScope, type MyBlock, type SaveStatus, type ThemeDoc, useEditor } from './store'
 
 /** id quan hệ gửi lên Payload: số nếu là số (Postgres serial) */
 const relValue = (id: string | null) => (id == null ? null : /^\d+$/.test(id) ? Number(id) : id)
 
 async function readError(res: Response): Promise<string> {
+  if (res.status === 423) return 'Tài liệu đang được người khác sửa (bị khoá). Tải lại trang để xem ai đang giữ khoá hoặc chiếm quyền sửa.'
   try {
     const body = await res.json()
     const first = body?.errors?.[0]
@@ -29,7 +31,8 @@ export async function savePage(publish: boolean): Promise<boolean> {
   s.setSaving(true)
   const content: PageContent = { version: 1, root: s.root }
   try {
-    const res = await fetch(`/api/pages/${s.pageId}?depth=0${publish ? '' : '&draft=true'}`, {
+    // overrideLock=false: Payload từ chối (423) nếu người khác đang giữ khoá
+    const res = await fetch(`/api/pages/${s.pageId}?depth=0&overrideLock=false${publish ? '' : '&draft=true'}`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -46,10 +49,12 @@ export async function savePage(publish: boolean): Promise<boolean> {
     if (doc?.slug && doc.slug !== s.slug) useEditor.getState().setMeta({ slug: doc.slug })
     useEditor.getState().markSaved(publish ? 'published' : 'draft')
     useEditor.getState().toast('success', publish ? 'Đã xuất bản.' : 'Đã lưu bản nháp.')
+    void acquireLock() // Payload xoá khoá sau mỗi lần update -> lấy lại
     return true
   } catch (err) {
     useEditor.getState().setSaving(false)
     useEditor.getState().toast('error', `Lưu thất bại: ${(err as Error).message}`)
+    void acquireLock() // 423: cập nhật băng rôn "đang được X sửa"
     return false
   }
 }
@@ -138,8 +143,8 @@ export async function createMyBlock(data: { name: string; scope: BlockScope; tre
   return block
 }
 
-export async function updateMyBlock(id: string, data: Partial<{ name: string; scope: BlockScope; tree: BuilderNode }>): Promise<MyBlock> {
-  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1`, {
+export async function updateMyBlock(id: string, data: Partial<{ name: string; scope: BlockScope; tree: BuilderNode }>, respectLock = false): Promise<MyBlock> {
+  const res = await fetch(`/api/my-blocks/${encodeURIComponent(id)}?depth=1${respectLock ? '&overrideLock=false' : ''}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -189,14 +194,16 @@ export async function saveBlock(): Promise<boolean> {
   }
   s.setSaving(true)
   try {
-    const block = await updateMyBlock(s.pageId, { name: s.title.trim() || 'Block chưa đặt tên', scope: s.scope, tree })
+    const block = await updateMyBlock(s.pageId, { name: s.title.trim() || 'Block chưa đặt tên', scope: s.scope, tree }, true)
     useEditor.getState().upsertBlock(block)
     useEditor.getState().markSaved('published')
     useEditor.getState().toast('success', 'Đã lưu block. Các trang dùng liên kết sẽ tự cập nhật.')
+    void acquireLock()
     return true
   } catch (err) {
     useEditor.getState().setSaving(false)
     useEditor.getState().toast('error', `Lưu thất bại: ${(err as Error).message}`)
+    void acquireLock()
     return false
   }
 }
