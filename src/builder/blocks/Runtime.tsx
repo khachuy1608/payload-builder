@@ -451,6 +451,16 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
       })
     cleanups.push(() => carouselTimers.forEach((t) => win.clearInterval(t)))
 
+    // Cloudflare Turnstile: nạp script khi trang có widget
+    if (!editor && root.querySelector('[data-turnstile]') && !doc.querySelector('script[data-turnstile-script]')) {
+      const sc = doc.createElement('script')
+      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+      sc.async = true
+      sc.defer = true
+      sc.setAttribute('data-turnstile-script', '')
+      doc.head.appendChild(sc)
+    }
+
     // toast khi vào trang
     if (!editor) root.querySelectorAll<HTMLElement>('[data-toast][data-toast-trigger=load]').forEach((h) => win.setTimeout(() => showToast(h), 1000))
 

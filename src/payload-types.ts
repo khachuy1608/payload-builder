@@ -72,6 +72,7 @@ export interface Config {
     themes: Theme;
     'style-presets': StylePreset;
     'form-submissions': FormSubmission;
+    redirects: Redirect;
     media: Media;
     users: User;
     'payload-kv': PayloadKv;
@@ -86,6 +87,7 @@ export interface Config {
     themes: ThemesSelect<false> | ThemesSelect<true>;
     'style-presets': StylePresetsSelect<false> | StylePresetsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
+    redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -142,6 +144,16 @@ export interface Page {
    * Trang có slug "home" là trang chủ. Để trống sẽ tự tạo từ tiêu đề.
    */
   slug: string;
+  seo?: {
+    /**
+     * Để trống dùng tiêu đề trang. Trang mẫu động nhận {{trường}}.
+     */
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    ogImage?: (number | null) | Media;
+    noIndex?: boolean | null;
+    canonical?: string | null;
+  };
   /**
    * Ví dụ "users": trang phục vụ /<slug>/<giá trị>, toàn bộ nội dung bind vào bản ghi khớp.
    */
@@ -166,6 +178,51 @@ export interface Page {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    large?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
 }
 /**
  * Bộ màu, font, bo góc và kiểu nút cho cả site. Theme preset chỉ đọc – hãy nhân bản trong Visual Builder để chỉnh.
@@ -277,25 +334,6 @@ export interface User {
   collection: 'users';
 }
 /**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  alt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-}
-/**
  * Phần tử/vùng đã dựng trong Visual Builder được lưu lại để dùng ở nhiều trang (bản sao hoặc liên kết).
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -379,6 +417,25 @@ export interface FormSubmission {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects".
+ */
+export interface Redirect {
+  id: number;
+  /**
+   * Ví dụ /gioi-thieu-cu
+   */
+  from: string;
+  /**
+   * Đường dẫn nội bộ (/lien-he) hoặc URL đầy đủ
+   */
+  to: string;
+  permanent?: boolean | null;
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -420,6 +477,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'form-submissions';
         value: number | FormSubmission;
+      } | null)
+    | ({
+        relationTo: 'redirects';
+        value: number | Redirect;
       } | null)
     | ({
         relationTo: 'media';
@@ -478,6 +539,15 @@ export interface PayloadMigration {
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+        ogImage?: T;
+        noIndex?: T;
+        canonical?: T;
+      };
   templateCollection?: T;
   templateField?: T;
   theme?: T;
@@ -571,6 +641,18 @@ export interface FormSubmissionsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects_select".
+ */
+export interface RedirectsSelect<T extends boolean = true> {
+  from?: T;
+  to?: T;
+  permanent?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
@@ -586,6 +668,40 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        large?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -661,6 +777,20 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
 export interface SiteSetting {
   id: number;
   /**
+   * Dùng cho <title>, Open Graph và JSON-LD.
+   */
+  siteName?: string | null;
+  siteDescription?: string | null;
+  logo?: (number | null) | Media;
+  favicon?: (number | null) | Media;
+  defaultOgImage?: (number | null) | Media;
+  /**
+   * Khách thấy trang "maintenance" (nếu có) hoặc thông báo; người đã đăng nhập vẫn xem bình thường.
+   */
+  maintenance?: boolean | null;
+  maintenanceMessage?: string | null;
+  notifyEmail?: string | null;
+  /**
    * Áp dụng cho mọi trang, trừ trang có ghi đè theme riêng.
    */
   theme?: (number | null) | Theme;
@@ -672,6 +802,14 @@ export interface SiteSetting {
  * via the `definition` "site-settings_select".
  */
 export interface SiteSettingsSelect<T extends boolean = true> {
+  siteName?: T;
+  siteDescription?: T;
+  logo?: T;
+  favicon?: T;
+  defaultOgImage?: T;
+  maintenance?: T;
+  maintenanceMessage?: T;
+  notifyEmail?: T;
   theme?: T;
   updatedAt?: T;
   createdAt?: T;

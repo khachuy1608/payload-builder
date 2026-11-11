@@ -47,6 +47,14 @@ export interface MyBlock {
   updatedAt: string
 }
 
+export interface PageSeoState {
+  metaTitle: string
+  metaDescription: string
+  ogImage: MediaValue | null
+  noIndex: boolean
+  canonical: string
+}
+
 export type LockState =
   | { state: 'checking' | 'off' }
   | { state: 'owned'; lockId: string }
@@ -139,6 +147,8 @@ export interface EditorState {
 
   /** Trang mẫu động: collection + trường khớp URL (null = trang thường) */
   template: { collection: string; field: string } | null
+  /** SEO của trang */
+  seo: PageSeoState
   /** Nguồn dữ liệu có thể bind (từ /api/builder/sources) */
   sources: SourceInfo[]
   /** Bản ghi đã nạp theo id node có nguồn (canvas dùng để hiện dữ liệu thật) */
@@ -182,8 +192,10 @@ export interface EditorActions {
     userId: string | null
     pageThemeId?: string | null
     template?: { collection: string; field: string } | null
+    seo?: Partial<PageSeoState>
   }): void
   setTemplate(template: EditorState['template']): void
+  setSeo(patch: Partial<PageSeoState>): void
   select(id: string | null): void
   hover(id: string | null): void
   setEditing(id: string | null): void
@@ -346,6 +358,7 @@ export const useEditor = create<Store>()(
       currentUser: null,
       previewAsGuest: false,
       template: null,
+      seo: { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '' },
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -381,6 +394,7 @@ export const useEditor = create<Store>()(
           s.saveBlockFor = null
           s.pageThemeId = data.pageThemeId ?? null
           s.template = data.template ?? null
+          s.seo = { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '', ...(data.seo ?? {}) }
           s.themePreview = null
           s.themeDialog = false
         }),
@@ -594,6 +608,11 @@ export const useEditor = create<Store>()(
       setLock: (lock) =>
         set((s) => {
           s.lock = lock
+        }),
+      setSeo: (patch) =>
+        set((s) => {
+          Object.assign(s.seo, patch)
+          s.dirty = true
         }),
       setTemplate: (template) =>
         set((s) => {

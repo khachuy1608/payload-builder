@@ -43,6 +43,7 @@ export async function savePage(publish: boolean): Promise<boolean> {
         theme: relValue(s.pageThemeId),
         templateCollection: s.template?.collection ?? null,
         templateField: s.template?.field ?? 'id',
+        seo: { metaTitle: s.seo.metaTitle || null, metaDescription: s.seo.metaDescription || null, ogImage: s.seo.ogImage ? relValue(String(s.seo.ogImage.id)) : null, noIndex: s.seo.noIndex, canonical: s.seo.canonical || null },
         _status: publish ? 'published' : 'draft',
       }),
     })
@@ -69,10 +70,11 @@ export interface MediaDoc {
   width?: number
   height?: number
   mimeType?: string
+  sizes?: MediaValue['sizes']
 }
 
 export function toMediaValue(doc: MediaDoc): MediaValue {
-  return { id: doc.id, url: doc.url, alt: doc.alt ?? '', width: doc.width, height: doc.height, mimeType: doc.mimeType }
+  return { id: doc.id, url: doc.url, alt: doc.alt ?? '', width: doc.width, height: doc.height, mimeType: doc.mimeType, ...(doc.sizes ? { sizes: doc.sizes } : {}) }
 }
 
 export async function listMedia(page = 1): Promise<{ docs: MediaDoc[]; hasNextPage: boolean }> {

@@ -23,7 +23,7 @@ import {
 import { FEEDBACK_BLOCKS } from './blocks/defs/feedback'
 import { FORM_BLOCKS } from './blocks/defs/forms'
 import { LAYOUT_BLOCKS } from './blocks/defs/layout'
-import { Icon, ICON_OPTIONS, num, parseYouTubeId, safeHref } from './blocks/helpers'
+import { Icon, ICON_OPTIONS, num, parseYouTubeId, safeHref, srcSetOf } from './blocks/helpers'
 import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
@@ -309,8 +309,10 @@ const BLOCK_LIST: BlockDefinition[] = [
         // eslint-disable-next-line @next/next/no-img-element
         <img
           {...attrs}
-          className={attrs.className + ' b-image'}
+          className={attrs.className}
           src={media.url}
+          srcSet={srcSetOf(media)}
+          sizes={srcSetOf(media) ? '(max-width: 767px) 100vw, 1200px' : undefined}
           alt={text(node.props.alt) || media.alt || ''}
           width={media.width}
           height={media.height}

@@ -30,6 +30,7 @@ export interface EditorInitial {
   /** Ghi đè theme của trang (kind = page) */
   pageThemeId?: string | null
   template?: { collection: string; field: string } | null
+  seo?: Partial<import('./store').PageSeoState>
 }
 
 export function Editor({ initial }: { initial: EditorInitial }) {
@@ -48,6 +49,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       userId: initial.userId,
       pageThemeId: initial.pageThemeId ?? null,
       template: initial.template ?? null,
+      seo: initial.seo,
     })
     ready.current = true
   }

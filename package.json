@@ -12,7 +12,9 @@
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "export": "cross-env NODE_OPTIONS=--no-deprecation tsx --env-file-if-exists=.env scripts/export.ts",
+    "import": "cross-env NODE_OPTIONS=--no-deprecation tsx --env-file-if-exists=.env scripts/import.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.93.0",

@@ -60,6 +60,7 @@ export const FORM_BLOCKS: BlockDefinition[] = [
         {children}
         {/* honeypot chống spam */}
         <input type="text" name="website" tabIndex={-1} autoComplete="off" className="b-form-hp" aria-hidden="true" />
+        {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && mode === 'live' && <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} data-turnstile="" />}
         <div className="b-form-actions">
           <button type="submit" className="b-button b-form-submit">
             {text(node.props.submitText, 'Gửi')}

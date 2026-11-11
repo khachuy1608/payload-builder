@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { genId } from '../../tree'
 import type { BuilderNode, MediaValue } from '../../types'
-import { bool, EditorOnly, Icon, items, num, safeColor, safeHref, text } from '../helpers'
+import { bool, EditorOnly, Icon, items, num, safeColor, safeHref, srcSetOf, text } from '../helpers'
 import type { BlockDefinition } from '../types'
 
 const node = (type: string, props: Record<string, unknown>, styles: BuilderNode['styles'] = {}, children?: BuilderNode[]): BuilderNode => ({ id: genId(), type, props, styles, ...(children ? { children } : {}) })
@@ -256,7 +256,7 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
         <span {...attrs} className={`${attrs.className} b-avatar-one b-avatar-one--${text(node.props.shape, 'circle')}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }} title={name || undefined}>
           {media?.url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={media.url} alt={name || media.alt || ''} loading="lazy" />
+            <img src={media.url} srcSet={srcSetOf(media)} sizes={`${size}px`} alt={name || media.alt || ''} loading="lazy" />
           ) : (
             <span aria-hidden>{initials || '?'}</span>
           )}

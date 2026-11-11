@@ -7,6 +7,7 @@ import { FormSubmissions } from './collections/FormSubmissions'
 import { Media } from './collections/Media'
 import { MyBlocks } from './collections/MyBlocks'
 import { Pages } from './collections/Pages'
+import { Redirects } from './collections/Redirects'
 import { StylePresets } from './collections/StylePresets'
 import { Themes } from './collections/Themes'
 import { SiteSettings } from './globals/SiteSettings'
@@ -24,8 +25,21 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' – Page Builder' },
   },
-  collections: [Pages, MyBlocks, Themes, StylePresets, FormSubmissions, Media, Users],
+  collections: [Pages, MyBlocks, Themes, StylePresets, FormSubmissions, Redirects, Media, Users],
   endpoints: [
+    {
+      // Health check cho load balancer / giám sát: kiểm tra kết nối DB
+      path: '/health',
+      method: 'get',
+      handler: async (req) => {
+        try {
+          await req.payload.count({ collection: 'pages', overrideAccess: true })
+          return Response.json({ ok: true, time: new Date().toISOString() })
+        } catch (err) {
+          return Response.json({ ok: false, error: String(err) }, { status: 503 })
+        }
+      },
+    },
     {
       // Danh sách nguồn dữ liệu + trường công khai cho bộ chọn ⚡ của Visual Builder (cần đăng nhập)
       path: '/builder/sources',

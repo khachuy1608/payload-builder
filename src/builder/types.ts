@@ -62,6 +62,8 @@ export interface MediaValue {
   width?: number
   height?: number
   mimeType?: string
+  /** Các cỡ ảnh đã tối ưu (Payload imageSizes) để dựng srcset */
+  sizes?: Record<string, { url?: string | null; width?: number | null; height?: number | null }>
 }
 
 /** Props của node `blockRef` (My Block dạng liên kết) */

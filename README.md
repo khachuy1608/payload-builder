@@ -139,6 +139,23 @@ Toàn bộ 58 mục nền web của [namethatui.com](https://namethatui.com/?pla
 - **Hiệu ứng:** `src/builder/effects.ts` – `props.fx` được làm sạch khi lưu, biên dịch CSS trong `css.ts` (keyframes trong `FX_CSS`), JS trong Runtime. **Spring** là mô phỏng lò xo thật (độ cứng / giảm chấn / khối lượng) xuất thành easing `linear()` kèm thời lượng tự tính. Tôn trọng `prefers-reduced-motion`.
 - **Form:** block Form gửi JSON tới collection `form-submissions` (khách tạo được, có honeypot, chỉ người đăng nhập đọc) hoặc tới URL `action` riêng; validation JS hiển thị dòng lỗi của Form Field. Sign-in Form chỉ là giao diện, POST tới `action` bạn đặt.
 
+## Sẵn sàng chạy thật (SEO, redirect, bảo trì, export/import)
+
+- **SEO từng trang:** panel *Cài đặt trang → SEO & chia sẻ* trong builder (hoặc group `seo` trong admin): meta title, meta description, ảnh OG, noindex, canonical, kèm xem trước kết quả Google. Trang mẫu động bind được `{{trường}}` của bản ghi trong meta title/description. Không nhập thì dùng tên trang + hậu tố tên site, mô tả site và ảnh OG mặc định trong *Cài đặt site*.
+- **JSON-LD:** mọi trang phát `WebPage`; trang chủ thêm `WebSite` + `Organization` (logo từ Cài đặt site).
+- **`/sitemap.xml`** (trang đã xuất bản, bỏ noindex/404/bảo trì, trang mẫu động nở theo từng bản ghi) và **`/robots.txt`** (chặn `/admin`, `/api`, `/builder`, `/preview`).
+- **Ảnh tối ưu:** upload sinh 3 cỡ WebP (400/800/1600) trong `media.sizes`; block Image, Card, Avatar render `srcset` + `sizes`. Media nhận cả video mp4/webm.
+- **Trang 404 & bảo trì dựng bằng builder:** tạo trang có slug `404` (hiện khi không tìm thấy, status 404) hoặc `maintenance`. Bật *Bảo trì* trong Cài đặt site: khách thấy trang `maintenance` (hoặc thông báo mặc định), người đã đăng nhập vẫn xem bình thường.
+- **Redirects:** collection `redirects` (`from` → `to`, 301/302). Đổi slug của trang đã xuất bản sẽ tự tạo redirect 301 từ slug cũ.
+- **Giám sát:** `GET /api/health` trả `{ ok, db, uptime }` (503 nếu DB lỗi) – dùng cho Docker healthcheck / uptime monitor.
+- **Chống spam form:** honeypot + giới hạn 10 lượt/phút mỗi IP (429) + Cloudflare Turnstile tuỳ chọn (đặt `NEXT_PUBLIC_TURNSTILE_SITE_KEY` và `TURNSTILE_SECRET_KEY`).
+- **Export/Import để nhân bản site:**
+
+```bash
+npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redirects, site-settings, media (+file)
+npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
+```
+
 ## Phím tắt trong Builder
 
 | Phím | Tác dụng |
@@ -268,7 +285,7 @@ Không cần viết UI cho panel: editor tự sinh control từ `contentControls
 ## Kiểm thử
 
 ```bash
-npm test          # unit test lõi: cây, CSS, validate, sanitize SVG/rich text, link/YouTube, My Blocks (resolveRefs, vòng lặp…), theme
+npm test          # unit test lõi: cây, CSS, validate, sanitize SVG/rich text, link/YouTube, My Blocks (resolveRefs, vòng lặp…), theme, data binding, presets, SEO
 npm run typecheck
 ```
 

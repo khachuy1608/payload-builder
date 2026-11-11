@@ -37,6 +37,15 @@ export function safeColor(v: unknown, fallback = ''): string {
   return /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\)|var\(--[a-zA-Z0-9-]+\))$/.test(s) ? s : fallback
 }
 
+/** srcset từ các cỡ ảnh tối ưu của media (nếu có) */
+export function srcSetOf(media: { url?: string; width?: number | null; sizes?: Record<string, { url?: string | null; width?: number | null }> } | null | undefined): string | undefined {
+  if (!media?.sizes) return undefined
+  const all = Object.values(media.sizes).filter((s) => s?.url && s.width) as { url: string; width: number }[]
+  if (media.url && media.width) all.push({ url: media.url, width: media.width })
+  const parts = all.sort((a, b) => a.width - b.width).map((s) => `${s.url} ${s.width}w`)
+  return parts.length > 1 ? parts.join(', ') : undefined
+}
+
 export function Placeholder({ attrs, label, icon: Icon }: { attrs: RenderProps['attrs']; label: string; icon: BlockDefinition['icon'] }) {
   return (
     <div {...attrs} className={attrs.className + ' bld-ph'}>

@@ -2,9 +2,13 @@ import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import type { ReactNode } from 'react'
 import { BASE_CSS } from '@/builder/theme'
+import { getSiteSettings } from '@/lib/pages'
+import { siteInfoFrom } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: { default: 'Page Builder', template: '%s – Page Builder' },
+/** Tên site trong Cài đặt site làm hậu tố <title> cho mọi trang */
+export async function generateMetadata(): Promise<Metadata> {
+  const site = siteInfoFrom((await getSiteSettings()) as Record<string, unknown> | null)
+  return { title: { default: site.siteName, template: `%s – ${site.siteName}` } }
 }
 
 export default async function FrontendLayout({ children }: { children: ReactNode }) {

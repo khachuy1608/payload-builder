@@ -16,7 +16,7 @@ export default async function BuilderPage({ params }: Args) {
   if (!user) redirect(`/admin/login?redirect=${encodeURIComponent(`/builder/${id}`)}`)
 
   const page = await payload
-    .findByID({ collection: 'pages', id, draft: true, depth: 0, user, overrideAccess: false })
+    .findByID({ collection: 'pages', id, draft: true, depth: 1, user, overrideAccess: false })
     .catch(() => null)
   if (!page) notFound()
 
@@ -27,6 +27,13 @@ export default async function BuilderPage({ params }: Args) {
         userId: String(user.id),
         pageThemeId: page.theme == null ? null : String(typeof page.theme === 'object' ? page.theme.id : page.theme),
         template: page.templateCollection ? { collection: String(page.templateCollection), field: String(page.templateField || 'id') } : null,
+        seo: {
+          metaTitle: page.seo?.metaTitle ?? '',
+          metaDescription: page.seo?.metaDescription ?? '',
+          ogImage: page.seo?.ogImage && typeof page.seo.ogImage === 'object' ? { id: page.seo.ogImage.id, url: page.seo.ogImage.url ?? '', alt: page.seo.ogImage.alt ?? '' } : null,
+          noIndex: !!page.seo?.noIndex,
+          canonical: page.seo?.canonical ?? '',
+        },
         id: String(page.id),
         title: page.title,
         slug: page.slug,

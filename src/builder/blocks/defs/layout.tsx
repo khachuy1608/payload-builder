@@ -27,7 +27,7 @@ import {
 import { genId } from '../../tree'
 import type { BuilderNode, MediaValue } from '../../types'
 import { withParam } from '../../data'
-import { bool, ContainerRender, EditorOnly, Icon, items, num, safeHref, safeId, text } from '../helpers'
+import { bool, ContainerRender, EditorOnly, Icon, items, num, safeHref, safeId, srcSetOf, text } from '../helpers'
 import type { BlockDefinition } from '../types'
 
 const node = (type: string, props: Record<string, unknown>, styles: BuilderNode['styles'] = {}, children?: BuilderNode[]): BuilderNode => ({
@@ -133,7 +133,7 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
         <div {...attrs} className={`${attrs.className} b-card b-card--${media?.url ? pos : 'none'}`}>
           {media?.url && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img className="b-card-media" src={media.url} alt={media.alt ?? ''} loading="lazy" />
+            <img className="b-card-media" src={media.url} srcSet={srcSetOf(media)} sizes={srcSetOf(media) ? '(max-width: 767px) 100vw, 600px' : undefined} alt={media.alt ?? ''} loading="lazy" />
           )}
           <div className="b-card-body">{children}</div>
         </div>

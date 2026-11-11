@@ -12,6 +12,7 @@ import { loadBlocksForContent } from './blocks'
 import { loadDataForTree } from './data'
 import { PAGES_TAG } from './revalidate'
 import { loadThemeForPage } from './themes'
+import { type PageSeo, pageSeoFrom, type SiteInfo, siteInfoFrom } from './seo'
 
 export interface LoadedPage {
   title: string
@@ -26,6 +27,18 @@ export interface LoadedPage {
   data: DataMap
   params: UrlParams
   draft: boolean
+  seo: PageSeo
+  site: SiteInfo & { maintenance: boolean; maintenanceMessage: string }
+  /** Bản ghi hiện tại của trang mẫu động (để bind meta) */
+  record: DataMap[string]['records'][number] | null
+  /** Trang có dùng {{user}} hay điều kiện đăng nhập -> cần render theo người dùng */
+  needsUser: boolean
+}
+
+/** Cài đặt site (cache theo tag pages, làm mới khi đổi) */
+export async function getSiteSettings() {
+  const payload = await getPayload({ config })
+  return payload.findGlobal({ slug: 'site-settings', depth: 1, overrideAccess: true }).catch(() => null)
 }
 
 /**
@@ -61,7 +74,24 @@ async function fetchPage(slug: string, draft: boolean, param?: string, params: U
   const record = data.root?.records[0]
   if (param !== undefined && !record) return null
   const title = record ? bindString(doc.title, record) : doc.title.replace(/\{\{[^}]*\}\}/g, '').trim()
-  return { title, slug: doc.slug, template, content, blocks: Object.fromEntries(blocks), theme: theme.tokens, data, params, draft }
+  const settings = (await payload.findGlobal({ slug: 'site-settings', depth: 1, overrideAccess: true }).catch(() => null)) as Record<string, unknown> | null
+  const json = JSON.stringify(content)
+  const needsUser = json.includes('{{user') || json.includes('"auth":"user"') || json.includes('"auth":"guest"') || json.includes('"field":"user.')
+  return {
+    title,
+    slug: doc.slug,
+    template,
+    content,
+    blocks: Object.fromEntries(blocks),
+    theme: theme.tokens,
+    data,
+    params,
+    draft,
+    seo: pageSeoFrom(doc.seo as Record<string, unknown> | null),
+    site: { ...siteInfoFrom(settings), maintenance: !!settings?.maintenance, maintenanceMessage: String(settings?.maintenanceMessage ?? 'Trang web đang được bảo trì.') },
+    record: record ?? null,
+    needsUser,
+  }
 }
 
 /**

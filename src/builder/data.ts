@@ -289,7 +289,7 @@ function bindValue(value: unknown, record: DataRecord, extra: Record<string, unk
       const raw = m[1].split('.')[0] in extra ? getPath(extra, m[1]) : getPath(record, m[1])
       if (raw && typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as { url?: unknown }).url === 'string') {
         const u = raw as Record<string, unknown>
-        return { id: u.id, url: u.url, alt: u.alt ?? '', width: u.width, height: u.height, mimeType: u.mimeType }
+        return { id: u.id, url: u.url, alt: u.alt ?? '', width: u.width, height: u.height, mimeType: u.mimeType, ...(u.sizes ? { sizes: u.sizes } : {}) }
       }
     }
     return bindString(value, record, extra)

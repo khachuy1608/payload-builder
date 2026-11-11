@@ -875,8 +875,53 @@ function PageSettings() {
       <ThemeField />
       <TemplateField />
       <GuestPreviewField />
+      <SeoField />
       <p className="ed-hint">Màu nền, font và lề của cả trang chỉnh ở tab “Kiểu”.</p>
     </div>
+  )
+}
+
+/** SEO của trang: meta title/description, ảnh OG, noindex, canonical + xem trước kết quả tìm kiếm */
+function SeoField() {
+  const seo = useEditor((s) => s.seo)
+  const title = useEditor((s) => s.title)
+  const slug = useEditor((s) => s.slug)
+  const [open, setOpen] = useState(false)
+  const set = (patch: Partial<typeof seo>) => useEditor.getState().setSeo(patch)
+  const shownTitle = seo.metaTitle || title
+  return (
+    <section className="ed-group" style={{ margin: '0 -12px', borderTop: '1px solid var(--ed-line)' }}>
+      <button className="ed-group-title" onClick={() => setOpen((o) => !o)}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        SEO & chia sẻ
+        {(seo.metaTitle || seo.metaDescription || seo.ogImage || seo.noIndex) && <span className="ed-dot" />}
+      </button>
+      {open && (
+        <div className="ed-fields">
+          <div className="ed-serp">
+            <span className="ed-serp-url">{(process.env.NEXT_PUBLIC_SERVER_URL || 'https://site.vn').replace(/^https?:\/\//, '')}/{slug === 'home' ? '' : slug}</span>
+            <span className="ed-serp-title">{shownTitle || 'Tiêu đề trang'}</span>
+            <span className="ed-serp-desc">{seo.metaDescription || 'Mô tả ngắn sẽ hiện ở đây. Nên 120–160 ký tự.'}</span>
+          </div>
+          <Field label={`Meta title (${shownTitle.length}/60)`} help="Để trống dùng tiêu đề trang. Trang mẫu động nhận {{trường}}.">
+            <input className="ed-input" value={seo.metaTitle} onChange={(e) => set({ metaTitle: e.target.value })} />
+          </Field>
+          <Field label={`Meta description (${seo.metaDescription.length}/160)`}>
+            <textarea className="ed-input ed-textarea" rows={3} value={seo.metaDescription} onChange={(e) => set({ metaDescription: e.target.value })} />
+          </Field>
+          <MediaField label="Ảnh chia sẻ (Open Graph, 1200×630)" value={seo.ogImage} onChange={(v) => set({ ogImage: v })} />
+          <Field label="Canonical URL (tuỳ chọn)">
+            <input className="ed-input" value={seo.canonical} placeholder="https://…" onChange={(e) => set({ canonical: e.target.value })} />
+          </Field>
+          <label className="ed-toggle">
+            <input type="checkbox" checked={seo.noIndex} onChange={(e) => set({ noIndex: e.target.checked })} />
+            <span className="ed-toggle-ui" />
+            Không cho máy tìm kiếm lập chỉ mục (noindex)
+          </label>
+          <span className="ed-help">Tên site, mô tả, logo, favicon và ảnh chia sẻ mặc định đặt ở Admin → Cài đặt site. sitemap.xml và robots.txt tự sinh.</span>
+        </div>
+      )}
+    </section>
   )
 }
 
