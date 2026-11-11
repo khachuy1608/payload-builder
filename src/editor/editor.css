@@ -320,3 +320,5 @@ select.ed-input + .ed-reset { right: 22px; }
 
 .ed-version-row .ed-theme-name { justify-content: space-between; }
 .ed-rich-area ul, .ed-rich-area ol { margin: 0; padding-left: 1.4em; }
+.ed-font-picker .ed-row > select { flex: 1; min-width: 0; }
+.ed-font-sample { flex: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ed-ink); padding: 0 4px; }

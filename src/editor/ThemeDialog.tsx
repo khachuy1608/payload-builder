@@ -10,12 +10,22 @@ import {
   BUTTON_TOKEN_LABELS,
   COLOR_KEYS,
   COLOR_TOKEN_LABELS,
+  FONT_CATEGORY_LABELS,
   FONT_KEYS,
-  FONT_PRESETS,
   FONT_TOKEN_LABELS,
+  GOOGLE_FONTS,
   RADIUS_KEYS,
   RADIUS_TOKEN_LABELS,
+  SYSTEM_MONO,
+  SYSTEM_SANS,
+  SYSTEM_SERIF,
+  type FontCategory,
   type ThemeTokens,
+  buildGoogleFontsUrl,
+  googleFamiliesInTheme,
+  googleFontOfStack,
+  googleFontStack,
+  isAutoFontUrl,
   normalizeTheme,
 } from '@/builder/theme'
 import { createTheme, deleteTheme, setSiteTheme, updateTheme } from './api'
@@ -77,6 +87,29 @@ export function ThemeDialog() {
     setDirty(true)
     s().setThemePreview(normalizeTheme(tokens, draft.tokens))
   }
+  /** Đổi font: nếu fontUrl đang do editor tự sinh thì cập nhật link Google Fonts theo các font đã chọn */
+  const setFont = (key: string, stack: string) =>
+    patch((t) => {
+      t.fonts[key] = stack
+      if (isAutoFontUrl(t.fontUrl)) t.fontUrl = buildGoogleFontsUrl(googleFamiliesInTheme(t)) || undefined
+    })
+
+  // nạp font của bản nháp vào chính cửa sổ editor để dòng chữ mẫu hiển thị đúng font
+  useEffect(() => {
+    const url = draft?.tokens.fontUrl
+    const id = 'ed-theme-font-preview'
+    let link = document.getElementById(id) as HTMLLinkElement | null
+    if (url && /^https:\/\//.test(url)) {
+      if (!link) {
+        link = document.createElement('link')
+        link.id = id
+        link.rel = 'stylesheet'
+        document.head.appendChild(link)
+      }
+      if (link.href !== url) link.href = url
+    } else link?.remove()
+  }, [draft?.tokens.fontUrl])
+  useEffect(() => () => document.getElementById('ed-theme-font-preview')?.remove(), [])
 
   const run = async (key: string, fn: () => Promise<void>) => {
     setBusy(key)
@@ -214,24 +247,24 @@ export function ThemeDialog() {
 
                   <span className="ed-label ed-theme-h">Font</span>
                   {FONT_KEYS.map((k) => (
-                    <div key={k} className="ed-sfield">
-                      <span className="ed-label">{FONT_TOKEN_LABELS[k]}</span>
-                      <div className="ed-row">
-                        <select className="ed-input" value={FONT_PRESETS.some((f) => f.value === draft.tokens.fonts[k]) ? draft.tokens.fonts[k] : '__custom'} onChange={(e) => e.target.value !== '__custom' && patch((t) => (t.fonts[k] = e.target.value))}>
-                          {FONT_PRESETS.map((f) => (
-                            <option key={f.value} value={f.value}>
-                              {f.label}
-                            </option>
-                          ))}
-                          <option value="__custom">Tuỳ chỉnh…</option>
-                        </select>
-                        <input className="ed-input" value={draft.tokens.fonts[k]} onChange={(e) => patch((t) => (t.fonts[k] = e.target.value))} />
-                      </div>
-                    </div>
+                    <FontPicker key={k} label={FONT_TOKEN_LABELS[k]} value={draft.tokens.fonts[k]} onChange={(stack) => setFont(k, stack)} />
                   ))}
                   <label className="ed-field">
-                    <span className="ed-label">Stylesheet font ngoài (https, ví dụ Google Fonts)</span>
-                    <input className="ed-input" placeholder="https://fonts.googleapis.com/css2?family=Inter&display=swap" value={draft.tokens.fontUrl ?? ''} onChange={(e) => patch((t) => (t.fontUrl = e.target.value))} />
+                    <span className="ed-label">
+                      Stylesheet font ngoài (https){isAutoFontUrl(draft.tokens.fontUrl) ? ' – tự sinh từ Google Fonts đã chọn' : ' – tuỳ chỉnh'}
+                    </span>
+                    <input className="ed-input" placeholder="Chọn Google Font ở trên hoặc dán link stylesheet" value={draft.tokens.fontUrl ?? ''} onChange={(e) => patch((t) => (t.fontUrl = e.target.value || undefined))} />
+                    <span className="ed-help">
+                      {googleFamiliesInTheme(draft.tokens).length ? `Google Fonts đang dùng: ${googleFamiliesInTheme(draft.tokens).join(', ')}.` : 'Theme chỉ dùng font hệ thống.'}
+                      {!isAutoFontUrl(draft.tokens.fontUrl) && (
+                        <>
+                          {' '}
+                          <button type="button" className="ed-link" onClick={() => patch((t) => (t.fontUrl = buildGoogleFontsUrl(googleFamiliesInTheme(t)) || undefined))}>
+                            Tạo lại từ Google Fonts
+                          </button>
+                        </>
+                      )}
+                    </span>
                   </label>
 
                   <span className="ed-label ed-theme-h">Bo góc</span>
@@ -284,6 +317,59 @@ export function ThemeDialog() {
           </button>
         </footer>
       </div>
+    </div>
+  )
+}
+
+const SYSTEM_STACKS: { label: string; value: string }[] = [
+  { label: 'Hệ thống (sans-serif)', value: SYSTEM_SANS },
+  { label: 'Hệ thống (serif)', value: SYSTEM_SERIF },
+  { label: 'Hệ thống (mono)', value: SYSTEM_MONO },
+]
+const CATEGORIES: FontCategory[] = ['sans', 'serif', 'display', 'mono']
+
+/** Chọn font: font hệ thống, Google Fonts theo nhóm, hoặc stack tuỳ chỉnh; kèm dòng chữ mẫu */
+function FontPicker({ label, value, onChange }: { label: string; value: string; onChange: (stack: string) => void }) {
+  const google = googleFontOfStack(value)
+  const selectValue = google ? `g:${google}` : SYSTEM_STACKS.some((s) => s.value === value) ? value : '__custom'
+  const [custom, setCustom] = useState(selectValue === '__custom')
+  return (
+    <div className="ed-field ed-font-picker">
+      <span className="ed-label">{label}</span>
+      <div className="ed-row">
+        <select
+          className="ed-input"
+          value={custom ? '__custom' : selectValue}
+          onChange={(e) => {
+            const v = e.target.value
+            if (v === '__custom') return setCustom(true)
+            setCustom(false)
+            onChange(v.startsWith('g:') ? googleFontStack(v.slice(2)) : v)
+          }}
+        >
+          <optgroup label="Font hệ thống (không cần tải)">
+            {SYSTEM_STACKS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </optgroup>
+          {CATEGORIES.map((cat) => (
+            <optgroup key={cat} label={`Google Fonts – ${FONT_CATEGORY_LABELS[cat]}`}>
+              {GOOGLE_FONTS.filter((f) => f.category === cat).map((f) => (
+                <option key={f.name} value={`g:${f.name}`}>
+                  {f.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+          <option value="__custom">Tuỳ chỉnh (nhập font stack)…</option>
+        </select>
+        <span className="ed-font-sample" style={{ fontFamily: value }} title={value}>
+          Aa Bb Cc – Tiếng Việt có dấu 123
+        </span>
+      </div>
+      {custom && <input className="ed-input" value={value} placeholder="'Tên font', fallback, sans-serif" onChange={(e) => onChange(e.target.value)} />}
     </div>
   )
 }
