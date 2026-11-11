@@ -538,6 +538,26 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
   const records = useEditor((s) => s.dataCache[node.id]?.records)
   const total = useEditor((s) => s.dataCache[node.id]?.total)
   const source = dataSourceOf(node)
+  const root = useEditor((s) => s.root)
+  // nằm trong một Danh sách dữ liệu / block có nguồn: nhận bản ghi từ cha, không chọn collection lại
+  const ancestorSource = [...getAncestors(root, node.id)].reverse().map((a) => ({ a, src: dataSourceOf(a) })).find((x) => x.src)
+  if (ancestorSource && !source) {
+    const info = sources.find((x) => x.slug === ancestorSource.src!.collection)
+    const label = ancestorSource.a.type === 'dataList' ? 'Danh sách dữ liệu' : (getBlock(ancestorSource.a.type)?.label ?? ancestorSource.a.type)
+    return (
+      <div className="ed-field ed-data ed-data--inherited">
+        <span className="ed-label">
+          <Database size={13} /> Dữ liệu từ {label} ({info?.label ?? ancestorSource.src!.collection})
+        </span>
+        <span className="ed-help">
+          Phần tử này nhận dữ liệu của <b>từng bản ghi</b> trong {label} bao quanh, không cần chọn collection. Chọn phần tử con (chữ, ảnh, link) rồi bấm nút <b>⚡</b> cạnh ô nhập để gắn trường: {(info ? fieldPaths(info) : []).map((f) => `{{${f.path}}}`).join(', ') || '—'}.
+        </span>
+        <button className="ed-btn" onClick={() => useEditor.getState().select(ancestorSource.a.id)}>
+          Chọn {label} để đổi collection / bộ lọc
+        </button>
+      </div>
+    )
+  }
   const s = useEditor.getState
   const set = (patch: Partial<DataSource>) => s().updateProps(node.id, { data: normalizeDataSource({ ...(source ?? { collection: sources[0]?.slug ?? 'users', mode: 'list', limit: 8 }), ...patch }) })
   const info = sources.find((x) => x.slug === source?.collection)

@@ -354,7 +354,7 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
   const primaryId = collectDataNodes(root).find((n) => n.source.urlParams)?.id
   const primary = primaryId ? lookup(primaryId) : undefined
   // nguồn nằm trong bản sao của danh sách (id có hậu tố _n) dùng chung dữ liệu với bản mẫu
-  const find = (id: string) => lookup(id) ?? (/_\d+$/.test(id) ? find(id.replace(/_\d+$/, '')) : undefined)
+  const find = (id: string): DataResult | undefined => lookup(id) ?? (/_\d+$/.test(id) ? find(id.replace(/_\d+$/, '')) : undefined)
   const visit = (node: BuilderNode): BuilderNode => {
     const source = dataSourceOf(node)
     if (source) {
