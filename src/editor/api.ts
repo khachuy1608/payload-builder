@@ -41,6 +41,8 @@ export async function savePage(publish: boolean): Promise<boolean> {
         slug: s.slug,
         content,
         theme: relValue(s.pageThemeId),
+        templateCollection: s.template?.collection ?? null,
+        templateField: s.template?.field ?? 'id',
         _status: publish ? 'published' : 'draft',
       }),
     })

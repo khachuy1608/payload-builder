@@ -29,6 +29,7 @@ export interface EditorInitial {
   userId: string | null
   /** Ghi đè theme của trang (kind = page) */
   pageThemeId?: string | null
+  template?: { collection: string; field: string } | null
 }
 
 export function Editor({ initial }: { initial: EditorInitial }) {
@@ -46,6 +47,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       readOnly: initial.readOnly,
       userId: initial.userId,
       pageThemeId: initial.pageThemeId ?? null,
+      template: initial.template ?? null,
     })
     ready.current = true
   }

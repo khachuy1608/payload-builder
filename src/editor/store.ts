@@ -136,6 +136,8 @@ export interface EditorState {
   /** Khoá tài liệu (xem lock.ts): owned = mình giữ khoá, locked = người khác đang sửa */
   lock: LockState
 
+  /** Trang mẫu động: collection + trường khớp URL (null = trang thường) */
+  template: { collection: string; field: string } | null
   /** Nguồn dữ liệu có thể bind (từ /api/builder/sources) */
   sources: SourceInfo[]
   /** Bản ghi đã nạp theo id node có nguồn (canvas dùng để hiện dữ liệu thật) */
@@ -174,7 +176,9 @@ export interface EditorActions {
     readOnly?: boolean
     userId: string | null
     pageThemeId?: string | null
+    template?: { collection: string; field: string } | null
   }): void
+  setTemplate(template: EditorState['template']): void
   select(id: string | null): void
   hover(id: string | null): void
   setEditing(id: string | null): void
@@ -326,6 +330,7 @@ export const useEditor = create<Store>()(
       lock: { state: 'checking' },
       sources: [],
       dataCache: {},
+      template: null,
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -360,6 +365,7 @@ export const useEditor = create<Store>()(
           s.selectedId = null
           s.saveBlockFor = null
           s.pageThemeId = data.pageThemeId ?? null
+          s.template = data.template ?? null
           s.themePreview = null
           s.themeDialog = false
         }),
@@ -515,6 +521,11 @@ export const useEditor = create<Store>()(
       setLock: (lock) =>
         set((s) => {
           s.lock = lock
+        }),
+      setTemplate: (template) =>
+        set((s) => {
+          s.template = template
+          s.dirty = true
         }),
       setSources: (sources) =>
         set((s) => {

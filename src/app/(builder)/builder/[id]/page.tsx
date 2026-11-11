@@ -26,6 +26,7 @@ export default async function BuilderPage({ params }: Args) {
         kind: 'page',
         userId: String(user.id),
         pageThemeId: page.theme == null ? null : String(typeof page.theme === 'object' ? page.theme.id : page.theme),
+        template: page.templateCollection ? { collection: String(page.templateCollection), field: String(page.templateField || 'id') } : null,
         id: String(page.id),
         title: page.title,
         slug: page.slug,

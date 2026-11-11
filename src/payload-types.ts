@@ -141,6 +141,14 @@ export interface Page {
    */
   slug: string;
   /**
+   * Ví dụ "users": trang phục vụ /<slug>/<giá trị>, toàn bộ nội dung bind vào bản ghi khớp.
+   */
+  templateCollection?: string | null;
+  /**
+   * Trường của collection dùng để tìm bản ghi theo đoạn cuối URL (mặc định id).
+   */
+  templateField?: string | null;
+  /**
    * Để trống sẽ dùng theme trong Cài đặt site.
    */
   theme?: (number | null) | Theme;
@@ -431,6 +439,8 @@ export interface PayloadMigration {
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  templateCollection?: T;
+  templateField?: T;
   theme?: T;
   content?: T;
   updatedAt?: T;

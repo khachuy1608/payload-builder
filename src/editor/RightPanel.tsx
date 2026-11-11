@@ -111,7 +111,7 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
     case 'text':
     case 'url':
       return (
-        <Field label={control.label} help={control.help} picker={<BindPicker node={node} onPick={(t) => update(control.type === 'url' ? t : appendTemplate(String(node.props[control.prop] ?? ''), t), false)} />}>
+        <Field label={control.label} help={control.help} picker={<BindPicker node={node} onPick={(t) => update(control.type === 'url' ? String(node.props[control.prop] ?? '') + t : appendTemplate(String(node.props[control.prop] ?? ''), t), false)} />}>
           <input
             className="ed-input"
             value={String(node.props[control.prop] ?? '')}
@@ -703,7 +703,79 @@ function PageSettings() {
         <input className="ed-input" value={slug} onChange={(e) => setMeta({ slug: e.target.value })} onBlur={(e) => setMeta({ slug: slugify(e.target.value) })} />
       </Field>
       <ThemeField />
+      <TemplateField />
       <p className="ed-hint">Màu nền, font và lề của cả trang chỉnh ở tab “Kiểu”.</p>
+    </div>
+  )
+}
+
+/** Trang mẫu động: phục vụ /slug/<giá trị>, toàn bộ trang bind vào bản ghi khớp */
+function TemplateField() {
+  const template = useEditor((s) => s.template)
+  const sources = useEditor((s) => s.sources)
+  const slug = useEditor((s) => s.slug)
+  const root = useEditor((s) => s.root)
+  const records = useEditor((s) => s.dataCache.root)
+  const [options, setOptions] = useState<{ value: string; label: string }[]>([])
+  const s = useEditor.getState
+  const info = sources.find((x) => x.slug === template?.collection)
+  const rootData = (root.props.data ?? {}) as { byValue?: string }
+
+  const apply = (next: { collection: string; field: string } | null, preview?: string) => {
+    s().setTemplate(next)
+    s().updateProps('root', { data: next ? { collection: next.collection, mode: 'one', byField: next.field, byValue: preview ?? rootData.byValue ?? '' } : undefined })
+  }
+  // danh sách bản ghi để xem thử
+  useEffect(() => {
+    if (!template) return setOptions([])
+    import('./api').then(({ fetchData }) =>
+      fetchData({ collection: template.collection, mode: 'list', limit: 50 }, info)
+        .then((docs) => setOptions(docs.map((d) => ({ value: String(d[template.field] ?? ''), label: String(d.name ?? d.title ?? d.label ?? d.id) }))))
+        .catch(() => setOptions([])),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template?.collection, template?.field, info?.slug])
+
+  return (
+    <div className="ed-field">
+      <label className="ed-toggle">
+        <input type="checkbox" checked={!!template} onChange={(e) => apply(e.target.checked ? { collection: sources[0]?.slug ?? 'users', field: 'id' } : null)} />
+        <span className="ed-toggle-ui" />
+        Trang mẫu động (theo bản ghi)
+      </label>
+      {template && (
+        <>
+          <Field label="Collection">
+            <select className="ed-input" value={template.collection} onChange={(e) => apply({ collection: e.target.value, field: 'id' }, '')}>
+              {sources.map((x) => (
+                <option key={x.slug} value={x.slug}>
+                  {x.label} ({x.slug})
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Trường khớp với đoạn cuối URL" help={`Địa chỉ: /${slug}/<giá trị ${template.field}>`}>
+            <select className="ed-input" value={template.field} onChange={(e) => apply({ ...template, field: e.target.value }, '')}>
+              {(info?.fields ?? [{ name: 'id', label: 'ID', type: 'text' }]).map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Xem thử với bản ghi" help={records?.length ? `Đang hiện: ${String(records[0].name ?? records[0].title ?? records[0].id)}` : 'Chọn một bản ghi để canvas hiện dữ liệu thật.'}>
+            <select className="ed-input" value={rootData.byValue ?? ''} onChange={(e) => apply(template, e.target.value)}>
+              <option value="">— chọn —</option>
+              {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <span className="ed-help">Mọi ô nhập trên trang có nút ⚡ để chèn trường của bản ghi; tiêu đề trang cũng nhận {'{{trường}}'}.</span>
+        </>
+      )}
     </div>
   )
 }

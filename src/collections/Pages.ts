@@ -63,6 +63,19 @@ export const Pages: CollectionConfig = {
       },
     },
     {
+      name: 'templateCollection',
+      label: 'Trang mẫu động cho collection',
+      type: 'text',
+      admin: { position: 'sidebar', description: 'Ví dụ "users": trang phục vụ /<slug>/<giá trị>, toàn bộ nội dung bind vào bản ghi khớp.' },
+    },
+    {
+      name: 'templateField',
+      label: 'Trường khớp với URL',
+      type: 'text',
+      defaultValue: 'id',
+      admin: { position: 'sidebar', description: 'Trường của collection dùng để tìm bản ghi theo đoạn cuối URL (mặc định id).' },
+    },
+    {
       name: 'theme',
       label: 'Ghi đè theme',
       type: 'relationship',
