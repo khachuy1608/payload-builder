@@ -2,9 +2,13 @@
 
 import type { BuilderNode, PageContent } from '@/builder/types'
 import type { MediaValue } from '@/builder/types'
+import { normalizeTheme, type ThemeTokens } from '@/builder/theme'
 import { genId } from '@/builder/tree'
 import { validateBlockTree } from '@/builder/validate'
-import { type BlockScope, type MyBlock, useEditor } from './store'
+import { type BlockScope, type MyBlock, type ThemeDoc, useEditor } from './store'
+
+/** id quan hệ gửi lên Payload: số nếu là số (Postgres serial) */
+const relValue = (id: string | null) => (id == null ? null : /^\d+$/.test(id) ? Number(id) : id)
 
 async function readError(res: Response): Promise<string> {
   try {
@@ -33,6 +37,7 @@ export async function savePage(publish: boolean): Promise<boolean> {
         title: s.title,
         slug: s.slug,
         content,
+        theme: relValue(s.pageThemeId),
         _status: publish ? 'published' : 'draft',
       }),
     })
@@ -193,5 +198,92 @@ export async function saveBlock(): Promise<boolean> {
     useEditor.getState().setSaving(false)
     useEditor.getState().toast('error', `Lưu thất bại: ${(err as Error).message}`)
     return false
+  }
+}
+
+// ======================= Themes =======================
+
+export interface ThemeApiDoc {
+  id: string | number
+  name: string
+  isPreset?: boolean | null
+  owner?: string | number | { id: string | number } | null
+  updatedAt: string
+  [key: string]: unknown
+}
+
+export function toThemeDoc(doc: ThemeApiDoc): ThemeDoc {
+  const owner = doc.owner == null ? null : typeof doc.owner === 'object' ? String(doc.owner.id) : String(doc.owner)
+  return { id: String(doc.id), name: doc.name, isPreset: !!doc.isPreset, owner, tokens: normalizeTheme(doc), updatedAt: doc.updatedAt }
+}
+
+/** Token -> body gửi lên collection themes (group field phẳng) */
+function themeBody(name: string, tokens: ThemeTokens) {
+  return { name, colors: tokens.colors, fonts: tokens.fonts, radius: tokens.radius, button: tokens.button, fontUrl: tokens.fontUrl ?? null }
+}
+
+export async function listThemes(): Promise<ThemeDoc[]> {
+  const res = await fetch('/api/themes?limit=100&depth=0&sort=name', { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const { docs } = (await res.json()) as { docs: ThemeApiDoc[] }
+  return docs.map(toThemeDoc)
+}
+
+export async function getSiteThemeId(): Promise<string | null> {
+  const res = await fetch('/api/globals/site-settings?depth=0', { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const doc = await res.json()
+  const t = doc?.theme
+  return t == null ? null : String(typeof t === 'object' ? t.id : t)
+}
+
+export async function setSiteTheme(id: string | null): Promise<void> {
+  const res = await fetch('/api/globals/site-settings?depth=0', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme: relValue(id) }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export async function createTheme(name: string, tokens: ThemeTokens): Promise<ThemeDoc> {
+  const res = await fetch('/api/themes?depth=0', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(themeBody(name, tokens)),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return toThemeDoc((await res.json()).doc)
+}
+
+export async function updateTheme(id: string, name: string, tokens: ThemeTokens): Promise<ThemeDoc> {
+  const res = await fetch(`/api/themes/${encodeURIComponent(id)}?depth=0`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(themeBody(name, tokens)),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return toThemeDoc((await res.json()).doc)
+}
+
+export async function deleteTheme(id: string): Promise<void> {
+  const res = await fetch(`/api/themes/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+/** Nạp thư viện theme + theme của site vào store */
+export async function refreshThemes(): Promise<void> {
+  const s = useEditor.getState()
+  if (s.themesStatus === 'loading') return
+  s.setThemesStatus('loading')
+  try {
+    const [list, siteId] = await Promise.all([listThemes(), getSiteThemeId()])
+    useEditor.getState().setThemes(list, siteId)
+  } catch (err) {
+    useEditor.getState().setThemesStatus('error')
+    useEditor.getState().toast('error', `Không tải được theme: ${(err as Error).message}`)
   }
 }

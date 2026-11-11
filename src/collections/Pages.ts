@@ -62,6 +62,13 @@ export const Pages: CollectionConfig = {
       },
     },
     {
+      name: 'theme',
+      label: 'Ghi đè theme',
+      type: 'relationship',
+      relationTo: 'themes',
+      admin: { position: 'sidebar', description: 'Để trống sẽ dùng theme trong Cài đặt site.' },
+    },
+    {
       name: 'content',
       label: 'Nội dung (JSON từ Visual Builder)',
       type: 'json',

@@ -271,3 +271,25 @@ select.ed-input + .ed-reset { right: 22px; }
   .ed-left { width: 232px; }
   .ed-right { width: 272px; }
 }
+
+/* ---------- themes ---------- */
+.ed-modal--lg { width: min(960px, 100%); height: min(720px, 90vh); }
+.ed-theme-layout { flex: 1; display: grid; grid-template-columns: 240px 1fr; min-height: 0; }
+.ed-theme-list { border-right: 1px solid var(--ed-line); padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.ed-theme-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 1px solid transparent; border-radius: 6px; background: none; cursor: pointer; text-align: left; }
+.ed-theme-row:hover { background: #f5f6f8; }
+.ed-theme-row.is-active { border-color: var(--ed-accent); background: var(--ed-accent-soft); }
+.ed-theme-swatches { display: inline-flex; gap: 2px; flex: none; }
+.ed-theme-swatches i { width: 10px; height: 18px; border-radius: 2px; border: 1px solid rgba(0, 0, 0, .08); }
+.ed-theme-name { flex: 1; display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.ed-theme-editor { padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.ed-theme-actions { flex-wrap: wrap; }
+.ed-theme-fields { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ed-theme-fields:disabled { opacity: .7; }
+.ed-theme-h { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--ed-line); font-weight: 600; color: var(--ed-ink); }
+.ed-theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.ed-theme-color { display: flex; align-items: center; gap: 8px; }
+.ed-theme-color input[type='color'] { width: 34px; height: 34px; border: 1px solid var(--ed-line-strong); border-radius: 6px; padding: 0 2px; background: #fff; flex: none; }
+.ed-theme-color > span { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ed-theme-color b { font-size: 11px; color: var(--ed-ink-2); font-weight: 500; }
+.ed-theme-color .ed-input { height: 26px; font-size: 12px; }

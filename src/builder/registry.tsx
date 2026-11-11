@@ -179,8 +179,6 @@ const BLOCK_LIST: BlockDefinition[] = [
           backgroundColor: 'var(--color-primary)',
           color: '#ffffff',
           padding: '12px 24px',
-          borderRadius: 'var(--radius-md)',
-          fontWeight: '600',
           transition: 'opacity .2s ease',
         },
         hover: { opacity: '0.85' },

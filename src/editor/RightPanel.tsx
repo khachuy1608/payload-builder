@@ -1,18 +1,18 @@
 'use client'
 
-import { ChevronDown, ChevronRight, ExternalLink, Monitor, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, ExternalLink, Monitor, Palette, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ContentControl, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
 import { refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
-import { COLOR_TOKEN_LABELS, defaultTheme } from '@/builder/theme'
+import { COLOR_TOKEN_LABELS } from '@/builder/theme'
 import { findNode, genId, getAncestors } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
 import { nodeLabel } from './labels'
 import { MediaPicker } from './MediaPicker'
-import { type BlockScope, useEditor } from './store'
+import { type BlockScope, effectiveTheme, useEditor } from './store'
 
 type Tab = 'content' | 'style' | 'advanced'
 
@@ -333,7 +333,35 @@ function PageSettings() {
       <Field label="Đường dẫn (slug)" help={slug === 'home' ? 'Đây là trang chủ (/)' : `/${slug}`}>
         <input className="ed-input" value={slug} onChange={(e) => setMeta({ slug: e.target.value })} onBlur={(e) => setMeta({ slug: slugify(e.target.value) })} />
       </Field>
+      <ThemeField />
       <p className="ed-hint">Màu nền, font và lề của cả trang chỉnh ở tab “Kiểu”.</p>
+    </div>
+  )
+}
+
+/** Chọn theme cho trang: theo site hoặc ghi đè */
+function ThemeField() {
+  const themes = useEditor((s) => s.themes)
+  const siteThemeId = useEditor((s) => s.siteThemeId)
+  const pageThemeId = useEditor((s) => s.pageThemeId)
+  const list = Object.values(themes).sort((a, b) => Number(b.isPreset) - Number(a.isPreset) || a.name.localeCompare(b.name))
+  const siteName = (siteThemeId && themes[siteThemeId]?.name) || 'Mặc định'
+  return (
+    <div className="ed-field">
+      <span className="ed-label">Theme</span>
+      <select className="ed-input" value={pageThemeId ?? ''} onChange={(e) => useEditor.getState().setPageTheme(e.target.value || null)}>
+        <option value="">Theo cài đặt site ({siteName})</option>
+        {list.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+            {t.isPreset ? ' (preset)' : ''}
+          </option>
+        ))}
+      </select>
+      <button className="ed-btn" onClick={() => useEditor.getState().openThemeDialog(true)}>
+        <Palette size={14} /> Quản lý theme…
+      </button>
+      <span className="ed-help">Ghi đè chỉ áp dụng cho trang này. Theme của cả site đổi trong “Quản lý theme”.</span>
     </div>
   )
 }
@@ -505,9 +533,10 @@ function StyleFieldControl({ node, field, own, inherited }: { node: BuilderNode;
 
 function ColorInput({ value, placeholder, onChange }: { value: string; placeholder: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false)
+  const theme = useEditor(effectiveTheme)
   const shown = value || placeholder
   const tokenMatch = shown.match(/^var\(--color-([a-z]+)\)$/)
-  const preview = tokenMatch ? defaultTheme.colors[tokenMatch[1]] : shown
+  const preview = tokenMatch ? theme.colors[tokenMatch[1]] : shown
   const hex = /^#[0-9a-f]{6}$/i.test(preview) ? preview : '#000000'
   return (
     <div className="ed-color">
@@ -530,7 +559,7 @@ function ColorInput({ value, placeholder, onChange }: { value: string; placehold
         <div className="ed-popover">
           <span className="ed-label">Màu toàn cục (theme)</span>
           <div className="ed-tokens">
-            {Object.entries(defaultTheme.colors).map(([k, v]) => (
+            {Object.entries(theme.colors).map(([k, v]) => (
               <button
                 key={k}
                 className={`ed-token${value === `var(--color-${k})` ? ' is-active' : ''}`}

@@ -25,6 +25,7 @@ export default async function BuilderPage({ params }: Args) {
       initial={{
         kind: 'page',
         userId: String(user.id),
+        pageThemeId: page.theme == null ? null : String(typeof page.theme === 'object' ? page.theme.id : page.theme),
         id: String(page.id),
         title: page.title,
         slug: page.slug,

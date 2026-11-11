@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url'
 import { Media } from './collections/Media'
 import { MyBlocks } from './collections/MyBlocks'
 import { Pages } from './collections/Pages'
+import { Themes } from './collections/Themes'
+import { SiteSettings } from './globals/SiteSettings'
 import { Users } from './collections/Users'
 import { migrations } from './migrations'
 import { seed } from './seed'
@@ -19,7 +21,8 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' – Page Builder' },
   },
-  collections: [Pages, MyBlocks, Media, Users],
+  collections: [Pages, MyBlocks, Themes, Media, Users],
+  globals: [SiteSettings],
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   db: postgresAdapter({
