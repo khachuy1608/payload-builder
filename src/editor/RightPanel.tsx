@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Database, ExternalLink, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Database, ExternalLink, EyeOff, Globe, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
@@ -11,6 +11,7 @@ import { refBlockId } from '@/builder/refs'
 import { sanitizeRichText } from '@/builder/sanitize'
 import { BLOCKS, getBlock } from '@/builder/registry'
 import { COLOR_TOKEN_LABELS } from '@/builder/theme'
+import { SITE_PART_LABELS, type SitePart, sitePartOf } from '@/builder/siteParts'
 import { findNode, genId, getAncestors } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
@@ -18,6 +19,7 @@ import { nodeLabel } from './labels'
 import { MediaPicker } from './MediaPicker'
 import { PresetGallery } from './PresetGallery'
 import { RichToolbar } from './RichToolbar'
+import { setSitePart } from './api'
 import { type BlockScope, createNodeFromBlock, effectiveTheme, useEditor } from './store'
 
 type Tab = 'content' | 'style' | 'advanced' | 'presets'
@@ -26,6 +28,7 @@ export function RightPanel() {
   const selectedId = useEditor((s) => s.selectedId)
   const root = useEditor((s) => s.root)
   const node = selectedId ? findNode(root, selectedId) : null
+  const sitePart = sitePartOf(selectedId)
   const [tab, setTab] = useState<Tab>('content')
   // chọn sang loại phần tử khác thì quay về tab Nội dung (giống Elementor)
   const [lastType, setLastType] = useState(node?.type)
@@ -34,6 +37,7 @@ export function RightPanel() {
     setTab('content')
   }
 
+  if (sitePart) return <SitePartPanel part={sitePart} />
   if (!node) {
     return (
       <aside className="ed-right">
@@ -858,6 +862,98 @@ function BlockSettings() {
   )
 }
 
+/** Header/footer toàn site đang chọn trên canvas: đổi block, ẩn trên trang này, mở bản gốc */
+function SitePartPanel({ part }: { part: SitePart }) {
+  const siteParts = useEditor((s) => s.siteParts)
+  const blocks = useEditor((s) => s.blocks)
+  const blockId = siteParts[part]
+  const block = blockId ? blocks[blockId] : undefined
+  return (
+    <aside className="ed-right">
+      <header className="ed-right-head">
+        <div className="ed-right-title">
+          <Globe size={18} />
+          <strong>{SITE_PART_LABELS[part]}</strong>
+        </div>
+      </header>
+      <div className="ed-right-body">
+        <div className="ed-fields">
+          <p className="ed-hint">Phần này được chèn tự động vào mọi trang từ Cài đặt site. Sửa nội dung ở bản gốc của My Block; đổi block tại đây áp dụng cho toàn site.</p>
+          <SitePartSelect part={part} />
+          {block && (
+            <a className="ed-btn" href={`/builder/block/${block.id}`} target="_blank" rel="noreferrer">
+              <ExternalLink size={14} /> Sửa bản gốc “{block.name}”
+            </a>
+          )}
+          <button className="ed-btn" onClick={() => useEditor.getState().setLayout(part === 'header' ? { hideHeader: true } : { hideFooter: true })}>
+            <EyeOff size={14} /> Ẩn trên trang này
+          </button>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+/** Chọn My Block (dùng chung) làm header/footer toàn site – ghi ngay vào Cài đặt site */
+function SitePartSelect({ part }: { part: SitePart }) {
+  const siteParts = useEditor((s) => s.siteParts)
+  const blocks = useEditor((s) => s.blocks)
+  const [busy, setBusy] = useState(false)
+  const options = Object.values(blocks)
+    .filter((b) => b.kind !== 'page')
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const change = async (id: string) => {
+    setBusy(true)
+    try {
+      await setSitePart(part, id || null)
+      useEditor.getState().toast('success', id ? `Đã đặt ${SITE_PART_LABELS[part].toLowerCase()} cho toàn site.` : `Đã bỏ ${SITE_PART_LABELS[part].toLowerCase()}.`)
+    } catch (err) {
+      useEditor.getState().toast('error', `Không lưu được: ${(err as Error).message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Field label={`Block làm ${SITE_PART_LABELS[part].toLowerCase()}`} help="Nên dùng block “Dùng chung” để mọi editor đều sửa được.">
+      <select className="ed-input" value={siteParts[part] ?? ''} disabled={busy} onChange={(e) => void change(e.target.value)}>
+        <option value="">— Không có —</option>
+        {options.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+            {b.scope === 'shared' ? '' : ' (riêng)'}
+          </option>
+        ))}
+      </select>
+    </Field>
+  )
+}
+
+/** Bố cục trang: bật/tắt header, footer toàn site cho riêng trang này */
+function LayoutField() {
+  const layout = useEditor((s) => s.layout)
+  const siteParts = useEditor((s) => s.siteParts)
+  return (
+    <details className="ed-group" open>
+      <summary className="ed-group-title">Bố cục (header / footer toàn site)</summary>
+      <div className="ed-fields">
+        {!siteParts.header && !siteParts.footer && <p className="ed-hint">Chưa có header/footer toàn site. Chọn một My Block dùng chung bên dưới hoặc trong Admin → Cài đặt site.</p>}
+        <SitePartSelect part="header" />
+        <SitePartSelect part="footer" />
+        <label className="ed-toggle">
+          <input type="checkbox" checked={layout.hideHeader} onChange={(e) => useEditor.getState().setLayout({ hideHeader: e.target.checked })} />
+          <span className="ed-toggle-ui" />
+          <span>Ẩn header toàn site trên trang này</span>
+        </label>
+        <label className="ed-toggle">
+          <input type="checkbox" checked={layout.hideFooter} onChange={(e) => useEditor.getState().setLayout({ hideFooter: e.target.checked })} />
+          <span className="ed-toggle-ui" />
+          <span>Ẩn footer toàn site trên trang này</span>
+        </label>
+      </div>
+    </details>
+  )
+}
+
 function PageSettings() {
   const kind = useEditor((s) => s.kind)
   const title = useEditor((s) => s.title)
@@ -873,6 +969,7 @@ function PageSettings() {
         <input className="ed-input" value={slug} onChange={(e) => setMeta({ slug: e.target.value })} onBlur={(e) => setMeta({ slug: slugify(e.target.value) })} />
       </Field>
       <ThemeField />
+      <LayoutField />
       <TemplateField />
       <GuestPreviewField />
       <SeoField />

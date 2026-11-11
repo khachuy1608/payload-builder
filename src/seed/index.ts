@@ -151,7 +151,7 @@ export async function seed(payload: Payload) {
     // một My Block mẫu dùng chung để thử tính năng bản sao / liên kết
     await payload.create({
       collection: 'my-blocks',
-      data: { name: 'Thẻ tính năng', scope: 'shared', tree: demoBlockTree() as unknown as Record<string, unknown> },
+      data: { kind: 'block', name: 'Thẻ tính năng', scope: 'shared', tree: demoBlockTree() as unknown as Record<string, unknown> },
     })
     payload.logger.info('Đã tạo My Block mẫu "Thẻ tính năng".')
   } catch (err) {

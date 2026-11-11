@@ -87,6 +87,9 @@ export function TopBar() {
 
       <div className="ed-top-right">
         <UndoRedo canUndo={canUndo} canRedo={canRedo} />
+        <button className="ed-icon-btn" title="Mẫu trang" onClick={() => useEditor.getState().openTemplateDialog(true)}>
+          <LayoutTemplate size={17} />
+        </button>
         <button className="ed-icon-btn" title="Lịch sử phiên bản" onClick={() => useEditor.getState().openHistory(true)}>
           <History size={17} />
         </button>

@@ -1,12 +1,13 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Layers, LayoutGrid, LayoutTemplate, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Layers, LayoutGrid, LayoutTemplate, Search, Globe } from 'lucide-react'
 import { useState } from 'react'
 import { BLOCK_CATEGORIES, BLOCKS, getBlock } from '@/builder/registry'
 import { getSchema } from '@/builder/schema'
 import { getAncestors } from '@/builder/tree'
 import type { BuilderNode, DropTarget } from '@/builder/types'
 import { MyBlocksPanel } from './MyBlocksPanel'
+import { SITE_FOOTER_ID, SITE_HEADER_ID, SITE_PART_LABELS, type SitePart } from '@/builder/siteParts'
 import { canDropAt, useEditor } from './store'
 import { nodeLabel } from './labels'
 
@@ -91,6 +92,9 @@ type Zone = 'before' | 'after' | 'inside'
 function Navigator() {
   const root = useEditor((s) => s.root)
   const selectedId = useEditor((s) => s.selectedId)
+  const siteParts = useEditor((s) => s.siteParts)
+  const layout = useEditor((s) => s.layout)
+  const kind = useEditor((s) => s.kind)
   const [closed, setClosed] = useState<Record<string, boolean>>({})
   const [over, setOver] = useState<{ id: string; zone: Zone } | null>(null)
 
@@ -191,10 +195,37 @@ function Navigator() {
     )
   }
 
+  const partRow = (part: SitePart) => {
+    const id = part === 'header' ? SITE_HEADER_ID : SITE_FOOTER_ID
+    const hidden = part === 'header' ? layout.hideHeader : layout.hideFooter
+    return (
+      <div
+        className={`ed-nav-row ed-nav-row--site${selectedId === id ? ' is-selected' : ''}${hidden ? ' is-hidden' : ''}`}
+        style={{ paddingLeft: 22 }}
+        onClick={() => !hidden && useEditor.getState().select(id)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          if (hidden) return
+          useEditor.getState().select(id)
+          useEditor.getState().openContextMenu({ x: e.clientX, y: e.clientY, nodeId: id })
+        }}
+        onMouseEnter={() => !hidden && useEditor.getState().hover(id)}
+        onMouseLeave={() => useEditor.getState().hover(null)}
+        title={hidden ? 'Đang ẩn trên trang này (bật lại trong Cài đặt trang → Bố cục)' : 'Chèn tự động từ Cài đặt site'}
+      >
+        <span className="ed-nav-caret" />
+        <Globe size={14} strokeWidth={1.75} />
+        <span className="ed-nav-label">{SITE_PART_LABELS[part]}{hidden ? ' (ẩn)' : ''}</span>
+      </div>
+    )
+  }
+  const showParts = kind === 'page'
   return (
     <div className="ed-nav">
+      {showParts && siteParts.header && partRow('header')}
       {renderRow(root, 0)}
       {!root.children?.length && <p className="ed-hint">Trang đang trống.</p>}
+      {showParts && siteParts.footer && partRow('footer')}
     </div>
   )
 }

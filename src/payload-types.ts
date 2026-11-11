@@ -154,6 +154,10 @@ export interface Page {
     noIndex?: boolean | null;
     canonical?: string | null;
   };
+  layout?: {
+    hideHeader?: boolean | null;
+    hideFooter?: boolean | null;
+  };
   /**
    * Ví dụ "users": trang phục vụ /<slug>/<giá trị>, toàn bộ nội dung bind vào bản ghi khớp.
    */
@@ -343,6 +347,10 @@ export interface MyBlock {
   id: number;
   name: string;
   scope: 'private' | 'shared';
+  /**
+   * Mẫu trang được dùng khi tạo trang mới trong Visual Builder.
+   */
+  kind: 'block' | 'page';
   owner?: (number | null) | User;
   /**
    * Để trống thì editor tự dựng preview từ nội dung block.
@@ -548,6 +556,12 @@ export interface PagesSelect<T extends boolean = true> {
         noIndex?: T;
         canonical?: T;
       };
+  layout?:
+    | T
+    | {
+        hideHeader?: T;
+        hideFooter?: T;
+      };
   templateCollection?: T;
   templateField?: T;
   theme?: T;
@@ -563,6 +577,7 @@ export interface PagesSelect<T extends boolean = true> {
 export interface MyBlocksSelect<T extends boolean = true> {
   name?: T;
   scope?: T;
+  kind?: T;
   owner?: T;
   thumbnail?: T;
   tree?: T;
@@ -791,6 +806,14 @@ export interface SiteSetting {
   maintenanceMessage?: string | null;
   notifyEmail?: string | null;
   /**
+   * My Block được chèn tự động vào đầu mọi trang (trang có thể tắt trong Cài đặt trang → Bố cục).
+   */
+  header?: (number | null) | MyBlock;
+  /**
+   * My Block được chèn tự động vào cuối mọi trang.
+   */
+  footer?: (number | null) | MyBlock;
+  /**
    * Áp dụng cho mọi trang, trừ trang có ghi đè theme riêng.
    */
   theme?: (number | null) | Theme;
@@ -810,6 +833,8 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   maintenance?: T;
   maintenanceMessage?: T;
   notifyEmail?: T;
+  header?: T;
+  footer?: T;
   theme?: T;
   updatedAt?: T;
   createdAt?: T;

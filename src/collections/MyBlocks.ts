@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig } from 'payload'
 import { APIError } from 'payload'
 import { collectRefIds, reachesBlock } from '../builder/refs'
-import { ContentValidationError, validateBlockTree } from '../builder/validate'
+import { ContentValidationError, validateBlockTree, validateContent } from '../builder/validate'
 import { loadBlockTrees } from '../lib/blocks'
 import { revalidatePages } from '../lib/revalidate'
 
@@ -42,6 +42,18 @@ export const MyBlocks: CollectionConfig = {
         { label: 'Dùng chung (mọi editor)', value: 'shared' },
       ],
       admin: { position: 'sidebar' },
+    },
+    {
+      name: 'kind',
+      label: 'Loại',
+      type: 'select',
+      required: true,
+      defaultValue: 'block',
+      options: [
+        { label: 'Block (một phần tử)', value: 'block' },
+        { label: 'Mẫu trang (cả trang)', value: 'page' },
+      ],
+      admin: { position: 'sidebar', description: 'Mẫu trang được dùng khi tạo trang mới trong Visual Builder.' },
     },
     {
       name: 'owner',
@@ -94,8 +106,10 @@ export const MyBlocks: CollectionConfig = {
         else if ('owner' in data) delete data.owner
 
         if ('tree' in data && data.tree != null) {
+          const kind = data.kind ?? originalDoc?.kind ?? 'block'
           try {
-            data.tree = validateBlockTree(data.tree)
+            // mẫu trang: cây là root (nhiều phần tử); block: đúng một phần tử
+            data.tree = kind === 'page' ? validateContent({ version: 1, root: data.tree }).root : validateBlockTree(data.tree)
           } catch (err) {
             if (err instanceof ContentValidationError) throw new APIError(err.message, 400, undefined, true)
             throw err

@@ -6,6 +6,7 @@ import * as migration_20261111_084335_users_profile from './20261111_084335_user
 import * as migration_20261111_085618_page_template from './20261111_085618_page_template';
 import * as migration_20261111_103251_style_presets from './20261111_103251_style_presets';
 import * as migration_20261111_132429_seo_redirects from './20261111_132429_seo_redirects';
+import * as migration_20261111_134538_phase2_layout from './20261111_134538_phase2_layout';
 
 export const migrations = [
   {
@@ -46,6 +47,11 @@ export const migrations = [
   {
     up: migration_20261111_132429_seo_redirects.up,
     down: migration_20261111_132429_seo_redirects.down,
-    name: '20261111_132429_seo_redirects'
+    name: '20261111_132429_seo_redirects',
+  },
+  {
+    up: migration_20261111_134538_phase2_layout.up,
+    down: migration_20261111_134538_phase2_layout.down,
+    name: '20261111_134538_phase2_layout'
   },
 ];

@@ -23,6 +23,20 @@ export const SiteSettings: GlobalConfig = {
     { name: 'maintenanceMessage', label: 'Thông báo bảo trì', type: 'textarea', defaultValue: 'Trang web đang được bảo trì, vui lòng quay lại sau.' },
     { name: 'notifyEmail', label: 'Email nhận thông báo bài gửi form', type: 'email' },
     {
+      name: 'header',
+      label: 'Header toàn site',
+      type: 'relationship',
+      relationTo: 'my-blocks',
+      admin: { description: 'My Block được chèn tự động vào đầu mọi trang (trang có thể tắt trong Cài đặt trang → Bố cục).' },
+    },
+    {
+      name: 'footer',
+      label: 'Footer toàn site',
+      type: 'relationship',
+      relationTo: 'my-blocks',
+      admin: { description: 'My Block được chèn tự động vào cuối mọi trang.' },
+    },
+    {
       name: 'theme',
       label: 'Theme đang dùng',
       type: 'relationship',

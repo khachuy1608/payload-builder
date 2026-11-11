@@ -10,6 +10,7 @@ import type { BuilderNode, PageContent } from '../builder/types'
 import { normalizeContent } from '../builder/validate'
 import { loadBlocksForContent } from './blocks'
 import { loadDataForTree } from './data'
+import { pageLayoutFrom, sitePartsFrom, withSiteParts } from '../builder/siteParts'
 import { PAGES_TAG } from './revalidate'
 import { loadThemeForPage } from './themes'
 import { type PageSeo, pageSeoFrom, type SiteInfo, siteInfoFrom } from './seo'
@@ -68,13 +69,15 @@ async function fetchPage(slug: string, draft: boolean, param?: string, params: U
     const saved = (content.root.props.data ?? {}) as Record<string, unknown>
     content.root.props.data = param !== undefined ? { collection: template.collection, mode: 'one', byField: template.field, byValue: param } : { ...saved, collection: template.collection, mode: 'one' }
   }
+  const settings = (await payload.findGlobal({ slug: 'site-settings', depth: 1, overrideAccess: true }).catch(() => null)) as Record<string, unknown> | null
+  // header/footer toàn site chèn vào cây trước khi nạp block và dữ liệu
+  content.root = withSiteParts(content.root, sitePartsFrom(settings), pageLayoutFrom(doc as unknown as Record<string, unknown>))
   const [blocks, theme] = await Promise.all([loadBlocksForContent(payload, content), loadThemeForPage(payload, doc.theme)])
   // nguồn dữ liệu có thể nằm trong My Block liên kết -> thu thập trên cây đã triển khai
   const data = await loadDataForTree(payload, resolveRefs(content.root, (id) => blocks.get(id)), params)
   const record = data.root?.records[0]
   if (param !== undefined && !record) return null
   const title = record ? bindString(doc.title, record) : doc.title.replace(/\{\{[^}]*\}\}/g, '').trim()
-  const settings = (await payload.findGlobal({ slug: 'site-settings', depth: 1, overrideAccess: true }).catch(() => null)) as Record<string, unknown> | null
   const json = JSON.stringify(content)
   const needsUser = json.includes('{{user') || json.includes('"auth":"user"') || json.includes('"auth":"guest"') || json.includes('"field":"user.')
   return {

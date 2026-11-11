@@ -156,6 +156,13 @@ npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redir
 npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
 ```
 
+## Trải nghiệm editor (đợt 2)
+
+- **Header / footer toàn site:** chọn một My Block (nên là *Dùng chung*) trong *Cài đặt site* hoặc ngay trong builder (*Cài đặt trang → Bố cục*, hoặc bấm vào header trên canvas). Được chèn tự động vào đầu/cuối mọi trang; từng trang có thể tắt riêng. Trên canvas, header/footer hiện màu tím, không kéo/xoá được, bấm vào để mở bản gốc.
+- **Mẫu trang:** nút *Mẫu trang* trên thanh trên (trang trống tự mở): mẫu có sẵn (landing, giới thiệu + đội ngũ, liên hệ, danh sách có tìm kiếm, bảng giá) và mẫu của bạn. *Lưu trang hiện tại làm mẫu* lưu vào `my-blocks` với `kind = page`.
+- **Tay cầm kéo trên canvas:** phần tử đang chọn có 4 thanh cam (lề trong trên/phải/dưới/trái) và 2 tay cầm tím (chiều rộng ở mép phải, chiều cao ở mép dưới). Kéo ghi style cho thiết bị đang chọn; giữ Shift để bước 8px.
+- **Nhóm phần tử:** chuột phải → *Bọc trong Div* (Ctrl+G) / *Bỏ bọc* (Ctrl+Shift+G).
+
 ## Phím tắt trong Builder
 
 | Phím | Tác dụng |
@@ -166,6 +173,7 @@ npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filenam
 | Ctrl/⌘ + S | Lưu nháp |
 | Ctrl/⌘ + Z / Ctrl/⌘ + Shift + Z | Hoàn tác / làm lại |
 | Ctrl/⌘ + D | Nhân bản phần tử đang chọn |
+| Ctrl/⌘ + G / Ctrl/⌘ + Shift + G | Bọc trong Div / bỏ bọc |
 | Ctrl/⌘ + C / V | Sao chép / dán phần tử |
 | Delete | Xoá phần tử |
 | Nhấp đúp vào chữ | Sửa trực tiếp. Enter để lưu, Esc để huỷ (Paragraph: Enter xuống dòng, Ctrl+Enter để lưu) |

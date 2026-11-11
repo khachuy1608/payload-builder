@@ -20,7 +20,7 @@ export function MyBlocksPanel() {
 
   const isMine = (b: MyBlock) => b.owner === null || b.owner === userId
   const list = Object.values(blocks)
-    .filter((b) => b.scope === 'shared' || isMine(b))
+    .filter((b) => b.kind !== 'page' && (b.scope === 'shared' || isMine(b)))
     .filter((b) => !q || b.name.toLowerCase().includes(q))
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
 

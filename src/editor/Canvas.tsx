@@ -15,6 +15,7 @@ import { sanitizeRichText } from '@/builder/sanitize'
 import { BuilderRuntime } from '@/builder/blocks/Runtime'
 import { RenderNode } from '@/builder/Renderer'
 import { BASE_CSS, themeToCss } from '@/builder/theme'
+import { sitePartOf, withSiteParts } from '@/builder/siteParts'
 import { findNode, getAncestors } from '@/builder/tree'
 import { computeDrop } from './dnd'
 import { Overlay } from './Overlay'
@@ -117,11 +118,16 @@ function CanvasContent() {
   const dataCache = useEditor((s) => s.dataCache)
   const currentUser = useEditor((s) => s.currentUser)
   const previewAsGuest = useEditor((s) => s.previewAsGuest)
+  const siteParts = useEditor((s) => s.siteParts)
+  const layout = useEditor((s) => s.layout)
+  const kind = useEditor((s) => s.kind)
+  // header/footer toàn site chèn vào cây hiển thị (không nằm trong root của store nên không lưu, không kéo được)
+  const display = useMemo(() => (kind === 'page' ? withSiteParts(root, siteParts, layout) : root), [root, siteParts, layout, kind])
   // triển khai My Block liên kết rồi gắn dữ liệu thật (và người đang đăng nhập) trước khi biên dịch CSS và render;
   // phần tử bị điều kiện ẩn vẫn giữ lại để chọn/sửa (đánh dấu data-cond-hidden)
   const resolved = useMemo(
-    () => resolveData(resolveRefs(root, blockLookup(blocks)), (id) => dataCache[id], { user: previewAsGuest ? null : currentUser, keepHidden: true }),
-    [root, blocks, dataCache, currentUser, previewAsGuest],
+    () => resolveData(resolveRefs(display, blockLookup(blocks)), (id) => dataCache[id], { user: previewAsGuest ? null : currentUser, keepHidden: true }),
+    [display, blocks, dataCache, currentUser, previewAsGuest],
   )
   const css = useMemo(() => compileTreeCss(resolved), [resolved])
   const theme = useEditor(effectiveTheme)
@@ -183,7 +189,7 @@ export function Canvas() {
       press = null
       if (e.button !== 0 || store().editingId || (e.target as HTMLElement).isContentEditable) return
       const id = nodeElement(e.target)?.dataset.nodeId
-      if (id && id !== 'root') press = { id, x: e.clientX, y: e.clientY }
+      if (id && id !== 'root' && !sitePartOf(id)) press = { id, x: e.clientX, y: e.clientY }
     }
     const onMouseUp = () => {
       press = null

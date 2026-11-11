@@ -4,9 +4,9 @@ import type { BuilderNode, PageContent } from '@/builder/types'
 import type { MediaValue } from '@/builder/types'
 import { normalizeTheme, type ThemeTokens } from '@/builder/theme'
 import { genId } from '@/builder/tree'
-import { normalizeContent, validateBlockTree } from '@/builder/validate'
+import { normalizeContent, validateBlockTree, validateContent } from '@/builder/validate'
 import { acquireLock } from './lock'
-import { type BlockScope, type MyBlock, type SaveStatus, type ThemeDoc, useEditor } from './store'
+import { type BlockKind, type BlockScope, type MyBlock, type SaveStatus, type ThemeDoc, useEditor } from './store'
 
 /** id quan hệ gửi lên Payload: số nếu là số (Postgres serial) */
 const relValue = (id: string | null) => (id == null ? null : /^\d+$/.test(id) ? Number(id) : id)
@@ -43,6 +43,7 @@ export async function savePage(publish: boolean): Promise<boolean> {
         theme: relValue(s.pageThemeId),
         templateCollection: s.template?.collection ?? null,
         templateField: s.template?.field ?? 'id',
+        layout: { hideHeader: s.layout.hideHeader, hideFooter: s.layout.hideFooter },
         seo: { metaTitle: s.seo.metaTitle || null, metaDescription: s.seo.metaDescription || null, ogImage: s.seo.ogImage ? relValue(String(s.seo.ogImage.id)) : null, noIndex: s.seo.noIndex, canonical: s.seo.canonical || null },
         _status: publish ? 'published' : 'draft',
       }),
@@ -99,6 +100,7 @@ export interface MyBlockDoc {
   id: string | number
   name: string
   scope: BlockScope
+  kind?: BlockKind
   owner?: string | number | { id: string | number } | null
   tree: unknown
   thumbnail?: MediaDoc | string | number | null
@@ -107,15 +109,17 @@ export interface MyBlockDoc {
 
 /** Chuẩn hoá doc từ API thành MyBlock dùng trong editor; null nếu cây dữ liệu hỏng */
 export function toMyBlock(doc: MyBlockDoc): MyBlock | null {
+  const kind: BlockKind = doc.kind === 'page' ? 'page' : 'block'
   let tree: BuilderNode
   try {
-    tree = validateBlockTree(doc.tree)
+    // mẫu trang: cây là root của trang; block thường: một phần tử
+    tree = kind === 'page' ? validateContent({ version: 1, root: doc.tree }).root : validateBlockTree(doc.tree)
   } catch {
     return null
   }
   const owner = doc.owner == null ? null : typeof doc.owner === 'object' ? String(doc.owner.id) : String(doc.owner)
   const thumb = doc.thumbnail && typeof doc.thumbnail === 'object' && doc.thumbnail.url ? toMediaValue(doc.thumbnail) : null
-  return { id: String(doc.id), name: doc.name, scope: doc.scope === 'shared' ? 'shared' : 'private', owner, tree, thumbnail: thumb, updatedAt: doc.updatedAt }
+  return { id: String(doc.id), name: doc.name, scope: doc.scope === 'shared' ? 'shared' : 'private', kind, owner, tree, thumbnail: thumb, updatedAt: doc.updatedAt }
 }
 
 export async function listMyBlocks(): Promise<MyBlock[]> {
@@ -133,7 +137,7 @@ export async function getMyBlock(id: string): Promise<MyBlock | null> {
   return toMyBlock(await res.json())
 }
 
-export async function createMyBlock(data: { name: string; scope: BlockScope; tree: BuilderNode }): Promise<MyBlock> {
+export async function createMyBlock(data: { name: string; scope: BlockScope; tree: BuilderNode; kind?: BlockKind }): Promise<MyBlock> {
   const res = await fetch('/api/my-blocks?depth=1', {
     method: 'POST',
     credentials: 'include',
@@ -246,6 +250,19 @@ export async function getSiteThemeId(): Promise<string | null> {
   const doc = await res.json()
   const t = doc?.theme
   return t == null ? null : String(typeof t === 'object' ? t.id : t)
+}
+
+/** Chọn My Block làm header/footer toàn site (ghi vào Cài đặt site) */
+export async function setSitePart(part: 'header' | 'footer', blockId: string | null): Promise<void> {
+  const res = await fetch('/api/globals/site-settings', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ [part]: relValue(blockId) }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  const s = useEditor.getState()
+  s.setSiteParts({ ...s.siteParts, [part]: blockId })
 }
 
 export async function setSiteTheme(id: string | null): Promise<void> {

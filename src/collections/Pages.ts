@@ -75,6 +75,16 @@ export const Pages: CollectionConfig = {
       ],
     },
     {
+      name: 'layout',
+      label: 'Bố cục',
+      type: 'group',
+      admin: { position: 'sidebar' },
+      fields: [
+        { name: 'hideHeader', label: 'Ẩn header toàn site', type: 'checkbox', defaultValue: false },
+        { name: 'hideFooter', label: 'Ẩn footer toàn site', type: 'checkbox', defaultValue: false },
+      ],
+    },
+    {
       name: 'templateCollection',
       label: 'Trang mẫu động cho collection',
       type: 'text',

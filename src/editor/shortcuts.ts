@@ -31,6 +31,10 @@ export function handleShortcut(e: KeyboardEvent) {
   } else if (mod && key === 'd' && s.selectedId) {
     e.preventDefault()
     s.duplicate(s.selectedId)
+  } else if (mod && key === 'g' && s.selectedId && s.selectedId !== 'root') {
+    e.preventDefault()
+    if (e.shiftKey) s.unwrap(s.selectedId)
+    else s.wrapInDiv(s.selectedId)
   } else if (mod && key === 'c' && s.selectedId) {
     s.copy(s.selectedId)
   } else if (mod && key === 'v') {

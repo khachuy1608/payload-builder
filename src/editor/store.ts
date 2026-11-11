@@ -7,9 +7,10 @@
  */
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { type PageLayout, type SiteParts } from '@/builder/siteParts'
 import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
-import { canContain } from '@/builder/schema'
+import { canContain, getSchema } from '@/builder/schema'
 import { autoBind, type DataMap, type DataRecord, type SourceInfo } from '@/builder/data'
 import { applyPreset as applyPresetToNode, type BlockPreset } from '@/builder/presets'
 import { defaultTheme, type ThemeTokens } from '@/builder/theme'
@@ -37,10 +38,13 @@ export type BlockScope = 'private' | 'shared'
 export type InsertMode = 'copy' | 'linked'
 
 /** Một My Block trong thư viện (đã chuẩn hoá từ doc của collection my-blocks) */
+export type BlockKind = 'block' | 'page'
 export interface MyBlock {
   id: string
   name: string
   scope: BlockScope
+  /** 'page': mẫu trang (cây là root), không hiện trong thư viện block */
+  kind: BlockKind
   owner: string | null
   tree: BuilderNode
   thumbnail: MediaValue | null
@@ -141,6 +145,7 @@ export interface EditorState {
   /** Menu chuột phải (toạ độ theo cửa sổ editor) */
   contextMenu: { x: number; y: number; nodeId: string } | null
   historyDialog: boolean
+  templateDialog: boolean
 
   /** Khoá tài liệu (xem lock.ts): owned = mình giữ khoá, locked = người khác đang sửa */
   lock: LockState
@@ -149,6 +154,9 @@ export interface EditorState {
   template: { collection: string; field: string } | null
   /** SEO của trang */
   seo: PageSeoState
+  /** Header/footer toàn site (id My Block trong Cài đặt site) và tuỳ chọn ẩn của trang này */
+  siteParts: SiteParts
+  layout: PageLayout
   /** Nguồn dữ liệu có thể bind (từ /api/builder/sources) */
   sources: SourceInfo[]
   /** Bản ghi đã nạp theo id node có nguồn (canvas dùng để hiện dữ liệu thật) */
@@ -193,7 +201,12 @@ export interface EditorActions {
     pageThemeId?: string | null
     template?: { collection: string; field: string } | null
     seo?: Partial<PageSeoState>
+    siteParts?: SiteParts
+    layout?: Partial<PageLayout>
   }): void
+  setLayout(patch: Partial<PageLayout>): void
+  /** Đổi header/footer toàn site (đã lưu vào Cài đặt site ở api.ts) */
+  setSiteParts(parts: SiteParts): void
   setTemplate(template: EditorState['template']): void
   setSeo(patch: Partial<PageSeoState>): void
   select(id: string | null): void
@@ -243,6 +256,13 @@ export interface EditorActions {
   setData(nodeId: string, records: DataMap[string]): void
   openContextMenu(menu: EditorState['contextMenu']): void
   openHistory(open: boolean): void
+  openTemplateDialog(open: boolean): void
+  /** Thay toàn bộ nội dung trang bằng mẫu (nhân bản với id mới, hoàn tác được) */
+  applyPageTemplate(template: BuilderNode): void
+  /** Bọc phần tử trong một Div mới (nhóm) */
+  wrapInDiv(id: string): string | null
+  /** Bỏ vùng chứa, đưa các con lên thay chỗ nó */
+  unwrap(id: string): boolean
   /** Đưa nội dung một phiên bản cũ vào editor như một bước chỉnh sửa (hoàn tác được) */
   restoreVersion(data: { root: BuilderNode; title: string; slug: string }): void
 
@@ -352,6 +372,7 @@ export const useEditor = create<Store>()(
       themeDialog: false,
       contextMenu: null,
       historyDialog: false,
+      templateDialog: false,
       lock: { state: 'checking' },
       sources: [],
       dataCache: {},
@@ -359,6 +380,8 @@ export const useEditor = create<Store>()(
       previewAsGuest: false,
       template: null,
       seo: { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '' },
+      siteParts: { header: null, footer: null },
+      layout: { hideHeader: false, hideFooter: false },
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -395,6 +418,8 @@ export const useEditor = create<Store>()(
           s.pageThemeId = data.pageThemeId ?? null
           s.template = data.template ?? null
           s.seo = { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '', ...(data.seo ?? {}) }
+          s.siteParts = data.siteParts ?? { header: null, footer: null }
+          s.layout = { hideHeader: false, hideFooter: false, ...(data.layout ?? {}) }
           s.themePreview = null
           s.themeDialog = false
         }),
@@ -609,6 +634,15 @@ export const useEditor = create<Store>()(
         set((s) => {
           s.lock = lock
         }),
+      setLayout: (patch) =>
+        set((s) => {
+          Object.assign(s.layout, patch)
+          s.dirty = true
+        }),
+      setSiteParts: (parts) =>
+        set((s) => {
+          s.siteParts = parts
+        }),
       setSeo: (patch) =>
         set((s) => {
           Object.assign(s.seo, patch)
@@ -643,6 +677,61 @@ export const useEditor = create<Store>()(
         set((s) => {
           s.historyDialog = open
         }),
+      openTemplateDialog: (open) =>
+        set((s) => {
+          s.templateDialog = open
+        }),
+      wrapInDiv: (id) => {
+        const state = get()
+        const node = findNode(state.root, id)
+        const loc = findParent(state.root, id)
+        if (!node || !loc || node.type === 'root') return null
+        if (!canContain(loc.parent.type, 'div') || !canContain('div', node.type)) {
+          get().toast('error', 'Không thể bọc phần tử này trong Div.')
+          return null
+        }
+        const wrapper = createNodeFromBlock('div')!
+        wrapper.styles = {}
+        wrapper.children = [structuredClone(node)]
+        commit((root) => {
+          const parent = findNode(root, loc.parent.id)
+          if (parent?.children) parent.children.splice(loc.index, 1, wrapper)
+        })
+        set((s) => {
+          s.selectedId = wrapper.id
+        })
+        return wrapper.id
+      },
+      unwrap: (id) => {
+        const state = get()
+        const node = findNode(state.root, id)
+        const loc = findParent(state.root, id)
+        if (!node || !loc || node.type === 'root' || !getSchema(node.type)?.isContainer) return false
+        const kids = node.children ?? []
+        if (kids.some((c) => !canContain(loc.parent.type, c.type))) {
+          get().toast('error', 'Các phần tử con không thể nằm trực tiếp trong vùng chứa cha.')
+          return false
+        }
+        commit((root) => {
+          const parent = findNode(root, loc.parent.id)
+          if (parent?.children) parent.children.splice(loc.index, 1, ...kids.map((c) => structuredClone(c)))
+        })
+        set((s) => {
+          s.selectedId = kids[0]?.id ?? loc.parent.id
+        })
+        return true
+      },
+      applyPageTemplate: (template) => {
+        const next = cloneWithNewIds(template)
+        commit((root) => {
+          root.children = next.children ?? []
+          root.styles = next.styles ?? {}
+          root.props = { ...root.props, ...next.props }
+        })
+        set((s) => {
+          s.selectedId = null
+        })
+      },
       restoreVersion: (data) => {
         commit((_root, state) => {
           state.root = data.root

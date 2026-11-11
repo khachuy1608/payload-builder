@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { collectDataNodes, projectRecord } from '@/builder/data'
 import { collectRefIds, resolveRefs } from '@/builder/refs'
+import type { PageLayout, SiteParts } from '@/builder/siteParts'
 import type { PageContent } from '@/builder/types'
 import { fetchData, fetchSources, getMyBlock, refreshBlockLibrary, refreshThemes } from './api'
 import { Canvas } from './Canvas'
@@ -11,6 +12,7 @@ import { HistoryDialog } from './HistoryDialog'
 import { LeftPanel } from './LeftPanel'
 import { RightPanel } from './RightPanel'
 import { SaveBlockDialog } from './SaveBlockDialog'
+import { TemplateDialog } from './TemplateDialog'
 import { ThemeDialog } from './ThemeDialog'
 import { LockBanner, useDocumentLock } from './LockBanner'
 import { handleShortcut } from './shortcuts'
@@ -31,6 +33,8 @@ export interface EditorInitial {
   pageThemeId?: string | null
   template?: { collection: string; field: string } | null
   seo?: Partial<import('./store').PageSeoState>
+  siteParts?: SiteParts
+  layout?: Partial<PageLayout>
 }
 
 export function Editor({ initial }: { initial: EditorInitial }) {
@@ -50,6 +54,8 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       pageThemeId: initial.pageThemeId ?? null,
       template: initial.template ?? null,
       seo: initial.seo,
+      siteParts: initial.siteParts,
+      layout: initial.layout,
     })
     ready.current = true
   }
@@ -72,6 +78,12 @@ export function Editor({ initial }: { initial: EditorInitial }) {
   const saveBlockFor = useEditor((s) => s.saveBlockFor)
   const themeDialog = useEditor((s) => s.themeDialog)
   const historyDialog = useEditor((s) => s.historyDialog)
+  const templateDialog = useEditor((s) => s.templateDialog)
+  // trang mới (trống) -> gợi ý chọn mẫu
+  useEffect(() => {
+    const s = useEditor.getState()
+    if (s.kind === 'page' && !s.readOnly && !s.root.children?.length) s.openTemplateDialog(true)
+  }, [])
 
   return (
     <div className="ed">
@@ -85,6 +97,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       {saveBlockFor && <SaveBlockDialog nodeId={saveBlockFor} />}
       {themeDialog && <ThemeDialog />}
       {historyDialog && <HistoryDialog />}
+      {templateDialog && <TemplateDialog />}
       <ContextMenu />
       <Toasts />
     </div>
@@ -117,7 +130,9 @@ function useBlockLibrary() {
   useEffect(() => {
     if (blocksStatus !== 'ready') return
     const s = useEditor.getState()
-    for (const id of collectRefIds(root)) {
+    const ids = new Set(collectRefIds(root))
+    for (const id of [s.siteParts.header, s.siteParts.footer]) if (id) ids.add(id)
+    for (const id of ids) {
       if (s.blocks[id] || s.missingBlocks[id] || inflight.current.has(id)) continue
       inflight.current.add(id)
       getMyBlock(id)
