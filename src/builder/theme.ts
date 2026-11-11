@@ -295,7 +295,19 @@ img,svg,video,iframe{display:block;max-width:100%}
 .b-tabs-nav{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--color-border)}
 .b-tabs-btn{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 16px;font:inherit;color:var(--color-muted);cursor:pointer}
 .b-tabs-btn[aria-selected=true]{color:var(--color-primary);border-bottom-color:var(--color-primary);font-weight:600}
+
 .b-tabs-panel[hidden]{display:none}
+.b-rich{line-height:1.7}
+.b-rich h1,.b-rich h2,.b-rich h3,.b-rich h4{font-family:var(--font-heading);line-height:1.25;margin:1.4em 0 .5em;color:var(--color-secondary)}
+.b-rich h1{font-size:var(--text-3xl)}.b-rich h2{font-size:var(--text-2xl)}.b-rich h3{font-size:var(--text-xl)}
+.b-rich p{margin:0 0 1em}.b-rich ul,.b-rich ol{margin:0 0 1em;padding-left:1.5em}
+.b-rich blockquote{margin:1.2em 0;padding:.6em 1em;border-left:4px solid var(--color-primary);background:var(--color-surface);border-radius:var(--radius-sm)}
+.b-rich img{border-radius:var(--radius-md);margin:1em 0}.b-rich pre{background:#0f172a;color:#e2e8f0;padding:1em;border-radius:var(--radius-md);overflow:auto;font-family:var(--font-mono);font-size:.9em}
+.b-rich code{font-family:var(--font-mono);font-size:.92em}.b-rich p code{background:var(--color-surface);padding:.1em .35em;border-radius:4px}
+.b-rich table{border-collapse:collapse;width:100%;margin:1em 0}.b-rich th,.b-rich td{border:1px solid var(--color-border);padding:.5em .75em;text-align:left}.b-rich th{background:var(--color-surface)}
+.b-rich a{color:var(--color-primary)}.b-rich hr{border:0;border-top:1px solid var(--color-border);margin:2em 0}
+.b-load-more .b-button{background:var(--color-primary);color:#fff;padding:12px 24px}
+.b-load-more-done{color:var(--color-muted);font-size:14px}
 ` + FX_CSS + BLOCKS_CSS
 
 /** Các theme preset (chỉ đọc) được seed vào collection `themes` – nhóm thiếu lấy từ mặc định */

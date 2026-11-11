@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import { Editor } from '@/editor/Editor'
-import { roleOf } from '@/lib/access'
+import { isStaffUser, roleOf } from '@/lib/access'
 import { normalizeBlockTree } from '@/lib/blocks'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +15,8 @@ export default async function BlockBuilderPage({ params }: Args) {
   const { id } = await params
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await headers() })
-  if (!user) redirect(`/admin/login?redirect=${encodeURIComponent(`/builder/block/${id}`)}`)
+  // chỉ nhân sự CMS (users) vào builder; khách hàng (customers) không có quyền
+  if (!user || !isStaffUser(user)) redirect(`/admin/login?redirect=${encodeURIComponent(`/builder/block/${id}`)}`)
 
   const block = await payload.findByID({ collection: 'my-blocks', id, depth: 0, user, overrideAccess: false }).catch(() => null)
   if (!block) notFound()

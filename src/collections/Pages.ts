@@ -1,13 +1,13 @@
 import type { Access, CollectionConfig, FieldHook } from 'payload'
 import { APIError } from 'payload'
 import { ContentValidationError, validateContent } from '../builder/validate'
-import { canEdit } from '../lib/access'
+import { canEdit, isStaffUser } from '../lib/access'
 import { revalidatePages } from '../lib/revalidate'
 import { RESERVED_SLUGS, slugify } from '../lib/slug'
 
 /** Khách chỉ đọc được trang đã xuất bản, người đã đăng nhập đọc được cả bản nháp */
 const readPublishedOrLoggedIn: Access = ({ req: { user } }) =>
-  user ? true : { _status: { equals: 'published' } }
+  isStaffUser(user) ? true : { _status: { equals: 'published' } }
 
 const formatSlug: FieldHook = ({ value, data, operation }) => {
   if (typeof value === 'string' && value.trim()) return slugify(value)

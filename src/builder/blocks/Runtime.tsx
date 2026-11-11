@@ -377,7 +377,7 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
       const logout = hit('a[href="#logout"]')
       if (logout) {
         e.preventDefault()
-        fetch('/api/users/logout', { method: 'POST', credentials: 'include' }).finally(() => win.location.reload())
+        Promise.allSettled([fetch('/api/users/logout', { method: 'POST', credentials: 'include' }), fetch('/api/customers/logout', { method: 'POST', credentials: 'include' })]).finally(() => win.location.reload())
         return
       }
       // bấm ngoài: đóng menu; bấm vào backdrop của dialog: đóng
@@ -471,10 +471,13 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
         e.preventDefault()
         return
       }
-      if (form.matches('[data-signin]')) {
-        // Sign-in Form không có action: đăng nhập vào Payload (cookie) rồi tải lại trang
+      const auth = form.dataset.auth
+      if (auth) {
+        // form tài khoản (đăng nhập, đăng ký, quên/đặt lại mật khẩu, hồ sơ): gọi REST của Payload cho collection đã chọn
         e.preventDefault()
         const fd = new FormData(form)
+        const col = form.dataset.authCollection === 'users' ? 'users' : 'customers'
+        const redirect = form.dataset.authRedirect || ''
         const btn = form.querySelector<HTMLButtonElement>('.b-signin-submit')
         let msg = form.querySelector<HTMLElement>('.b-form-msg')
         if (!msg) {
@@ -482,16 +485,58 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
           msg.className = 'b-form-msg'
           form.append(msg)
         }
+        const json = (url: string, method: string, body: unknown) => fetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })
+        const fail = async (res: Response, fallback: string) => {
+          try {
+            const b = await res.json()
+            throw new Error(b?.errors?.[0]?.data?.errors?.[0]?.message || b?.errors?.[0]?.message || fallback)
+          } catch (err) {
+            throw err instanceof Error && err.message !== 'Unexpected end of JSON input' ? err : new Error(fallback)
+          }
+        }
+        const go = (text: string) => {
+          msg!.textContent = text
+          msg!.classList.remove('is-error')
+          if (redirect) win.location.href = redirect
+          else win.location.reload()
+        }
         if (btn) btn.disabled = true
         try {
-          const res = await fetch('/api/users/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email: fd.get('email'), password: fd.get('password') }) })
-          if (!res.ok) throw new Error(String(res.status))
-          msg.textContent = 'Đăng nhập thành công, đang tải lại…'
-          msg.classList.remove('is-error')
-          win.location.reload()
-        } catch {
-          msg.textContent = 'Email hoặc mật khẩu không đúng.'
+          if (auth === 'login') {
+            const res = await json(`/api/${col}/login`, 'POST', { email: fd.get('email'), password: fd.get('password') })
+            if (!res.ok) throw new Error('Email hoặc mật khẩu không đúng.')
+            go('Đăng nhập thành công…')
+          } else if (auth === 'register') {
+            const res = await json(`/api/${col}`, 'POST', { name: fd.get('name'), email: fd.get('email'), phone: fd.get('phone') || undefined, password: fd.get('password') })
+            if (!res.ok) await fail(res, 'Không tạo được tài khoản (email đã dùng?).')
+            const login = await json(`/api/${col}/login`, 'POST', { email: fd.get('email'), password: fd.get('password') })
+            if (!login.ok) throw new Error('Đã tạo tài khoản, vui lòng đăng nhập.')
+            go('Đã tạo tài khoản…')
+          } else if (auth === 'forgot') {
+            await json(`/api/${col}/forgot-password`, 'POST', { email: fd.get('email') })
+            msg.textContent = form.dataset.authSuccess || 'Đã gửi liên kết đặt lại mật khẩu (nếu email tồn tại).'
+            msg.classList.remove('is-error')
+            form.reset()
+          } else if (auth === 'reset') {
+            if (fd.get('password') !== fd.get('confirm')) throw new Error('Mật khẩu nhập lại không khớp.')
+            const token = new URLSearchParams(win.location.search).get('token') || ''
+            if (!token) throw new Error('Thiếu mã đặt lại (mở trang từ liên kết trong email).')
+            const res = await json(`/api/${col}/reset-password`, 'POST', { token, password: fd.get('password') })
+            if (!res.ok) await fail(res, 'Liên kết đã hết hạn hoặc không hợp lệ.')
+            go(form.dataset.authSuccess || 'Đã đổi mật khẩu…')
+          } else if (auth === 'profile' || auth === 'password') {
+            const id = form.dataset.authUser || ''
+            const body = auth === 'profile' ? { name: fd.get('name'), ...(col === 'customers' ? { phone: fd.get('phone') || null } : {}) } : { password: fd.get('password') }
+            const res = await json(`/api/${col}/${encodeURIComponent(id)}`, 'PATCH', body)
+            if (!res.ok) await fail(res, 'Không lưu được.')
+            msg.textContent = form.dataset.authSuccess || 'Đã lưu.'
+            msg.classList.remove('is-error')
+            if (auth === 'password') form.reset()
+          }
+        } catch (err) {
+          msg.textContent = (err as Error).message || 'Có lỗi xảy ra.'
           msg.classList.add('is-error')
+        } finally {
           if (btn) btn.disabled = false
         }
         return

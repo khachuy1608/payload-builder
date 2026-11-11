@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import { pageLayoutFrom, sitePartsFrom } from '@/builder/siteParts'
-import { roleOf } from '@/lib/access'
+import { isStaffUser, roleOf } from '@/lib/access'
 import { normalizeContent } from '@/builder/validate'
 import { Editor } from '@/editor/Editor'
 
@@ -15,7 +15,8 @@ export default async function BuilderPage({ params }: Args) {
   const { id } = await params
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await headers() })
-  if (!user) redirect(`/admin/login?redirect=${encodeURIComponent(`/builder/${id}`)}`)
+  // chỉ nhân sự CMS (users) vào builder; khách hàng (customers) không có quyền
+  if (!user || !isStaffUser(user)) redirect(`/admin/login?redirect=${encodeURIComponent(`/builder/${id}`)}`)
 
   const page = await payload
     .findByID({ collection: 'pages', id, draft: true, depth: 1, user, overrideAccess: false })

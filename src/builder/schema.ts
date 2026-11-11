@@ -27,6 +27,8 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   button: { isContainer: false },
   youtube: { isContainer: false },
   divider: { isContainer: false },
+  richContent: { isContainer: false },
+  loadMore: { isContainer: false },
   /** My Block dạng liên kết: triển khai thành cây thật lúc render (xem ./refs.ts). Không hiện ở panel Phần tử. */
   blockRef: { isContainer: false, hidden: true },
 
@@ -78,6 +80,10 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   form: { isContainer: true },
   formField: { isContainer: false, allowedParents: ['form'] },
   signInForm: { isContainer: false },
+  registerForm: { isContainer: false },
+  forgotPasswordForm: { isContainer: false },
+  resetPasswordForm: { isContainer: false },
+  accountForm: { isContainer: false },
 }
 
 export function getSchema(type: string): BlockSchema | undefined {

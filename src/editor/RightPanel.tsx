@@ -655,6 +655,16 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
               </label>
             </div>
           )}
+          {info?.ownerField && (
+            <div className="ed-field">
+              <label className="ed-toggle">
+                <input type="checkbox" checked={!!source.ownerOnly} onChange={(e) => set({ ownerOnly: e.target.checked || undefined })} />
+                <span className="ed-toggle-ui" />
+                Chỉ bản ghi của người đang đăng nhập
+              </label>
+              <span className="ed-help">Lọc theo trường “{info.ownerField}” = người dùng/khách hàng đang đăng nhập; khách chưa đăng nhập thấy danh sách trống. Phần này render riêng cho từng người (không cache).</span>
+            </div>
+          )}
           {source.mode === 'list' && (
             <div className="ed-field">
               <label className="ed-toggle">

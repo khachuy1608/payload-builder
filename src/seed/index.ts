@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 import { PRESET_THEMES } from '../builder/theme'
+import { seedContent } from './content'
 import type { BuilderNode, PageContent } from '../builder/types'
 
 let n = 0
@@ -152,6 +153,11 @@ export async function seed(payload: Payload) {
     await seedThemes(payload)
   } catch (err) {
     payload.logger.error({ err }, 'Không tạo được theme preset')
+  }
+  try {
+    await seedContent(payload)
+  } catch (err) {
+    payload.logger.error({ err }, 'Không tạo được dữ liệu mẫu')
   }
   try {
     const { totalDocs } = await payload.count({ collection: 'pages' })

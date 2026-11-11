@@ -1,4 +1,5 @@
 import type { Endpoint } from 'payload'
+import { isStaffUser } from './access'
 
 /**
  * Ai đang mở tài liệu trong builder (hiện diện): bộ nhớ trong tiến trình, mỗi client gửi nhịp 10s,
@@ -30,11 +31,11 @@ export const presenceEndpoints: Endpoint[] = [
     path: '/builder/presence',
     method: 'post',
     handler: async (req) => {
-      if (!req.user) return Response.json({ errors: [{ message: 'Unauthorized' }] }, { status: 401 })
+      if (!isStaffUser(req.user)) return Response.json({ errors: [{ message: 'Unauthorized' }] }, { status: 401 })
       const body = (await req.json?.()) as { room?: string; leave?: boolean } | undefined
       const room = String(body?.room ?? '')
       if (!/^[a-z-]+:[A-Za-z0-9_-]+$/.test(room)) return Response.json({ errors: [{ message: 'room không hợp lệ' }] }, { status: 400 })
-      const me = { id: String(req.user.id), name: String((req.user as { name?: string }).name || req.user.email || 'Người dùng') }
+      const me = { id: String(req.user!.id), name: String((req.user as { name?: string }).name || req.user!.email || 'Người dùng') }
       if (body?.leave) {
         leavePresence(room, me.id)
         return Response.json({ others: [] })

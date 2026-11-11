@@ -1,11 +1,11 @@
 import type { Access, CollectionConfig } from 'payload'
-import { loggedIn, roleOf } from '../lib/access'
+import { isStaffUser, loggedIn, roleOf } from '../lib/access'
 
 /** Tác giả (hoặc admin) được sửa/xoá bình luận của mình */
 const authorOrAdmin: Access = ({ req: { user } }) => {
-  if (!user) return false
+  if (!isStaffUser(user)) return false
   if (roleOf(user) === 'admin') return true
-  return { author: { equals: user.id } }
+  return { author: { equals: user!.id } }
 }
 
 /**

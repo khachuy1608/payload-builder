@@ -8,17 +8,24 @@ import type { Access, FieldAccess } from 'payload'
  */
 export type Role = 'admin' | 'editor' | 'viewer'
 
-export const roleOf = (user: { role?: string | null } | null | undefined): Role => (user?.role === 'admin' ? 'admin' : user?.role === 'viewer' ? 'viewer' : 'editor')
+type AnyUser = { role?: string | null; collection?: string | null } | null | undefined
 
-export const loggedIn: Access = ({ req: { user } }) => Boolean(user)
-export const isAdmin: Access = ({ req: { user } }) => roleOf(user) === 'admin'
+/** Nhân sự CMS (collection users) – khách hàng (customers) không bao giờ là nhân sự */
+export const isStaffUser = (user: AnyUser): boolean => !!user && (user.collection == null || user.collection === 'users')
+
+/** Vai trò: khách hàng đăng nhập ở front-end luôn là viewer đối với CMS */
+export const roleOf = (user: AnyUser): Role => (!isStaffUser(user) && user ? 'viewer' : user?.role === 'admin' ? 'admin' : user?.role === 'viewer' ? 'viewer' : 'editor')
+
+/** Đã đăng nhập với tư cách nhân sự CMS (users) */
+export const loggedIn: Access = ({ req: { user } }) => isStaffUser(user)
+export const isAdmin: Access = ({ req: { user } }) => isStaffUser(user) && roleOf(user) === 'admin'
 /** admin hoặc editor */
-export const canEdit: Access = ({ req: { user } }) => !!user && roleOf(user) !== 'viewer'
-export const isAdminField: FieldAccess = ({ req: { user } }) => roleOf(user) === 'admin'
+export const canEdit: Access = ({ req: { user } }) => isStaffUser(user) && roleOf(user) !== 'viewer'
+export const isAdminField: FieldAccess = ({ req: { user } }) => isStaffUser(user) && roleOf(user) === 'admin'
 
 /** Chủ sở hữu (hoặc doc không có chủ) được sửa; admin sửa tất cả; viewer không sửa */
 export const ownerOrAdmin: Access = ({ req: { user } }) => {
-  if (!user || roleOf(user) === 'viewer') return false
+  if (!isStaffUser(user) || roleOf(user) === 'viewer') return false
   if (roleOf(user) === 'admin') return true
-  return { or: [{ owner: { equals: user.id } }, { owner: { exists: false } }] }
+  return { or: [{ owner: { equals: user!.id } }, { owner: { exists: false } }] }
 }

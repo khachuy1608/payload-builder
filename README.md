@@ -158,6 +158,16 @@ npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redir
 npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
 ```
 
+## Nội dung & dữ liệu (đợt 3)
+
+- **Collection mẫu** (`src/collections/content.ts`): danh mục, bài viết (Lexical rich text), sản phẩm, sự kiện, FAQ, cảm nhận, đội ngũ – có dữ liệu seed, `published` để ẩn/hiện, `custom.builder` khai báo trường công khai và trường tìm kiếm. Repo mới chỉ cần sửa/thêm collection ở đây.
+- **Rich text:** trường `richText` (Lexical) được chuyển thành HTML đã làm sạch khi đưa vào builder; dùng block **Rich content** và gắn `{{content}}` (hoặc dán HTML). Quan hệ được chiếu đệ quy theo `expose` của collection đích (`{{category.name}}`, `{{author.name}}` – không bao giờ lộ email/mật khẩu).
+- **Lọc, sắp xếp, tải thêm:** nguồn bật *Nhận tham số URL* hiểu `?q=` (trường tìm kiếm), `?page=`, `?<trường>=` kể cả quan hệ (`?category.slug=tin-tuc`), và `?take=N` cho block **Xem thêm** (server render, không cần JS).
+- **Tìm kiếm toàn site:** nguồn ảo `search` (Danh sách dữ liệu → *Tìm kiếm toàn site*) gom kết quả từ mọi collection có `search` trong `custom.builder`; trường `title`, `excerpt`, `image`, `href` (trỏ tới trang mẫu động của collection), `collectionLabel`.
+- **Khách hàng** (`customers`, tách khỏi `users` quản trị): block **Đăng ký**, **Sign-in Form** (chọn customers/users), **Quên mật khẩu**, **Đặt lại mật khẩu** (`?token=` từ email), **Hồ sơ tài khoản** (sửa tên/điện thoại, đổi mật khẩu, đăng xuất); đường dẫn mặc định `/dang-nhap`, `/dang-ky`, `/quen-mat-khau`, `/dat-lai-mat-khau`, `/tai-khoan` (tạo trang với slug tương ứng). Email gửi qua SMTP (`SMTP_*` trong `.env`), không cấu hình thì in ra console.
+- **Dữ liệu của riêng tôi:** collection khai báo `custom.builder.ownerField` (ví dụ `bookings.customer`); nguồn dữ liệu bật *Chỉ bản ghi của người đang đăng nhập* → render riêng theo người dùng (ngoài cache). Khách hàng tạo bản ghi qua block Form với `action = /api/bookings` (owner tự gán = chính họ).
+- Khách hàng không bao giờ có quyền CMS: mọi access của builder/admin đều yêu cầu `users` (`isStaffUser`).
+
 ## Trải nghiệm editor (đợt 2)
 
 - **Header / footer toàn site:** chọn một My Block (nên là *Dùng chung*) trong *Cài đặt site* hoặc ngay trong builder (*Cài đặt trang → Bố cục*, hoặc bấm vào header trên canvas). Được chèn tự động vào đầu/cuối mọi trang; từng trang có thể tắt riêng. Trên canvas, header/footer hiện màu tím, không kéo/xoá được, bấm vào để mở bản gốc.
@@ -301,7 +311,7 @@ Không cần viết UI cho panel: editor tự sinh control từ `contentControls
 ## Kiểm thử
 
 ```bash
-npm test          # unit test lõi: cây, CSS, validate, sanitize SVG/rich text, link/YouTube, My Blocks (resolveRefs, vòng lặp…), theme, data binding, presets, SEO
+npm test          # unit test lõi: cây, CSS, validate, sanitize, My Blocks, theme/token, data binding, presets, SEO, diff, access, rich text, tải thêm
 npm run typecheck
 ```
 

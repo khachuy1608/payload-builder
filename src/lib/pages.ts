@@ -9,7 +9,7 @@ import type { ThemeTokens } from '../builder/theme'
 import type { BuilderNode, PageContent } from '../builder/types'
 import { normalizeContent } from '../builder/validate'
 import { loadBlocksForContent } from './blocks'
-import { loadDataForTree } from './data'
+import { hasOwnedSources, loadDataForTree } from './data'
 import { pageLayoutFrom, sitePartsFrom, withSiteParts } from '../builder/siteParts'
 import { PAGES_TAG } from './revalidate'
 import { loadThemeForPage } from './themes'
@@ -34,6 +34,8 @@ export interface LoadedPage {
   record: DataMap[string]['records'][number] | null
   /** Trang có dùng {{user}} hay điều kiện đăng nhập -> cần render theo người dùng */
   needsUser: boolean
+  /** Có nguồn dữ liệu “chỉ của tôi” -> PageView nạp riêng theo người dùng (ngoài cache) */
+  hasOwned: boolean
 }
 
 /** Cài đặt site (cache theo tag pages, làm mới khi đổi) */
@@ -74,12 +76,14 @@ async function fetchPage(slug: string, draft: boolean, param?: string, params: U
   content.root = withSiteParts(content.root, sitePartsFrom(settings), pageLayoutFrom(doc as unknown as Record<string, unknown>))
   const [blocks, theme] = await Promise.all([loadBlocksForContent(payload, content), loadThemeForPage(payload, doc.theme)])
   // nguồn dữ liệu có thể nằm trong My Block liên kết -> thu thập trên cây đã triển khai
-  const data = await loadDataForTree(payload, resolveRefs(content.root, (id) => blocks.get(id)), params)
+  const resolvedTree = resolveRefs(content.root, (id) => blocks.get(id))
+  const hasOwned = hasOwnedSources(payload, resolvedTree)
+  const data = await loadDataForTree(payload, resolvedTree, params, { skipOwned: true })
   const record = data.root?.records[0]
   if (param !== undefined && !record) return null
   const title = record ? bindString(doc.title, record) : doc.title.replace(/\{\{[^}]*\}\}/g, '').trim()
   const json = JSON.stringify(content)
-  const needsUser = json.includes('{{user') || json.includes('"auth":"user"') || json.includes('"auth":"guest"') || json.includes('"field":"user.')
+  const needsUser = hasOwned || json.includes('"type":"accountForm"') || json.includes('{{user') || json.includes('"auth":"user"') || json.includes('"auth":"guest"') || json.includes('"field":"user.')
   return {
     title,
     slug: doc.slug,
@@ -94,6 +98,7 @@ async function fetchPage(slug: string, draft: boolean, param?: string, params: U
     site: { ...siteInfoFrom(settings), maintenance: !!settings?.maintenance, maintenanceMessage: String(settings?.maintenanceMessage ?? 'Trang web đang được bảo trì.') },
     record: record ?? null,
     needsUser,
+    hasOwned,
   }
 }
 

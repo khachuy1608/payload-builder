@@ -329,6 +329,7 @@ textarea.b-input{resize:none}
 .b-form-submit{background:var(--color-primary);color:#fff;padding:11px 22px;cursor:pointer}
 .b-form-submit[disabled]{opacity:.6}
 .b-signin{display:flex;flex-direction:column;gap:14px}
+.b-auth-wrap{display:flex;flex-direction:column;gap:20px}.b-auth-wrap .b-auth--password{padding-top:16px;border-top:1px solid var(--color-border)}.b-auth-text{margin:0;color:var(--color-muted);font-size:14px}.b-auth-logout{align-self:flex-start}
 .b-signin-title{margin:0 0 4px;font-family:var(--font-heading);font-size:22px}
 .b-signin-providers{display:flex;flex-direction:column;gap:8px}
 .b-signin-provider{text-align:center;justify-content:center}

@@ -3,11 +3,11 @@
  * Date Picker, Time Field, Resize Handle (textarea), Sign-in Form. Bài gửi được lưu vào collection `form-submissions`
  * (blocks/Runtime.tsx gửi fetch JSON).
  */
-import { FormInput, LogIn, TextCursorInput } from 'lucide-react'
+import { FormInput, KeyRound, LogIn, MailQuestion, UserCircle, UserPlus, TextCursorInput } from 'lucide-react'
 import { genId } from '../../tree'
 import type { BuilderNode } from '../../types'
 import { bool, EditorOnly, Icon, items, num, safeHref, text } from '../helpers'
-import type { BlockDefinition } from '../types'
+import type { BlockDefinition, NodeAttrs } from '../types'
 
 const node = (type: string, props: Record<string, unknown>, styles: BuilderNode['styles'] = {}): BuilderNode => ({ id: genId(), type, props, styles })
 
@@ -218,7 +218,7 @@ export const FORM_BLOCKS: BlockDefinition[] = [
     category: 'form',
     icon: LogIn,
     defaults: () => ({
-      props: { title: 'Đăng nhập', providers: [{ label: 'Tiếp tục với Google' }, { label: 'Tiếp tục với Apple' }], showRemember: true, forgotText: 'Quên mật khẩu?', forgotHref: '#', submitText: 'Đăng nhập', action: '', footerText: 'Chưa có tài khoản?', footerLinkText: 'Đăng ký', footerHref: '#' },
+      props: { title: 'Đăng nhập', providers: [], showRemember: true, forgotText: 'Quên mật khẩu?', forgotHref: '/quen-mat-khau', submitText: 'Đăng nhập', action: '', collection: 'customers', redirect: '/tai-khoan', footerText: 'Chưa có tài khoản?', footerLinkText: 'Đăng ký', footerHref: '/dang-ky' },
       styles: { desktop: { maxWidth: '400px', padding: '28px', backgroundColor: 'var(--color-background)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-lg)' } },
     }),
     contentControls: [
@@ -228,7 +228,9 @@ export const FORM_BLOCKS: BlockDefinition[] = [
       { type: 'text', prop: 'forgotText', label: 'Link quên mật khẩu' },
       { type: 'url', prop: 'forgotHref', label: 'Link quên mật khẩu (URL)' },
       { type: 'text', prop: 'submitText', label: 'Nút đăng nhập' },
-      { type: 'url', prop: 'action', label: 'URL xử lý đăng nhập (action)', help: 'Để trống: đăng nhập vào tài khoản của site này (Payload users) và tải lại trang. Đặt URL để POST tới hệ thống khác.' },
+      { type: 'select', prop: 'collection', label: 'Đăng nhập vào', options: [{ value: 'customers', label: 'Khách hàng của site (customers)' }, { value: 'users', label: 'Nhân sự CMS (users)' }] },
+      { type: 'url', prop: 'redirect', label: 'Chuyển tới sau khi đăng nhập', placeholder: '/tai-khoan (trống: tải lại trang)' },
+      { type: 'url', prop: 'action', label: 'URL xử lý đăng nhập (action)', help: 'Để trống: đăng nhập vào collection đã chọn qua Payload. Đặt URL để POST tới hệ thống khác.' },
       { type: 'text', prop: 'footerText', label: 'Chân form' },
       { type: 'text', prop: 'footerLinkText', label: 'Link chân form' },
       { type: 'url', prop: 'footerHref', label: 'URL chân form' },
@@ -240,7 +242,7 @@ export const FORM_BLOCKS: BlockDefinition[] = [
       const action = safeHref(node.props.action)
       const id = node.id
       return (
-        <form {...attrs} className={`${attrs.className} b-signin`} method="post" action={action} data-signin={action ? undefined : ''}>
+        <form {...attrs} className={`${attrs.className} b-signin`} method="post" action={action} data-signin={action ? undefined : ''} data-auth={action ? undefined : 'login'} data-auth-collection={text(node.props.collection) === 'users' ? 'users' : 'customers'} data-auth-redirect={safeHref(node.props.redirect) ?? ''}>
           <h3 className="b-signin-title">{text(node.props.title)}</h3>
           {providers.length > 0 && (
             <>
@@ -291,8 +293,188 @@ export const FORM_BLOCKS: BlockDefinition[] = [
               {text(node.props.footerText)} <a href={safeHref(node.props.footerHref) ?? '#'}>{text(node.props.footerLinkText)}</a>
             </p>
           )}
-          {mode === 'editor' && !action && <EditorOnly label="Đăng nhập vào tài khoản của site (Payload users). Dùng link #logout để đăng xuất.">{null}</EditorOnly>}
+          {mode === 'editor' && !action && <EditorOnly label={`Đăng nhập vào ${text(node.props.collection) === 'users' ? 'tài khoản nhân sự (users)' : 'tài khoản khách hàng (customers)'}. Dùng link #logout để đăng xuất.`}>{null}</EditorOnly>}
         </form>
+      )
+    },
+  },
+]
+
+/** Khung chung cho các form tài khoản (đăng ký, quên/đặt lại mật khẩu, hồ sơ) – Runtime xử lý theo data-auth */
+function AuthForm({ attrs, kind, title, children, submitText, extra, success, redirect, footer }: { attrs: NodeAttrs; kind: string; title: string; children: React.ReactNode; submitText: string; extra?: Record<string, string>; success?: string; redirect?: string; footer?: React.ReactNode }) {
+  const a = attrs as { className: string }
+  return (
+    <form {...attrs} className={`${a.className} b-signin b-auth b-auth--${kind}`} method="post" data-auth={kind} data-auth-collection="customers" data-auth-redirect={redirect ?? ''} data-auth-success={success ?? ''} {...extra}>
+      {title && <h3 className="b-signin-title">{title}</h3>}
+      {children}
+      <button type="submit" className="b-button b-signin-submit">
+        {submitText}
+      </button>
+      {footer}
+    </form>
+  )
+}
+
+const field = (id: string, name: string, label: string, type: string, opts: { placeholder?: string; autoComplete?: string; required?: boolean; value?: string; minLength?: number } = {}) => (
+  <div className="b-field" key={name}>
+    <label className="b-field-label" htmlFor={`${id}-${name}`}>
+      {label}
+    </label>
+    <input id={`${id}-${name}`} className="b-input" type={type} name={name} placeholder={opts.placeholder} autoComplete={opts.autoComplete} required={opts.required !== false} defaultValue={opts.value} minLength={opts.minLength} />
+  </div>
+)
+
+const AUTH_STYLE_GROUPS: BlockDefinition['styleGroups'] = ['typography', 'size', 'spacing', 'background', 'border', 'effects', 'position', 'child']
+const CARD = { maxWidth: '420px', padding: '28px', backgroundColor: 'var(--color-background)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-lg)' }
+
+const ACCOUNT_BLOCKS: BlockDefinition[] = [
+  {
+    type: 'registerForm',
+    label: 'Đăng ký',
+    category: 'form',
+    icon: UserPlus,
+    defaults: () => ({
+      props: { title: 'Tạo tài khoản', submitText: 'Đăng ký', askPhone: true, redirect: '/tai-khoan', footerText: 'Đã có tài khoản?', footerLinkText: 'Đăng nhập', footerHref: '/dang-nhap' },
+      styles: { desktop: CARD },
+    }),
+    contentControls: [
+      { type: 'text', prop: 'title', label: 'Tiêu đề' },
+      { type: 'toggle', prop: 'askPhone', label: 'Hỏi số điện thoại' },
+      { type: 'text', prop: 'submitText', label: 'Nút gửi' },
+      { type: 'url', prop: 'redirect', label: 'Chuyển tới sau khi đăng ký', placeholder: '/tai-khoan' },
+      { type: 'text', prop: 'footerText', label: 'Chân form' },
+      { type: 'text', prop: 'footerLinkText', label: 'Link chân form' },
+      { type: 'url', prop: 'footerHref', label: 'URL chân form' },
+    ],
+    styleGroups: AUTH_STYLE_GROUPS,
+    inlineEdit: { prop: 'title' },
+    Render: ({ node, attrs, mode }) => (
+      <AuthForm
+        attrs={attrs}
+        kind="register"
+        title={text(node.props.title)}
+        submitText={text(node.props.submitText, 'Đăng ký')}
+        redirect={safeHref(node.props.redirect) ?? ''}
+        footer={
+          <>
+            {(text(node.props.footerText) || text(node.props.footerLinkText)) && (
+              <p className="b-signin-foot">
+                {text(node.props.footerText)} <a href={safeHref(node.props.footerHref) ?? '#'}>{text(node.props.footerLinkText)}</a>
+              </p>
+            )}
+            {mode === 'editor' && <EditorOnly label="Tạo tài khoản khách hàng (collection customers) rồi tự đăng nhập.">{null}</EditorOnly>}
+          </>
+        }
+      >
+        {field(node.id, 'name', 'Họ tên', 'text', { placeholder: 'Nguyễn Văn A', autoComplete: 'name' })}
+        {field(node.id, 'email', 'Email', 'email', { placeholder: 'ban@vidu.com', autoComplete: 'email' })}
+        {bool(node.props.askPhone, true) && field(node.id, 'phone', 'Điện thoại', 'tel', { autoComplete: 'tel', required: false })}
+        {field(node.id, 'password', 'Mật khẩu (tối thiểu 8 ký tự)', 'password', { autoComplete: 'new-password', minLength: 8 })}
+      </AuthForm>
+    ),
+  },
+  {
+    type: 'forgotPasswordForm',
+    label: 'Quên mật khẩu',
+    category: 'form',
+    icon: MailQuestion,
+    defaults: () => ({ props: { title: 'Quên mật khẩu', text: 'Nhập email, chúng tôi sẽ gửi liên kết đặt lại mật khẩu.', submitText: 'Gửi liên kết', successText: 'Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi. Hãy kiểm tra hộp thư.' }, styles: { desktop: CARD } }),
+    contentControls: [
+      { type: 'text', prop: 'title', label: 'Tiêu đề' },
+      { type: 'textarea', prop: 'text', label: 'Hướng dẫn' },
+      { type: 'text', prop: 'submitText', label: 'Nút gửi' },
+      { type: 'textarea', prop: 'successText', label: 'Thông báo sau khi gửi' },
+    ],
+    styleGroups: AUTH_STYLE_GROUPS,
+    inlineEdit: { prop: 'title' },
+    Render: ({ node, attrs }) => (
+      <AuthForm attrs={attrs} kind="forgot" title={text(node.props.title)} submitText={text(node.props.submitText, 'Gửi liên kết')} success={text(node.props.successText)}>
+        {text(node.props.text) && <p className="b-auth-text">{text(node.props.text)}</p>}
+        {field(node.id, 'email', 'Email', 'email', { placeholder: 'ban@vidu.com', autoComplete: 'email' })}
+      </AuthForm>
+    ),
+  },
+  {
+    type: 'resetPasswordForm',
+    label: 'Đặt lại mật khẩu',
+    category: 'form',
+    icon: KeyRound,
+    defaults: () => ({ props: { title: 'Đặt mật khẩu mới', submitText: 'Đổi mật khẩu', redirect: '/tai-khoan', successText: 'Đã đổi mật khẩu.' }, styles: { desktop: CARD } }),
+    contentControls: [
+      { type: 'text', prop: 'title', label: 'Tiêu đề' },
+      { type: 'text', prop: 'submitText', label: 'Nút gửi' },
+      { type: 'url', prop: 'redirect', label: 'Chuyển tới sau khi đổi', placeholder: '/tai-khoan', help: 'Token lấy từ ?token= trên URL (link trong email).' },
+    ],
+    styleGroups: AUTH_STYLE_GROUPS,
+    inlineEdit: { prop: 'title' },
+    Render: ({ node, attrs }) => (
+      <AuthForm attrs={attrs} kind="reset" title={text(node.props.title)} submitText={text(node.props.submitText, 'Đổi mật khẩu')} redirect={safeHref(node.props.redirect) ?? ''} success={text(node.props.successText)}>
+        {field(node.id, 'password', 'Mật khẩu mới (tối thiểu 8 ký tự)', 'password', { autoComplete: 'new-password', minLength: 8 })}
+        {field(node.id, 'confirm', 'Nhập lại mật khẩu', 'password', { autoComplete: 'new-password', minLength: 8 })}
+      </AuthForm>
+    ),
+  },
+  {
+    type: 'accountForm',
+    label: 'Hồ sơ tài khoản',
+    category: 'form',
+    icon: UserCircle,
+    defaults: () => ({
+      props: { title: 'Xin chào {{user.name}}', submitText: 'Lưu hồ sơ', showPassword: true, logoutText: 'Đăng xuất', guestText: 'Bạn chưa đăng nhập.', guestLinkText: 'Đăng nhập', guestHref: '/dang-nhap' },
+      styles: { desktop: CARD },
+    }),
+    contentControls: [
+      { type: 'text', prop: 'title', label: 'Tiêu đề (dùng được {{user.name}})' },
+      { type: 'text', prop: 'submitText', label: 'Nút lưu' },
+      { type: 'toggle', prop: 'showPassword', label: 'Có mục đổi mật khẩu' },
+      { type: 'text', prop: 'logoutText', label: 'Nút đăng xuất (trống = ẩn)' },
+      { type: 'text', prop: 'guestText', label: 'Khi chưa đăng nhập' },
+      { type: 'text', prop: 'guestLinkText', label: 'Link đăng nhập' },
+      { type: 'url', prop: 'guestHref', label: 'URL đăng nhập' },
+    ],
+    styleGroups: AUTH_STYLE_GROUPS,
+    inlineEdit: { prop: 'title' },
+    Render: ({ node, attrs, mode }) => {
+      const userId = text(node.props.userId).replace(/\{\{[^}]*\}\}/g, '')
+      const collection = text(node.props.userCollection) === 'users' ? 'users' : 'customers'
+      const a = attrs as { className: string }
+      if (!userId) {
+        return (
+          <div {...attrs} className={`${a.className} b-signin b-auth b-auth--guest`}>
+            <p className="b-auth-text">{text(node.props.guestText, 'Bạn chưa đăng nhập.')}</p>
+            <a className="b-button b-signin-submit" href={safeHref(node.props.guestHref) ?? '/dang-nhap'}>
+              {text(node.props.guestLinkText, 'Đăng nhập')}
+            </a>
+            {mode === 'editor' && <EditorOnly label="Khách chưa đăng nhập thấy khối này; người đã đăng nhập thấy form hồ sơ (xem thử bằng “Xem như khách”).">{null}</EditorOnly>}
+          </div>
+        )
+      }
+      return (
+        <div {...attrs} className={`${a.className} b-auth-wrap`}>
+          <form className="b-signin b-auth b-auth--profile" method="post" data-auth="profile" data-auth-collection={collection} data-auth-user={userId} data-auth-success="Đã lưu hồ sơ.">
+            <h3 className="b-signin-title">{text(node.props.title).replace(/\{\{[^}]*\}\}/g, '')}</h3>
+            <p className="b-auth-text">{text(node.props.email)}</p>
+            {field(node.id, 'name', 'Họ tên', 'text', { value: text(node.props.name), autoComplete: 'name' })}
+            {collection === 'customers' && field(node.id, 'phone', 'Điện thoại', 'tel', { value: text(node.props.phone).replace(/\{\{[^}]*\}\}/g, ''), required: false, autoComplete: 'tel' })}
+            <button type="submit" className="b-button b-signin-submit">
+              {text(node.props.submitText, 'Lưu hồ sơ')}
+            </button>
+          </form>
+          {bool(node.props.showPassword, true) && (
+            <form className="b-signin b-auth b-auth--password" method="post" data-auth="password" data-auth-collection={collection} data-auth-user={userId} data-auth-success="Đã đổi mật khẩu.">
+              <h4 className="b-signin-title">Đổi mật khẩu</h4>
+              {field(node.id, 'password', 'Mật khẩu mới (tối thiểu 8 ký tự)', 'password', { autoComplete: 'new-password', minLength: 8 })}
+              <button type="submit" className="b-button b-signin-submit">
+                Đổi mật khẩu
+              </button>
+            </form>
+          )}
+          {(node.props.logoutText === undefined ? 'Đăng xuất' : text(node.props.logoutText)) && (
+            <a className="b-button b-button--ghost b-auth-logout" href="#logout">
+              {node.props.logoutText === undefined ? 'Đăng xuất' : text(node.props.logoutText)}
+            </a>
+          )}
+        </div>
       )
     },
   },
@@ -300,3 +482,5 @@ export const FORM_BLOCKS: BlockDefinition[] = [
 
 export const FIELD_TYPE_VALUES = FIELD_TYPES.map((f) => f.value)
 export const numFields = num
+
+FORM_BLOCKS.push(...ACCOUNT_BLOCKS)

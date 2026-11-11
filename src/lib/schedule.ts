@@ -1,4 +1,5 @@
 import type { Endpoint, PayloadRequest } from 'payload'
+import { isStaffUser } from './access'
 
 /**
  * Lên lịch xuất bản / gỡ xuất bản trang bằng hàng đợi jobs của Payload (task có sẵn `schedulePublish`).
@@ -35,7 +36,7 @@ export const scheduleEndpoints: Endpoint[] = [
     path: '/builder/schedule',
     method: 'get',
     handler: async (req) => {
-      if (!req.user) return unauthorized()
+      if (!isStaffUser(req.user)) return unauthorized()
       const pageId = req.searchParams.get('pageId') ?? ''
       if (!pageId) return bad('Thiếu pageId.')
       return Response.json({ jobs: await listScheduled(req, pageId) })
@@ -45,7 +46,7 @@ export const scheduleEndpoints: Endpoint[] = [
     path: '/builder/schedule',
     method: 'post',
     handler: async (req) => {
-      if (!req.user) return unauthorized()
+      if (!isStaffUser(req.user)) return unauthorized()
       const body = (await req.json?.()) as { pageId?: string; at?: string; type?: string } | undefined
       const pageId = String(body?.pageId ?? '')
       const at = new Date(String(body?.at ?? ''))
@@ -58,7 +59,7 @@ export const scheduleEndpoints: Endpoint[] = [
       const job = await req.payload.jobs.queue({
         task: 'schedulePublish',
         // input.doc.value: Payload lưu dạng chuỗi và tự ép về số khi chạy (xem versions/schedule/job)
-        input: { type, doc: { relationTo: 'pages', value: pageId as unknown as number }, user: { relationTo: 'users', value: req.user.id } },
+        input: { type, doc: { relationTo: 'pages', value: pageId as unknown as number }, user: { relationTo: 'users', value: req.user!.id } },
         waitUntil: at,
         queue: 'default',
       })
@@ -69,7 +70,7 @@ export const scheduleEndpoints: Endpoint[] = [
     path: '/builder/schedule/:jobId',
     method: 'delete',
     handler: async (req) => {
-      if (!req.user) return unauthorized()
+      if (!isStaffUser(req.user)) return unauthorized()
       const jobId = String(req.routeParams?.jobId ?? '')
       if (!jobId) return bad('Thiếu jobId.')
       await req.payload.delete({ collection: 'payload-jobs', id: /^\d+$/.test(jobId) ? Number(jobId) : jobId, overrideAccess: true })

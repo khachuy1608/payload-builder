@@ -32,6 +32,8 @@ export interface DataSource {
   /** Nhận tham số URL: ?page=N, ?q=... (tìm trên searchFields), ?<trường>=<giá trị> (bằng) */
   urlParams?: boolean
   searchFields?: string[]
+  /** Chỉ bản ghi của người đang đăng nhập (collection có ownerField) */
+  ownerOnly?: boolean
 }
 
 /** Bản ghi đã lọc trường công khai */
@@ -81,6 +83,11 @@ export function withParam(params: UrlParams | undefined, key: string, value: str
 export function pageHrefPattern(params: UrlParams | undefined): string {
   const base = withParam(params, 'page', null)
   return base === '?' ? '?page={n}' : `${base}&page={n}`
+}
+
+/** Link “Xem thêm”: giữ các tham số hiện tại, đặt ?take=N (bỏ ?page) */
+export function takeHref(params: UrlParams | undefined, take: number): string {
+  return withParam(params, 'take', String(take))
 }
 
 export const DATA_LIST_TYPE = 'dataList'
@@ -192,6 +199,7 @@ export function normalizeDataSource(input: unknown): DataSource | undefined {
     const fields = src.searchFields.filter((f): f is string => typeof f === 'string' && FIELD_PATTERN.test(f)).slice(0, 10)
     if (fields.length) out.searchFields = fields
   }
+  if (src.ownerOnly === true) out.ownerOnly = true
   return out
 }
 
@@ -382,6 +390,18 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
       return { ...node, props: { ...node.props, pages: String(primary?.totalPages ?? 1), current: String(primary?.page ?? pageFromParams(params)), hrefPattern: pageHrefPattern(params) } }
     }
     if (node.type === 'searchBox') return { ...node, props: { ...node.props, value: params.q ?? '', total: primary ? String(primary.total) : '' } }
+    // form hồ sơ: luôn nhận người đang đăng nhập từ ngữ cảnh (không phụ thuộc props có {{user.*}} hay không)
+    if (node.type === 'accountForm') {
+      const u = (user ?? {}) as Record<string, unknown>
+      const str = (v: unknown) => (v == null ? '' : String(v))
+      return visitChildren({ ...node, props: { ...(bindValue(node.props, {}, base) as Record<string, unknown>), userId: str(u.id), userCollection: str(u.collection), name: str(u.name), phone: str(u.phone), email: str(u.email) } })
+    }
+    if (node.type === 'loadMore') {
+      const loaded = primary?.records.length ?? 0
+      const total = primary?.total ?? 0
+      const step = Math.max(1, Math.min(100, Number(node.props.step) || 8))
+      return { ...node, props: { ...node.props, loaded: String(loaded), total: String(total), href: takeHref(params, Math.min(100, loaded + step)), done: primary ? loaded >= total : false } }
+    }
     if (node.type === 'toggleGroup' && typeof node.props.param === 'string' && node.props.param) {
       const key = node.props.param
       return { ...node, props: { ...node.props, currentValue: params[key] ?? '', baseQuery: withParam(params, key, null) } }
@@ -407,6 +427,8 @@ export interface SourceInfo {
   slug: string
   label: string
   fields: { name: string; label: string; type: string; fields?: { name: string; label: string; type: string }[] }[]
+  /** Collection có trường chủ sở hữu -> nguồn có thể bật “chỉ của tôi” */
+  ownerField?: string
 }
 
 /** Đường dẫn trường gợi ý cho bộ chọn ⚡ (vd: name, avatar.url, address.city) */

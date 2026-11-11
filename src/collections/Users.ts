@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdmin, isAdminField, loggedIn, roleOf } from '../lib/access'
+import { isAdmin, isAdminField, isStaffUser, loggedIn, roleOf } from '../lib/access'
 import { revalidatePages } from '../lib/revalidate'
 
 export const Users: CollectionConfig = {
@@ -12,7 +12,7 @@ export const Users: CollectionConfig = {
     create: isAdmin,
     delete: isAdmin,
     // admin sửa mọi người; người khác chỉ sửa hồ sơ của mình (không đổi được role – xem field access)
-    update: ({ req: { user } }) => (!user ? false : roleOf(user) === 'admin' ? true : { id: { equals: user.id } }),
+    update: ({ req: { user } }) => (!isStaffUser(user) ? false : roleOf(user) === 'admin' ? true : { id: { equals: user!.id } }),
   },
   /**
    * Nguồn dữ liệu cho Visual Builder: chỉ các trường trong `expose` được đưa ra trang công khai

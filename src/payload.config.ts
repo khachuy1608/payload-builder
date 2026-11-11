@@ -1,9 +1,13 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
+import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
+import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 import { Comments } from './collections/Comments'
+import { CONTENT_COLLECTIONS } from './collections/content'
+import { Bookings, Customers } from './collections/Customers'
 import { FormSubmissions } from './collections/FormSubmissions'
 import { Media } from './collections/Media'
 import { MyBlocks } from './collections/MyBlocks'
@@ -13,6 +17,7 @@ import { StylePresets } from './collections/StylePresets'
 import { Themes } from './collections/Themes'
 import { SiteSettings } from './globals/SiteSettings'
 import { Users } from './collections/Users'
+import { isStaffUser } from './lib/access'
 import { getSources } from './lib/data'
 import { presenceEndpoints } from './lib/presence'
 import { scheduleEndpoints } from './lib/schedule'
@@ -28,7 +33,16 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' – Page Builder' },
   },
-  collections: [Pages, MyBlocks, Themes, StylePresets, Comments, FormSubmissions, Redirects, Media, Users],
+  collections: [Pages, MyBlocks, Themes, StylePresets, Comments, FormSubmissions, Redirects, Media, Users, Customers, Bookings, ...CONTENT_COLLECTIONS],
+  editor: lexicalEditor(),
+  // Email: SMTP qua biến môi trường (quên mật khẩu, thông báo form); không cấu hình thì ghi ra console
+  email: process.env.SMTP_HOST
+    ? nodemailerAdapter({
+        defaultFromAddress: process.env.SMTP_FROM || 'no-reply@example.com',
+        defaultFromName: process.env.SMTP_FROM_NAME || 'Page Builder',
+        transportOptions: { host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: process.env.SMTP_SECURE === 'true', auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined },
+      })
+    : undefined,
   endpoints: [
     ...scheduleEndpoints,
     ...presenceEndpoints,
@@ -50,7 +64,7 @@ export default buildConfig({
       path: '/builder/sources',
       method: 'get',
       handler: (req) => {
-        if (!req.user) return Response.json({ errors: [{ message: 'Unauthorized' }] }, { status: 401 })
+        if (!isStaffUser(req.user)) return Response.json({ errors: [{ message: 'Unauthorized' }] }, { status: 401 })
         return Response.json({ sources: getSources(req.payload) })
       },
     },

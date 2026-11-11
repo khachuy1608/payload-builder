@@ -107,3 +107,33 @@ export function richToPlain(input: unknown): string {
 export function richHasBlock(html: string): boolean {
   return /<(ul|ol)\b/i.test(html)
 }
+
+// ---------- Nội dung rich text đầy đủ (bài viết từ Lexical, block Rich content) ----------
+
+const CONTENT_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'b', 'strong', 'i', 'em', 'u', 's', 'sub', 'sup', 'a', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'img', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div']
+const contentCache = new Map<string, string>()
+
+/**
+ * Làm sạch HTML nội dung dài (tiêu đề, đoạn, danh sách, trích dẫn, ảnh, bảng, code).
+ * Dùng cho bài viết/sản phẩm chuyển từ Lexical và block Rich content. Bỏ mọi script/style/on*.
+ */
+export function sanitizeContentHtml(input: unknown): string {
+  if (typeof input !== 'string') return ''
+  const source = input.slice(0, 500_000)
+  const hit = contentCache.get(source)
+  if (hit !== undefined) return hit
+  const clean = sanitizeHtml(source, {
+    allowedTags: CONTENT_TAGS,
+    allowedAttributes: { a: ['href', 'target', 'rel', 'title'], img: ['src', 'alt', 'width', 'height', 'loading'], '*': ['class', 'id'], th: ['colspan', 'rowspan'], td: ['colspan', 'rowspan'], ol: ['start'] },
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    allowedSchemesByTag: { img: ['http', 'https', 'data'] },
+    allowProtocolRelative: false,
+    transformTags: {
+      a: (tagName, attribs) => ({ tagName, attribs: attribs.target === '_blank' ? { ...attribs, rel: 'noopener noreferrer' } : attribs }),
+      img: (tagName, attribs) => ({ tagName, attribs: { ...attribs, loading: 'lazy' } }),
+    },
+  })
+  if (contentCache.size > 200) contentCache.clear()
+  contentCache.set(source, clean)
+  return clean
+}

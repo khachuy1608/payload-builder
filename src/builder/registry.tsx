@@ -12,6 +12,8 @@ import {
   FileText,
   Heading as HeadingIcon,
   Image as ImageIcon,
+  ChevronsDown,
+  ScrollText,
   LayoutTemplate,
   Minus,
   MousePointerClick,
@@ -27,7 +29,7 @@ import { Icon, ICON_OPTIONS, num, parseYouTubeId, safeHref, srcSetOf } from './b
 import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
-import { richHasBlock, sanitizeRichText, sanitizeSvg } from './sanitize'
+import { richHasBlock, sanitizeContentHtml, sanitizeRichText, sanitizeSvg } from './sanitize'
 import { genId } from './tree'
 import type { BlockRefProps, BuilderNode, MediaValue } from './types'
 
@@ -362,6 +364,53 @@ const BLOCK_LIST: BlockDefinition[] = [
           aria-hidden={label ? undefined : true}
           dangerouslySetInnerHTML={{ __html: code }}
         />
+      )
+    },
+  },
+  {
+    type: 'richContent',
+    label: 'Rich content',
+    category: 'basic',
+    icon: ScrollText,
+    defaults: () => ({
+      props: { html: '<h2>Tiêu đề bài viết</h2><p>Gắn trường rich text của bản ghi (ví dụ <code>{{content}}</code> của Bài viết) hoặc dán HTML. Hỗ trợ tiêu đề, đoạn, danh sách, trích dẫn, ảnh, bảng, code.</p>' },
+      styles: { desktop: { maxWidth: 'var(--narrow)', margin: '0 auto' } },
+    }),
+    contentControls: [{ type: 'code', prop: 'html', label: 'HTML nội dung (hoặc ⚡ gắn trường rich text)', help: 'Nội dung từ Lexical (Bài viết, Sản phẩm…) được chuyển thành HTML và làm sạch tự động.' }],
+    styleGroups: ['typography', 'size', 'spacing', 'background', 'border', 'effects', 'position', 'child'],
+    Render: ({ node, attrs, mode }) => {
+      const html = sanitizeContentHtml(node.props.html)
+      if (!html) return mode === 'editor' ? <Placeholder attrs={attrs} label="Rich content: gắn trường rich text bằng ⚡" icon={ScrollText} /> : <div {...attrs} />
+      return <div {...attrs} className={`${attrs.className} b-rich`} dangerouslySetInnerHTML={{ __html: html }} />
+    },
+  },
+  {
+    type: 'loadMore',
+    label: 'Xem thêm',
+    category: 'nav',
+    icon: ChevronsDown,
+    defaults: () => ({ props: { text: 'Xem thêm', step: '8', doneText: 'Đã hiển thị tất cả' }, styles: { desktop: { display: 'flex', justifyContent: 'center', padding: '24px 0' } } }),
+    contentControls: [
+      { type: 'text', prop: 'text', label: 'Chữ trên nút' },
+      { type: 'number', prop: 'step', label: 'Mỗi lần thêm (bản ghi)', min: 1, max: 100 },
+      { type: 'text', prop: 'doneText', label: 'Khi đã hết', help: 'Nút lấy số đã tải/tổng từ nguồn dữ liệu có bật “Nhận tham số URL” (?take=N). Không cần JS.' },
+    ],
+    styleGroups: ['layout', 'spacing', 'typography'],
+    Render: ({ node, attrs, mode }) => {
+      const done = node.props.done === true
+      const loaded = text(node.props.loaded)
+      const total = text(node.props.total)
+      return (
+        <div {...attrs} className={`${attrs.className} b-load-more`}>
+          {done ? (
+            <span className="b-load-more-done">{text(node.props.doneText, 'Đã hiển thị tất cả')}</span>
+          ) : (
+            <a className="b-button" href={/^\?[A-Za-z0-9_.%=&-]*$/.test(text(node.props.href)) ? text(node.props.href) : '?take=16'} rel="nofollow">
+              {text(node.props.text, 'Xem thêm')}
+              {mode === 'editor' && loaded && total ? ` (${loaded}/${total})` : ''}
+            </a>
+          )}
+        </div>
       )
     },
   },

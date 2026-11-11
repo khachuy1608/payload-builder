@@ -1,6 +1,10 @@
 import { PageRenderer } from '@/builder/Renderer'
 import type { LoadedPage } from '@/lib/pages'
-import { getCurrentUser } from '@/lib/user'
+import config from '@payload-config'
+import { getPayload } from 'payload'
+import { resolveRefs } from '@/builder/refs'
+import { loadDataForTree } from '@/lib/data'
+import { getAuthUser, getCurrentUser } from '@/lib/user'
 import { buildJsonLd } from '@/lib/seo'
 import { getPageBySlug } from '@/lib/pages'
 
@@ -21,9 +25,17 @@ export async function PageView({ page, path }: { page: LoadedPage; path: string 
     )
   }
   const jsonLd = buildJsonLd({ site: page.site, title: page.title, description: page.seo.metaDescription ?? undefined, path, isHome: page.slug === 'home' })
+  // nguồn “chỉ của tôi”: nạp riêng theo người đăng nhập (không cache), gộp với dữ liệu chung
+  let data = page.data
+  if (page.hasOwned) {
+    const payload = await getPayload({ config })
+    const auth = await getAuthUser()
+    const owned = await loadDataForTree(payload, resolveRefs(page.content.root, (id) => page.blocks[id]), page.params, { onlyOwned: true, user: auth })
+    data = { ...page.data, ...owned }
+  }
   return (
     <>
-      <PageRenderer content={page.content} blocks={(id) => page.blocks[id]} theme={page.theme} data={page.data} params={page.params} user={user} />
+      <PageRenderer content={page.content} blocks={(id) => page.blocks[id]} theme={page.theme} data={data} params={page.params} user={user} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
     </>
   )
