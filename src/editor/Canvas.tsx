@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { compileTreeCss } from '@/builder/css'
+import { resolveRefs } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { RenderNode } from '@/builder/Renderer'
 import { BASE_CSS, defaultTheme, themeToCss } from '@/builder/theme'
@@ -15,7 +16,7 @@ import { findNode, getAncestors } from '@/builder/tree'
 import { computeDrop } from './dnd'
 import { Overlay } from './Overlay'
 import { handleShortcut } from './shortcuts'
-import { useEditor } from './store'
+import { blockLookup, useEditor } from './store'
 
 const CANVAS_CSS = `
 body{user-select:none;-webkit-user-select:none}
@@ -28,6 +29,8 @@ body{user-select:none;-webkit-user-select:none}
 [data-node-id] iframe{pointer-events:none}
 [contenteditable]{outline:none;cursor:text;user-select:text;-webkit-user-select:text}
 a[data-node-id]{cursor:default}
+[data-linked]{cursor:default}
+[data-linked] [contenteditable]{cursor:default}
 `
 
 /** Bề rộng khung theo thiết bị. Desktop là bề rộng tối thiểu (trên breakpoint tablet 1024px) */
@@ -90,11 +93,14 @@ function startInlineEdit(doc: Document, el: HTMLElement, nodeId: string) {
 
 function CanvasContent() {
   const root = useEditor((s) => s.root)
-  const css = useMemo(() => compileTreeCss(root), [root])
+  const blocks = useEditor((s) => s.blocks)
+  // triển khai My Block liên kết trước khi biên dịch CSS và render (structural sharing: nhánh khác không render lại)
+  const resolved = useMemo(() => resolveRefs(root, blockLookup(blocks)), [root, blocks])
+  const css = useMemo(() => compileTreeCss(resolved), [resolved])
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: css }} />
-      <RenderNode node={root} mode="editor" />
+      <RenderNode node={resolved} mode="editor" />
     </>
   )
 }

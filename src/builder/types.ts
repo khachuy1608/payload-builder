@@ -27,6 +27,12 @@ export interface BuilderNode {
   props: Record<string, unknown>
   styles: NodeStyles
   children?: BuilderNode[]
+  /**
+   * CHỈ có trong cây đã triển khai (resolveRefs), không bao giờ được lưu:
+   * 'root'  = phần tử gốc của một My Block liên kết (id = id của node blockRef trên trang),
+   * 'inner' = phần tử bên trong block liên kết (chỉ đọc trong editor).
+   */
+  linked?: 'root' | 'inner'
 }
 
 export interface PageContent {
@@ -54,4 +60,11 @@ export interface MediaValue {
   width?: number
   height?: number
   mimeType?: string
+}
+
+/** Props của node `blockRef` (My Block dạng liên kết) */
+export interface BlockRefProps extends AdvancedProps {
+  blockId?: string
+  /** Tên block tại lúc chèn – chỉ để hiển thị khi chưa tải được bản gốc */
+  name?: string
 }

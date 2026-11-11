@@ -5,6 +5,8 @@
 import { memo } from 'react'
 import type { NodeAttrs, RenderMode } from './blocks/types'
 import { compileTreeCss } from './css'
+import type { BlockLookup } from './refs'
+import { resolveRefs } from './refs'
 import { getBlock } from './registry'
 import { getSchema, ID_PATTERN } from './schema'
 import type { AdvancedProps, BuilderNode, PageContent } from './types'
@@ -18,9 +20,15 @@ function buildAttrs(node: BuilderNode, mode: RenderMode): NodeAttrs {
   const attrs: NodeAttrs = { className: classes.join(' ') }
   if (adv.cssId && CLASS_PATTERN.test(adv.cssId)) attrs.id = adv.cssId
   if (mode === 'editor') {
+    if (node.linked === 'inner') {
+      // phần tử bên trong block liên kết: không có data-node-id nên bấm/kéo vào đâu cũng trỏ về cả block
+      attrs['data-linked'] = ''
+      return attrs
+    }
     attrs['data-node-id'] = node.id
-    attrs['data-node-type'] = node.type
-    if (getSchema(node.type)?.isContainer && !node.children?.length) attrs['data-empty'] = ''
+    attrs['data-node-type'] = node.linked === 'root' ? 'blockRef' : node.type
+    if (node.linked === 'root') attrs['data-linked'] = 'root'
+    else if (getSchema(node.type)?.isContainer && !node.children?.length) attrs['data-empty'] = ''
   }
   return attrs
 }
@@ -48,12 +56,26 @@ function RenderNodeInner({ node, mode }: { node: BuilderNode; mode: RenderMode }
 /** memo theo tham chiếu node: immer giữ nguyên object không đổi nên chỉ nhánh bị sửa mới render lại */
 export const RenderNode = memo(RenderNodeInner)
 
-export function PageRenderer({ content, mode = 'live' }: { content: PageContent; mode?: RenderMode }) {
-  const css = compileTreeCss(content.root)
+/**
+ * Render cả trang. `blocks` là cây gốc của các My Block được tham chiếu (xem lib/blocks.ts);
+ * các node blockRef được triển khai trước khi biên dịch CSS và render.
+ */
+export function PageRenderer({
+  content,
+  mode = 'live',
+  blocks,
+}: {
+  content: PageContent
+  mode?: RenderMode
+  blocks?: Map<string, BuilderNode> | BlockLookup
+}) {
+  const lookup: BlockLookup = typeof blocks === 'function' ? blocks : (id) => blocks?.get(id)
+  const root = resolveRefs(content.root, lookup)
+  const css = compileTreeCss(root)
   return (
     <>
       <style data-builder-css="" dangerouslySetInnerHTML={{ __html: css }} />
-      <RenderNode node={content.root} mode={mode} />
+      <RenderNode node={root} mode={mode} />
     </>
   )
 }

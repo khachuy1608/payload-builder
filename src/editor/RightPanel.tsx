@@ -1,16 +1,18 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Monitor, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, ExternalLink, Monitor, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ContentControl, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
+import { refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { COLOR_TOKEN_LABELS, defaultTheme } from '@/builder/theme'
 import { findNode, genId, getAncestors } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
+import { nodeLabel } from './labels'
 import { MediaPicker } from './MediaPicker'
-import { useEditor } from './store'
+import { type BlockScope, useEditor } from './store'
 
 type Tab = 'content' | 'style' | 'advanced'
 
@@ -42,6 +44,7 @@ export function RightPanel() {
 
   const def = getBlock(node.type)
   const ancestors = getAncestors(root, node.id)
+  const kind = useEditor.getState().kind
 
   return (
     <aside className="ed-right">
@@ -49,13 +52,13 @@ export function RightPanel() {
         <div className="ed-crumbs">
           {ancestors.slice(-3).map((a) => (
             <button key={a.id} onClick={() => useEditor.getState().select(a.id)}>
-              {getBlock(a.type)?.label} ›
+              {a.type === 'root' && kind === 'block' ? 'Block' : getBlock(a.type)?.label} ›
             </button>
           ))}
         </div>
         <div className="ed-right-title">
           {def && <def.icon size={18} />}
-          <strong>{def?.label ?? node.type}</strong>
+          <strong>{node.type === 'blockRef' ? nodeLabel(node) : node.type === 'root' && kind === 'block' ? 'Cài đặt block' : (def?.label ?? node.type)}</strong>
         </div>
       </header>
       <div className="ed-tabs ed-tabs--small">
@@ -95,7 +98,9 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
 
   switch (control.type) {
     case 'custom':
-      return control.component === 'tabs' ? <TabsManager node={node} /> : <PageSettings />
+      if (control.component === 'tabs') return <TabsManager node={node} />
+      if (control.component === 'blockRef') return <BlockRefPanel node={node} />
+      return <PageSettings />
     case 'text':
     case 'url':
       return (
@@ -247,10 +252,79 @@ function TabsManager({ node }: { node: BuilderNode }) {
   )
 }
 
+/** Panel Nội dung của node blockRef: thông tin bản gốc, mở sửa, tách */
+function BlockRefPanel({ node }: { node: BuilderNode }) {
+  const blockId = refBlockId(node)
+  const block = useEditor((s) => (blockId ? s.blocks[blockId] : undefined))
+  const missing = useEditor((s) => (blockId ? !!s.missingBlocks[blockId] : true))
+  const userId = useEditor((s) => s.userId)
+  const mine = !!block && (block.owner === null || block.owner === userId)
+  const s = useEditor.getState()
+  return (
+    <div className="ed-fields">
+      {block ? (
+        <div className="ed-field">
+          <span className="ed-label">Liên kết tới block</span>
+          <div className="ed-ref-card">
+            <strong>{block.name}</strong>
+            <span className="ed-help">
+              {block.scope === 'shared' ? 'Dùng chung' : 'Riêng tư'} · {mine ? 'của bạn' : 'của người khác'} · gốc là {getBlock(block.tree.type)?.label}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <p className="ed-error" style={{ margin: 0 }}>
+          {missing ? 'Không tìm thấy bản gốc (có thể đã bị xoá). Trang thật sẽ bỏ qua phần tử này.' : 'Đang tải bản gốc…'}
+        </p>
+      )}
+      <p className="ed-help">
+        Phần tử liên kết chỉ đọc trên trang này. Muốn đổi nội dung hãy sửa bản gốc (mọi trang dùng nó cùng cập nhật), hoặc tách ra thành bản sao độc lập.
+      </p>
+      <div className="ed-row">
+        {block && (
+          <a className="ed-btn" href={`/builder/block/${block.id}`} target="_blank" rel="noreferrer">
+            <ExternalLink size={14} /> {mine ? 'Sửa bản gốc' : 'Xem bản gốc'}
+          </a>
+        )}
+        <button className="ed-btn" disabled={!block} onClick={() => s.detach(node.id)}>
+          <Unlink size={14} /> Tách
+        </button>
+      </div>
+      <p className="ed-hint" style={{ margin: 0 }}>
+        Tab “Kiểu” cho phép ghi đè lề, kích thước… của riêng vị trí này mà không ảnh hưởng bản gốc.
+      </p>
+    </div>
+  )
+}
+
+/** Cài đặt bản gốc của block (kind = block): tên và phạm vi */
+function BlockSettings() {
+  const title = useEditor((s) => s.title)
+  const scope = useEditor((s) => s.scope)
+  const readOnly = useEditor((s) => s.readOnly)
+  const setMeta = useEditor((s) => s.setMeta)
+  return (
+    <div className="ed-fields">
+      <Field label="Tên block">
+        <input className="ed-input" value={title} disabled={readOnly} onChange={(e) => setMeta({ title: e.target.value })} />
+      </Field>
+      <Field label="Phạm vi">
+        <select className="ed-input" value={scope} disabled={readOnly} onChange={(e) => setMeta({ scope: e.target.value as BlockScope })}>
+          <option value="private">Riêng tôi</option>
+          <option value="shared">Dùng chung (mọi editor đều thấy)</option>
+        </select>
+      </Field>
+      <p className="ed-hint">Block gồm đúng một phần tử gốc. Nếu thêm nhiều phần tử ở cấp cao nhất, khi lưu chúng sẽ được gói trong một Div.</p>
+    </div>
+  )
+}
+
 function PageSettings() {
+  const kind = useEditor((s) => s.kind)
   const title = useEditor((s) => s.title)
   const slug = useEditor((s) => s.slug)
   const setMeta = useEditor((s) => s.setMeta)
+  if (kind === 'block') return <BlockSettings />
   return (
     <div className="ed-fields">
       <Field label="Tiêu đề trang">

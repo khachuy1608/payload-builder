@@ -13,7 +13,7 @@ export type ContentControl =
   | { type: 'select'; prop: string; label: string; options: Option[] }
   | { type: 'toggle'; prop: string; label: string }
   | { type: 'media'; prop: string; label: string }
-  | { type: 'custom'; component: 'tabs' | 'page' }
+  | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' }
 
 export type StyleFieldKind = 'unit' | 'select' | 'color' | 'text' | 'box'
 
