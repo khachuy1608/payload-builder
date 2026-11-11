@@ -4,8 +4,9 @@ import { useEffect, useRef } from 'react'
 import { collectDataNodes, projectRecord } from '@/builder/data'
 import { collectRefIds, resolveRefs } from '@/builder/refs'
 import type { PageLayout, SiteParts } from '@/builder/siteParts'
+import type { Role } from '@/lib/access'
 import type { PageContent } from '@/builder/types'
-import { fetchData, fetchSources, getMyBlock, refreshBlockLibrary, refreshThemes } from './api'
+import { fetchData, fetchSources, getMyBlock, heartbeatPresence, leavePresence, listComments, refreshBlockLibrary, refreshThemes } from './api'
 import { Canvas } from './Canvas'
 import { ContextMenu } from './ContextMenu'
 import { HistoryDialog } from './HistoryDialog'
@@ -35,6 +36,7 @@ export interface EditorInitial {
   seo?: Partial<import('./store').PageSeoState>
   siteParts?: SiteParts
   layout?: Partial<PageLayout>
+  role?: Role
 }
 
 export function Editor({ initial }: { initial: EditorInitial }) {
@@ -56,6 +58,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       seo: initial.seo,
       siteParts: initial.siteParts,
       layout: initial.layout,
+      role: initial.role,
     })
     ready.current = true
   }
@@ -75,6 +78,8 @@ export function Editor({ initial }: { initial: EditorInitial }) {
   useBlockLibrary()
   useDocumentLock()
   useDataSync()
+  usePresence()
+  useComments()
   const saveBlockFor = useEditor((s) => s.saveBlockFor)
   const themeDialog = useEditor((s) => s.themeDialog)
   const historyDialog = useEditor((s) => s.historyDialog)
@@ -183,6 +188,44 @@ function useDataSync() {
     return () => clearTimeout(timer)
   }, [root, blocks])
 }
+
+/** Hiện diện: nhịp 10s, rời khi đóng tab */
+function usePresence() {
+  useEffect(() => {
+    const s = useEditor.getState()
+    const room = `${s.kind}:${s.pageId}`
+    const beat = () => heartbeatPresence(room).then((others) => useEditor.getState().setPresence(others)).catch(() => undefined)
+    void beat()
+    const timer = setInterval(beat, PRESENCE_MS)
+    const onHide = () => leavePresence(room)
+    window.addEventListener('pagehide', onHide)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('pagehide', onHide)
+      leavePresence(room)
+    }
+  }, [])
+}
+
+/** Bình luận của trang: nạp khi mở, nạp lại khi quay về tab */
+function useComments() {
+  useEffect(() => {
+    const s = useEditor.getState()
+    if (s.kind !== 'page') return
+    const load = () => listComments(s.pageId).then((list) => useEditor.getState().setComments(list)).catch(() => undefined)
+    void load()
+    let last = Date.now()
+    const onFocus = () => {
+      if (Date.now() - last < 3000) return
+      last = Date.now()
+      void load()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+}
+
+const PRESENCE_MS = 10_000
 
 function Toasts() {
   const toasts = useEditor((s) => s.toasts)

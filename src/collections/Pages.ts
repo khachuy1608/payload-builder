@@ -1,10 +1,9 @@
 import type { Access, CollectionConfig, FieldHook } from 'payload'
 import { APIError } from 'payload'
 import { ContentValidationError, validateContent } from '../builder/validate'
+import { canEdit } from '../lib/access'
 import { revalidatePages } from '../lib/revalidate'
 import { RESERVED_SLUGS, slugify } from '../lib/slug'
-
-const loggedIn: Access = ({ req: { user } }) => Boolean(user)
 
 /** Khách chỉ đọc được trang đã xuất bản, người đã đăng nhập đọc được cả bản nháp */
 const readPublishedOrLoggedIn: Access = ({ req: { user } }) =>
@@ -26,9 +25,9 @@ export const Pages: CollectionConfig = {
   },
   access: {
     read: readPublishedOrLoggedIn,
-    create: loggedIn,
-    update: loggedIn,
-    delete: loggedIn,
+    create: canEdit,
+    update: canEdit,
+    delete: canEdit,
   },
   versions: {
     drafts: { schedulePublish: true },

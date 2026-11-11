@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { canEdit } from '../lib/access'
 import { revalidatePages } from '../lib/revalidate'
 
 export const Media: CollectionConfig = {
@@ -6,6 +7,9 @@ export const Media: CollectionConfig = {
   labels: { singular: 'Media', plural: 'Media' },
   access: {
     read: () => true,
+    create: canEdit,
+    update: canEdit,
+    delete: canEdit,
   },
   upload: {
     staticDir: 'media',

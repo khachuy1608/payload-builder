@@ -27,6 +27,8 @@ export function TopBar() {
   const readOnly = useEditor((s) => s.readOnly) || lockedByOther
   const publishMenu = useEditor((s) => s.publishMenu)
   const versionNote = useEditor((s) => s.versionNote)
+  const presence = useEditor((s) => s.presence)
+  const viewer = useEditor((s) => s.readOnly)
 
   if (kind === 'block') {
     const badge = readOnly ? { text: 'Chỉ xem – block của người khác', cls: 'muted' } : dirty ? { text: 'Chưa lưu', cls: 'warn' } : { text: 'Đã lưu', cls: 'ok' }
@@ -56,7 +58,9 @@ export function TopBar() {
     )
   }
 
-  const badge = dirty ? { text: 'Chưa lưu', cls: 'warn' } : status === 'published' ? { text: 'Đã xuất bản', cls: 'ok' } : { text: 'Bản nháp', cls: 'muted' }
+  const badge = viewer ? { text: 'Chỉ xem (viewer)', cls: 'muted' } : dirty ? { text: 'Chưa lưu', cls: 'warn' } : status === 'published' ? { text: 'Đã xuất bản', cls: 'ok' } : { text: 'Bản nháp', cls: 'muted' }
+  const cannotSave = saving || lockedByOther || viewer
+  const saveTitle = viewer ? 'Vai trò viewer chỉ xem và bình luận' : lockedByOther ? 'Trang đang được người khác sửa' : 'Ctrl+S'
 
   const preview = async () => {
     // mở tab trước để không bị chặn popup, rồi điều hướng sau khi lưu nháp
@@ -84,6 +88,7 @@ export function TopBar() {
           <span>/{slug === 'home' ? '' : slug}</span>
         </div>
         <span className={`ed-badge ed-badge--${badge.cls}`}>{badge.text}</span>
+        <Presence list={presence} />
       </div>
 
       <DeviceSwitch device={device} />
@@ -99,20 +104,36 @@ export function TopBar() {
         <button className="ed-btn" onClick={preview} disabled={saving}>
           <ExternalLink size={15} /> Xem trước
         </button>
-        <button className="ed-btn" onClick={() => savePage(false)} disabled={saving || lockedByOther} title={lockedByOther ? 'Trang đang được người khác sửa' : 'Ctrl+S'}>
+        <button className="ed-btn" onClick={() => savePage(false)} disabled={cannotSave} title={saveTitle}>
           {saving && <Loader2 size={15} className="ed-spin" />} Lưu nháp
         </button>
         <div className="ed-split">
-          <button className="ed-btn ed-btn--primary" onClick={() => savePage(true)} disabled={saving || lockedByOther} title={lockedByOther ? 'Trang đang được người khác sửa' : undefined}>
+          <button className="ed-btn ed-btn--primary" onClick={() => savePage(true)} disabled={cannotSave} title={viewer || lockedByOther ? saveTitle : undefined}>
             Xuất bản
           </button>
-          <button className={`ed-btn ed-btn--primary ed-split-caret${versionNote ? ' has-dot' : ''}`} title="Ghi chú phiên bản, lên lịch xuất bản" aria-label="Tuỳ chọn xuất bản" onClick={() => useEditor.getState().openPublishMenu(!publishMenu)}>
+          <button className={`ed-btn ed-btn--primary ed-split-caret${versionNote ? ' has-dot' : ''}`} disabled={viewer} title="Ghi chú phiên bản, lên lịch xuất bản" aria-label="Tuỳ chọn xuất bản" onClick={() => useEditor.getState().openPublishMenu(!publishMenu)}>
             <ChevronDown size={15} />
           </button>
           {publishMenu && <PublishMenu />}
         </div>
       </div>
     </header>
+  )
+}
+
+/** Ai khác đang mở tài liệu này */
+function Presence({ list }: { list: { id: string; name: string }[] }) {
+  if (!list.length) return null
+  return (
+    <div className="ed-presence" title={`Đang mở cùng bạn: ${list.map((u) => u.name).join(', ')}`}>
+      {list.slice(0, 4).map((u) => (
+        <span key={u.id} className="ed-avatar" data-user={u.id}>
+          {(u.name || '?').trim().charAt(0).toUpperCase()}
+        </span>
+      ))}
+      {list.length > 4 && <span className="ed-avatar">+{list.length - 4}</span>}
+      <span className="ed-presence-label">{list.length === 1 ? `${list[0].name} đang xem` : `${list.length} người đang xem`}</span>
+    </div>
   )
 }
 

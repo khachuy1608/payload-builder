@@ -1,10 +1,10 @@
 import type { Access, CollectionConfig } from 'payload'
+import { canEdit, loggedIn, roleOf } from '../lib/access'
 import { BUTTON_TOKEN_LABELS, COLOR_TOKEN_LABELS, FONT_TOKEN_LABELS, RADIUS_TOKEN_LABELS, defaultTheme } from '../builder/theme'
 import { revalidatePages } from '../lib/revalidate'
 
-const loggedIn: Access = ({ req: { user } }) => Boolean(user)
-/** Preset chỉ đọc: người dùng nhân bản thành My Theme để chỉnh */
-const notPreset: Access = ({ req: { user } }) => (user ? { isPreset: { not_equals: true } } : false)
+/** Preset chỉ đọc: người dùng nhân bản thành My Theme để chỉnh; viewer không sửa */
+const notPreset: Access = ({ req: { user } }) => (user && roleOf(user) !== 'viewer' ? { isPreset: { not_equals: true } } : false)
 
 const text = (name: string, label: string, defaultValue: string, description?: string) => ({
   name,
@@ -23,7 +23,7 @@ export const Themes: CollectionConfig = {
     defaultColumns: ['name', 'isPreset', 'owner', 'updatedAt'],
     description: 'Bộ màu, font, bo góc và kiểu nút cho cả site. Theme preset chỉ đọc – hãy nhân bản trong Visual Builder để chỉnh.',
   },
-  access: { read: loggedIn, create: loggedIn, update: notPreset, delete: notPreset },
+  access: { read: loggedIn, create: canEdit, update: notPreset, delete: notPreset },
   fields: [
     { name: 'name', label: 'Tên theme', type: 'text', required: true, maxLength: 80 },
     { name: 'isPreset', label: 'Preset (chỉ đọc)', type: 'checkbox', defaultValue: false, admin: { position: 'sidebar', readOnly: true } },

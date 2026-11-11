@@ -118,6 +118,8 @@ export function Overlay({ doc }: { doc: Document }) {
   }, [doc, hoveredId, selectedId])
 
   const siteParts = useEditor((s) => s.siteParts)
+  const comments = useEditor((s) => s.comments)
+  const commentCount = (id: string) => comments.filter((c) => !c.resolved && c.nodeId === id).length
   // header/footer toàn site không nằm trong cây của store: dựng node tạm để hiện nhãn/khung
   const nodeOf = (id: string | null) => {
     if (!id) return null
@@ -178,7 +180,10 @@ export function Overlay({ doc }: { doc: Document }) {
               >
                 <GripVertical size={14} />
               </span>
-              <span className="ed-toolbar-label">{nodeLabel(selectedNode)}</span>
+              <span className="ed-toolbar-label">
+                {nodeLabel(selectedNode)}
+                {commentCount(selectedNode.id) > 0 && ` · 💬 ${commentCount(selectedNode.id)}`}
+              </span>
               {findParent(root, selectedNode.id)?.parent.id !== 'root' && (
                 <button className="ed-tool" title="Chọn phần tử cha" onClick={() => s.select(findParent(root, selectedNode.id)!.parent.id)}>
                   <ArrowUp size={14} />

@@ -8,6 +8,8 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { type PageLayout, type SiteParts } from '@/builder/siteParts'
+import type { Role } from '@/lib/access'
+import type { CommentDoc, PresenceUser } from './api'
 import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { canContain, getSchema } from '@/builder/schema'
@@ -160,6 +162,11 @@ export interface EditorState {
   /** Ghi chú cho lần lưu/xuất bản kế tiếp (lưu cùng phiên bản) */
   versionNote: string
   publishMenu: boolean
+  /** Vai trò của người đang dùng editor */
+  role: Role
+  /** Người khác đang mở cùng tài liệu */
+  presence: PresenceUser[]
+  comments: CommentDoc[]
   /** Nguồn dữ liệu có thể bind (từ /api/builder/sources) */
   sources: SourceInfo[]
   /** Bản ghi đã nạp theo id node có nguồn (canvas dùng để hiện dữ liệu thật) */
@@ -174,7 +181,7 @@ export interface EditorState {
   editingId: string | null
   device: Device
   styleState: StyleState
-  leftTab: 'elements' | 'navigator' | 'blocks'
+  leftTab: 'elements' | 'navigator' | 'blocks' | 'comments'
 
   past: BuilderNode[]
   future: BuilderNode[]
@@ -206,7 +213,10 @@ export interface EditorActions {
     seo?: Partial<PageSeoState>
     siteParts?: SiteParts
     layout?: Partial<PageLayout>
+    role?: Role
   }): void
+  setPresence(list: PresenceUser[]): void
+  setComments(list: CommentDoc[]): void
   setLayout(patch: Partial<PageLayout>): void
   setVersionNote(note: string): void
   openPublishMenu(open: boolean): void
@@ -389,6 +399,9 @@ export const useEditor = create<Store>()(
       layout: { hideHeader: false, hideFooter: false },
       versionNote: '',
       publishMenu: false,
+      role: 'editor',
+      presence: [],
+      comments: [],
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -425,6 +438,9 @@ export const useEditor = create<Store>()(
           s.pageThemeId = data.pageThemeId ?? null
           s.template = data.template ?? null
           s.seo = { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '', ...(data.seo ?? {}) }
+          s.role = data.role ?? 'editor'
+          s.presence = []
+          s.comments = []
           s.siteParts = data.siteParts ?? { header: null, footer: null }
           s.layout = { hideHeader: false, hideFooter: false, ...(data.layout ?? {}) }
           s.themePreview = null
@@ -640,6 +656,14 @@ export const useEditor = create<Store>()(
       setLock: (lock) =>
         set((s) => {
           s.lock = lock
+        }),
+      setPresence: (list) =>
+        set((s) => {
+          s.presence = list
+        }),
+      setComments: (list) =>
+        set((s) => {
+          s.comments = list
         }),
       setVersionNote: (note) =>
         set((s) => {

@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { canEdit } from '../lib/access'
 import { APIError } from 'payload'
 
 /** Giới hạn tần suất gửi form theo IP: tối đa 10 bài / phút (bộ nhớ tiến trình) */
@@ -39,9 +40,9 @@ export const FormSubmissions: CollectionConfig = {
   admin: { useAsTitle: 'form', defaultColumns: ['form', 'page', 'createdAt'], description: 'Dữ liệu người dùng gửi qua block Form trong Visual Builder.' },
   access: {
     create: () => true,
-    read: ({ req: { user } }) => Boolean(user),
+    read: canEdit,
     update: () => false,
-    delete: ({ req: { user } }) => Boolean(user),
+    delete: canEdit,
   },
   fields: [
     { name: 'form', label: 'Tên form', type: 'text', required: true, index: true },

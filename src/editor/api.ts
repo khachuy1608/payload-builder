@@ -429,3 +429,68 @@ export async function deleteMyPreset(docId: string): Promise<void> {
   const res = await fetch(`/api/style-presets/${encodeURIComponent(docId)}`, { method: 'DELETE', credentials: 'include' })
   if (!res.ok) throw new Error(await readError(res))
 }
+
+// ======================= Bình luận & hiện diện =======================
+
+export interface CommentDoc {
+  id: string
+  nodeId: string
+  text: string
+  resolved: boolean
+  author: { id: string; name: string } | null
+  createdAt: string
+}
+
+type RawComment = { id: string | number; nodeId: string; text: string; resolved?: boolean; createdAt: string; author?: { id: string | number; name?: string | null; email?: string } | string | number | null }
+const toComment = (c: RawComment): CommentDoc => ({
+  id: String(c.id),
+  nodeId: c.nodeId,
+  text: c.text,
+  resolved: !!c.resolved,
+  author: c.author && typeof c.author === 'object' ? { id: String(c.author.id), name: c.author.name || c.author.email || '' } : c.author != null ? { id: String(c.author), name: '' } : null,
+  createdAt: c.createdAt,
+})
+
+export async function listComments(pageId: string): Promise<CommentDoc[]> {
+  const q = new URLSearchParams({ 'where[page][equals]': pageId, sort: '-createdAt', limit: '200', depth: '1' })
+  const res = await fetch(`/api/comments?${q}`, { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  return ((await res.json()) as { docs: RawComment[] }).docs.map(toComment)
+}
+
+export async function createComment(data: { pageId: string; nodeId: string; text: string }): Promise<CommentDoc> {
+  const res = await fetch('/api/comments?depth=1', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page: relValue(data.pageId), nodeId: data.nodeId, text: data.text }) })
+  if (!res.ok) throw new Error(await readError(res))
+  return toComment(((await res.json()) as { doc: RawComment }).doc)
+}
+
+export async function updateComment(id: string, patch: { resolved?: boolean; text?: string }): Promise<CommentDoc> {
+  const res = await fetch(`/api/comments/${encodeURIComponent(id)}?depth=1`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
+  if (!res.ok) throw new Error(await readError(res))
+  return toComment(((await res.json()) as { doc: RawComment }).doc)
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  const res = await fetch(`/api/comments/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+}
+
+export interface PresenceUser {
+  id: string
+  name: string
+}
+
+/** Gửi nhịp hiện diện; trả về những người khác đang mở cùng tài liệu */
+export async function heartbeatPresence(room: string): Promise<PresenceUser[]> {
+  const res = await fetch('/api/builder/presence', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ room }) })
+  if (!res.ok) throw new Error(await readError(res))
+  return ((await res.json()) as { others: PresenceUser[] }).others
+}
+
+export function leavePresence(room: string): void {
+  try {
+    fetch('/api/builder/presence', { method: 'POST', credentials: 'include', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ room, leave: true }) }).catch(() => undefined)
+  } catch {
+    /* đang đóng tab */
+  }
+}

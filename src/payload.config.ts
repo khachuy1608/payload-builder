@@ -3,6 +3,7 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
+import { Comments } from './collections/Comments'
 import { FormSubmissions } from './collections/FormSubmissions'
 import { Media } from './collections/Media'
 import { MyBlocks } from './collections/MyBlocks'
@@ -13,6 +14,7 @@ import { Themes } from './collections/Themes'
 import { SiteSettings } from './globals/SiteSettings'
 import { Users } from './collections/Users'
 import { getSources } from './lib/data'
+import { presenceEndpoints } from './lib/presence'
 import { scheduleEndpoints } from './lib/schedule'
 import { migrations } from './migrations'
 import { seed } from './seed'
@@ -26,9 +28,10 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' – Page Builder' },
   },
-  collections: [Pages, MyBlocks, Themes, StylePresets, FormSubmissions, Redirects, Media, Users],
+  collections: [Pages, MyBlocks, Themes, StylePresets, Comments, FormSubmissions, Redirects, Media, Users],
   endpoints: [
     ...scheduleEndpoints,
+    ...presenceEndpoints,
     {
       // Health check cho load balancer / giám sát: kiểm tra kết nối DB
       path: '/health',

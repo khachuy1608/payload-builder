@@ -1,19 +1,16 @@
-import type { Access, CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload'
 import { APIError } from 'payload'
 import { collectRefIds, reachesBlock } from '../builder/refs'
 import { ContentValidationError, validateBlockTree, validateContent } from '../builder/validate'
+import { canEdit, loggedIn, ownerOrAdmin } from '../lib/access'
 import { loadBlockTrees } from '../lib/blocks'
 import { revalidatePages } from '../lib/revalidate'
 
-const loggedIn: Access = ({ req: { user } }) => Boolean(user)
-
 /**
- * Chỉ chủ sở hữu được sửa/xoá. Block không có chủ (tạo bởi seed) thì ai đăng nhập cũng sửa được.
- * Lưu ý: mọi người đã đăng nhập đều ĐỌC được mọi block (kể cả private) để trang có dùng block của người khác
+ * Chủ sở hữu (hoặc admin) được sửa/xoá; block không có chủ (seed) thì editor nào cũng sửa được.
+ * Mọi người đã đăng nhập đều ĐỌC được mọi block (kể cả private) để trang có dùng block của người khác
  * vẫn hiển thị trong editor; `scope` chỉ quyết định block có hiện trong thư viện của người khác hay không.
  */
-const ownerOnly: Access = ({ req: { user } }) =>
-  user ? { or: [{ owner: { equals: user.id } }, { owner: { exists: false } }] } : false
 
 export const MyBlocks: CollectionConfig = {
   slug: 'my-blocks',
@@ -25,9 +22,9 @@ export const MyBlocks: CollectionConfig = {
   },
   access: {
     read: loggedIn,
-    create: loggedIn,
-    update: ownerOnly,
-    delete: ownerOnly,
+    create: canEdit,
+    update: ownerOrAdmin,
+    delete: ownerOrAdmin,
   },
   fields: [
     { name: 'name', label: 'Tên block', type: 'text', required: true, maxLength: 120 },

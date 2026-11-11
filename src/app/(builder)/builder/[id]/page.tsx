@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import { pageLayoutFrom, sitePartsFrom } from '@/builder/siteParts'
+import { roleOf } from '@/lib/access'
 import { normalizeContent } from '@/builder/validate'
 import { Editor } from '@/editor/Editor'
 
@@ -27,6 +28,8 @@ export default async function BuilderPage({ params }: Args) {
       initial={{
         kind: 'page',
         userId: String(user.id),
+        role: roleOf(user),
+        readOnly: roleOf(user) === 'viewer',
         pageThemeId: page.theme == null ? null : String(typeof page.theme === 'object' ? page.theme.id : page.theme),
         template: page.templateCollection ? { collection: String(page.templateCollection), field: String(page.templateField || 'id') } : null,
         siteParts: sitePartsFrom(settings),

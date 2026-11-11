@@ -1,14 +1,13 @@
-import type { Access, CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload'
+import { canEdit, loggedIn, ownerOrAdmin } from '../lib/access'
 
-const loggedIn: Access = ({ req: { user } }) => Boolean(user)
-const ownerOnly: Access = ({ req: { user } }) => (user ? { or: [{ owner: { equals: user.id } }, { owner: { exists: false } }] } : false)
 
 /** "Gợi ý của tôi": kiểu (styles + prop hình thức) của một loại block do người dùng lưu để dùng lại */
 export const StylePresets: CollectionConfig = {
   slug: 'style-presets',
   labels: { singular: 'Gợi ý kiểu', plural: 'Gợi ý kiểu' },
   admin: { useAsTitle: 'name', defaultColumns: ['name', 'blockType', 'scope', 'owner', 'updatedAt'], description: 'Kiểu người dùng lưu từ Visual Builder (tab Gợi ý) để dùng lại cho block cùng loại.' },
-  access: { read: loggedIn, create: loggedIn, update: ownerOnly, delete: ownerOnly },
+  access: { read: loggedIn, create: canEdit, update: ownerOrAdmin, delete: ownerOrAdmin },
   fields: [
     { name: 'name', label: 'Tên', type: 'text', required: true, maxLength: 80 },
     { name: 'blockType', label: 'Loại block', type: 'text', required: true, index: true },

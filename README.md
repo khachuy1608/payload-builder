@@ -163,6 +163,8 @@ npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filenam
 - **Tay cầm kéo trên canvas:** phần tử đang chọn có 4 thanh cam (lề trong trên/phải/dưới/trái) và 2 tay cầm tím (chiều rộng ở mép phải, chiều cao ở mép dưới). Kéo ghi style cho thiết bị đang chọn; giữ Shift để bước 8px.
 - **Nhóm phần tử:** chuột phải → *Bọc trong Div* (Ctrl+G) / *Bỏ bọc* (Ctrl+Shift+G).
 - **Phiên bản:** mũi tên cạnh *Xuất bản* mở menu: ghi chú phiên bản (lưu cùng lần lưu kế tiếp, hiện trong Lịch sử), *Lên lịch* xuất bản / gỡ xuất bản. Lịch sử phiên bản có *So sánh với bản đang sửa* (phần tử thêm/xoá/đổi/dời, bấm “chọn” để nhảy tới).
+- **Vai trò** (`users.role`): *admin* (toàn quyền: người dùng, Cài đặt site, mọi block/theme), *editor* (dựng trang, block, theme, media, redirects), *viewer* (chỉ xem trong builder + bình luận). Người dùng đầu tiên tự thành admin; chỉ admin đổi được vai trò.
+- **Cộng tác:** thanh trên hiện ai đang mở cùng tài liệu (nhịp 10 giây, bộ nhớ trong tiến trình); băng rôn khoá cho biết ai đang sửa. Tab 💬 ở panel trái: bình luận gắn vào phần tử đang chọn (collection `comments`), số bình luận mở hiện trên tab, cây Cấu trúc và thanh công cụ phần tử; đánh dấu đã giải quyết, tác giả/admin xoá được.
 - **Lên lịch** dùng hàng đợi jobs của Payload (task `schedulePublish`), chạy bằng cron mỗi phút ngay trong tiến trình Next (`jobs.autoRun`). Nếu chạy nhiều instance, đặt `PAYLOAD_RUN_JOBS=false` ở các instance phụ. Vì job chạy ngoài ngữ cảnh request nên cache trang công khai có thêm `revalidate: 60` làm lưới an toàn (tối đa 1 phút sau giờ hẹn).
 
 ## Phím tắt trong Builder

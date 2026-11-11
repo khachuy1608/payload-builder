@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import { Editor } from '@/editor/Editor'
+import { roleOf } from '@/lib/access'
 import { normalizeBlockTree } from '@/lib/blocks'
 
 export const dynamic = 'force-dynamic'
@@ -31,8 +32,9 @@ export default async function BlockBuilderPage({ params }: Args) {
         slug: '',
         status: 'published',
         scope: block.scope === 'shared' ? 'shared' : 'private',
-        readOnly: owner !== null && owner !== String(user.id),
+        readOnly: roleOf(user) === 'viewer' || (owner !== null && owner !== String(user.id) && roleOf(user) !== 'admin'),
         userId: String(user.id),
+        role: roleOf(user),
         content: { version: 1, root: { id: 'root', type: 'root', props: {}, styles: {}, children: tree ? [tree] : [] } },
       }}
     />

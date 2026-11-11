@@ -398,3 +398,21 @@ select.ed-input + .ed-reset { right: 22px; }
 .ed-diff-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; border-radius: 4px; background: #f8fafc; }
 .ed-diff-row .ed-badge { min-width: 52px; text-align: center; }
 .ed-diff-row code { color: #6b7280; font-size: 11px; }
+
+/* ---------- Hiện diện & bình luận ---------- */
+.ed-presence { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-size: 12px; color: #6b7280; }
+.ed-avatar { width: 22px; height: 22px; border-radius: 50%; background: #c7d2fe; color: #3730a3; font: 600 11px/22px system-ui, sans-serif; text-align: center; border: 2px solid #fff; margin-left: -6px; }
+.ed-avatar:first-child { margin-left: 0; }
+.ed-presence-label { margin-left: 4px; }
+.ed-count { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 999px; background: #f59e0b; color: #fff; font: 600 10px/16px system-ui, sans-serif; text-align: center; margin-left: 4px; }
+.ed-comments { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+.ed-comment-list { display: flex; flex-direction: column; gap: 8px; }
+.ed-comment { border: 1px solid var(--ed-line); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; background: #fff; }
+.ed-comment.is-resolved { opacity: .6; }
+.ed-comment-head { display: flex; justify-content: space-between; gap: 8px; }
+.ed-comment-target { align-self: flex-start; font-size: 12px; }
+.ed-comment p { margin: 0; white-space: pre-wrap; }
+.ed-btn--sm { padding: 3px 8px; font-size: 12px; }
+.ed-left > .ed-tabs button { padding: 0 2px; font-size: 12px; min-width: 0; }
+.ed-left > .ed-tabs button[title="Bình luận"] { flex: none; padding: 0 10px; }
+.ed-left > .ed-tabs button:not([title]) > svg { display: none; }

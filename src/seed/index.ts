@@ -136,6 +136,19 @@ async function seedThemes(payload: Payload) {
 
 export async function seed(payload: Payload) {
   try {
+    // chưa có admin nào (DB cũ trước khi có vai trò): người dùng đầu tiên thành admin
+    const admins = await payload.count({ collection: 'users', where: { role: { equals: 'admin' } } })
+    if (admins.totalDocs === 0) {
+      const first = await payload.find({ collection: 'users', limit: 1, sort: 'createdAt', depth: 0 })
+      if (first.docs[0]) {
+        await payload.update({ collection: 'users', id: first.docs[0].id, data: { role: 'admin' }, overrideAccess: true })
+        payload.logger.info(`Đã gán vai trò admin cho ${first.docs[0].email}.`)
+      }
+    }
+  } catch (err) {
+    payload.logger.error({ err }, 'Không gán được vai trò admin')
+  }
+  try {
     await seedThemes(payload)
   } catch (err) {
     payload.logger.error({ err }, 'Không tạo được theme preset')

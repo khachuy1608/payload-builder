@@ -1,6 +1,7 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Layers, LayoutGrid, LayoutTemplate, Search, Globe } from 'lucide-react'
+import { ChevronDown, ChevronRight, Globe, Layers, LayoutGrid, LayoutTemplate, MessageSquare, Search } from 'lucide-react'
+import { CommentsPanel } from './CommentsPanel'
 import { useState } from 'react'
 import { BLOCK_CATEGORIES, BLOCKS, getBlock } from '@/builder/registry'
 import { getSchema } from '@/builder/schema'
@@ -14,6 +15,8 @@ import { nodeLabel } from './labels'
 export function LeftPanel() {
   const tab = useEditor((s) => s.leftTab)
   const setTab = useEditor((s) => s.setLeftTab)
+  const kind = useEditor((s) => s.kind)
+  const openComments = useEditor((s) => s.comments.filter((c) => !c.resolved).length)
   return (
     <aside className="ed-left">
       <div className="ed-tabs">
@@ -26,8 +29,14 @@ export function LeftPanel() {
         <button className={tab === 'navigator' ? 'is-active' : ''} onClick={() => setTab('navigator')}>
           <Layers size={15} /> Cấu trúc
         </button>
+        {kind === 'page' && (
+          <button className={tab === 'comments' ? 'is-active' : ''} onClick={() => setTab('comments')} title="Bình luận">
+            <MessageSquare size={15} />
+            {openComments > 0 && <span className="ed-count">{openComments}</span>}
+          </button>
+        )}
       </div>
-      <div className="ed-left-body">{tab === 'elements' ? <ElementsPanel /> : tab === 'blocks' ? <MyBlocksPanel /> : <Navigator />}</div>
+      <div className="ed-left-body">{tab === 'elements' ? <ElementsPanel /> : tab === 'blocks' ? <MyBlocksPanel /> : tab === 'comments' ? <CommentsPanel /> : <Navigator />}</div>
     </aside>
   )
 }
@@ -95,6 +104,8 @@ function Navigator() {
   const siteParts = useEditor((s) => s.siteParts)
   const layout = useEditor((s) => s.layout)
   const kind = useEditor((s) => s.kind)
+  const comments = useEditor((s) => s.comments)
+  const commentCount = (id: string) => comments.filter((c) => !c.resolved && c.nodeId === id).length
   const [closed, setClosed] = useState<Record<string, boolean>>({})
   const [over, setOver] = useState<{ id: string; zone: Zone } | null>(null)
 
@@ -189,6 +200,11 @@ function Navigator() {
           </span>
           {Icon && <Icon size={14} strokeWidth={1.75} />}
           <span className="ed-nav-label">{label}</span>
+          {commentCount(node.id) > 0 && (
+            <span className="ed-count" title="Bình luận chưa giải quyết">
+              {commentCount(node.id)}
+            </span>
+          )}
         </div>
         {hasKids && open && node.children!.map((c) => renderRow(c, depth + 1))}
       </div>

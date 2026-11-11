@@ -1,10 +1,11 @@
 import type { GlobalConfig } from 'payload'
+import { isAdmin, loggedIn } from '../lib/access'
 import { revalidatePages } from '../lib/revalidate'
 
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
   label: 'Cài đặt site',
-  access: { read: ({ req: { user } }) => Boolean(user), update: ({ req: { user } }) => Boolean(user) },
+  access: { read: loggedIn, update: isAdmin },
   hooks: {
     afterChange: [
       ({ doc }) => {

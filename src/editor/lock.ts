@@ -102,6 +102,16 @@ export function acquireLock(force = false): Promise<'owned' | 'locked'> {
 async function doAcquire(force: boolean, gen: number): Promise<'owned' | 'locked'> {
   const s = useEditor.getState()
   if (!s.userId || !s.pageId) return 'owned'
+  if (s.readOnly) {
+    // chỉ xem (viewer / block của người khác): không giữ khoá, chỉ xem ai đang sửa
+    const existing = await findLock().catch(() => null)
+    if (existing && idOf(existing.user?.value) !== s.userId) {
+      useEditor.getState().setLock({ state: 'locked', by: holderOf(existing) })
+      return 'locked'
+    }
+    useEditor.getState().setLock({ state: 'off' })
+    return 'owned'
+  }
   if (gen !== generation) return 'owned' // đã rời trang trong lúc chờ
   try {
     const existing = await findLock()

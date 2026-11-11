@@ -71,6 +71,7 @@ export interface Config {
     'my-blocks': MyBlock;
     themes: Theme;
     'style-presets': StylePreset;
+    comments: Comment;
     'form-submissions': FormSubmission;
     redirects: Redirect;
     media: Media;
@@ -87,6 +88,7 @@ export interface Config {
     'my-blocks': MyBlocksSelect<false> | MyBlocksSelect<true>;
     themes: ThemesSelect<false> | ThemesSelect<true>;
     'style-presets': StylePresetsSelect<false> | StylePresetsSelect<true>;
+    comments: CommentsSelect<false> | CommentsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -325,6 +327,7 @@ export interface Theme {
  */
 export interface User {
   id: number;
+  role: 'admin' | 'editor' | 'viewer';
   name?: string | null;
   title?: string | null;
   bio?: string | null;
@@ -410,6 +413,25 @@ export interface StylePreset {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Bình luận trên phần tử của trang trong Visual Builder.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments".
+ */
+export interface Comment {
+  id: number;
+  page: number | Page;
+  /**
+   * id node trong nội dung trang; "root" là cả trang.
+   */
+  nodeId: string;
+  text: string;
+  author?: (number | null) | User;
+  resolved?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -587,6 +609,10 @@ export interface PayloadLockedDocument {
         value: number | StylePreset;
       } | null)
     | ({
+        relationTo: 'comments';
+        value: number | Comment;
+      } | null)
+    | ({
         relationTo: 'form-submissions';
         value: number | FormSubmission;
       } | null)
@@ -750,6 +776,19 @@ export interface StylePresetsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments_select".
+ */
+export interface CommentsSelect<T extends boolean = true> {
+  page?: T;
+  nodeId?: T;
+  text?: T;
+  author?: T;
+  resolved?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "form-submissions_select".
  */
 export interface FormSubmissionsSelect<T extends boolean = true> {
@@ -828,6 +867,7 @@ export interface MediaSelect<T extends boolean = true> {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  role?: T;
   name?: T;
   title?: T;
   bio?: T;
