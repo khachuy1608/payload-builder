@@ -11,6 +11,7 @@ import { LeftPanel } from './LeftPanel'
 import { RightPanel } from './RightPanel'
 import { SaveBlockDialog } from './SaveBlockDialog'
 import { ThemeDialog } from './ThemeDialog'
+import { LockBanner, useDocumentLock } from './LockBanner'
 import { handleShortcut } from './shortcuts'
 import { type BlockScope, type EditorKind, type SaveStatus, useEditor } from './store'
 import { TopBar } from './TopBar'
@@ -61,6 +62,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
   }, [])
 
   useBlockLibrary()
+  useDocumentLock()
   const saveBlockFor = useEditor((s) => s.saveBlockFor)
   const themeDialog = useEditor((s) => s.themeDialog)
   const historyDialog = useEditor((s) => s.historyDialog)
@@ -68,6 +70,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
   return (
     <div className="ed">
       <TopBar />
+      <LockBanner />
       <div className="ed-main">
         <LeftPanel />
         <Canvas />

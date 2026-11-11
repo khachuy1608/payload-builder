@@ -45,6 +45,12 @@ export interface MyBlock {
   updatedAt: string
 }
 
+export type LockState =
+  | { state: 'checking' | 'off' }
+  | { state: 'owned'; lockId: string }
+  | { state: 'locked'; by: { name: string; email: string; since: string } }
+  | { state: 'error'; message: string }
+
 export const blockLookup = (blocks: Record<string, MyBlock>): BlockLookup => (id) => blocks[id]?.tree
 
 /** Một theme trong thư viện (đã chuẩn hoá từ doc của collection themes) */
@@ -126,6 +132,9 @@ export interface EditorState {
   contextMenu: { x: number; y: number; nodeId: string } | null
   historyDialog: boolean
 
+  /** Khoá tài liệu (xem lock.ts): owned = mình giữ khoá, locked = người khác đang sửa */
+  lock: LockState
+
   selectedId: string | null
   hoveredId: string | null
   editingId: string | null
@@ -194,6 +203,7 @@ export interface EditorActions {
   setThemePreview(tokens: ThemeTokens | null): void
   openThemeDialog(open: boolean): void
 
+  setLock(lock: LockState): void
   openContextMenu(menu: EditorState['contextMenu']): void
   openHistory(open: boolean): void
   /** Đưa nội dung một phiên bản cũ vào editor như một bước chỉnh sửa (hoàn tác được) */
@@ -305,6 +315,7 @@ export const useEditor = create<Store>()(
       themeDialog: false,
       contextMenu: null,
       historyDialog: false,
+      lock: { state: 'checking' },
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -491,6 +502,10 @@ export const useEditor = create<Store>()(
           if (!open) s.themePreview = null
         }),
 
+      setLock: (lock) =>
+        set((s) => {
+          s.lock = lock
+        }),
       openContextMenu: (menu) =>
         set((s) => {
           s.contextMenu = menu

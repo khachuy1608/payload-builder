@@ -22,7 +22,8 @@ export function TopBar() {
   const canUndo = useEditor((s) => s.past.length > 0)
   const canRedo = useEditor((s) => s.future.length > 0)
   const kind = useEditor((s) => s.kind)
-  const readOnly = useEditor((s) => s.readOnly)
+  const lockedByOther = useEditor((s) => s.lock.state === 'locked')
+  const readOnly = useEditor((s) => s.readOnly) || lockedByOther
 
   if (kind === 'block') {
     const badge = readOnly ? { text: 'Chỉ xem – block của người khác', cls: 'muted' } : dirty ? { text: 'Chưa lưu', cls: 'warn' } : { text: 'Đã lưu', cls: 'ok' }
@@ -92,10 +93,10 @@ export function TopBar() {
         <button className="ed-btn" onClick={preview} disabled={saving}>
           <ExternalLink size={15} /> Xem trước
         </button>
-        <button className="ed-btn" onClick={() => savePage(false)} disabled={saving}>
+        <button className="ed-btn" onClick={() => savePage(false)} disabled={saving || lockedByOther} title={lockedByOther ? 'Trang đang được người khác sửa' : 'Ctrl+S'}>
           {saving && <Loader2 size={15} className="ed-spin" />} Lưu nháp
         </button>
-        <button className="ed-btn ed-btn--primary" onClick={() => savePage(true)} disabled={saving}>
+        <button className="ed-btn ed-btn--primary" onClick={() => savePage(true)} disabled={saving || lockedByOther} title={lockedByOther ? 'Trang đang được người khác sửa' : undefined}>
           Xuất bản
         </button>
       </div>
