@@ -74,15 +74,20 @@ const BLOCK_LIST: BlockDefinition[] = [
     icon: Database,
     defaults: () => ({
       props: { data: { collection: 'users', mode: 'list', limit: 8, sort: 'name' } },
-      styles: { desktop: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' }, mobile: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } },
+      styles: {
+        desktop: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '20px', padding: '32px 24px', maxWidth: '1120px', margin: '0 auto' },
+        tablet: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
+        mobile: { gridTemplateColumns: '1fr', padding: '24px 16px' },
+      },
       children: [
         {
           id: genId(),
-          type: 'card',
-          props: { media: '{{avatar}}', mediaPosition: 'top' },
-          styles: { desktop: { backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' } },
+          type: 'div',
+          props: {},
+          styles: { desktop: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '10px', padding: '24px 16px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)' } },
           children: [
-            { id: genId(), type: 'heading', props: { text: '{{name}}', tag: 'h3' }, styles: { desktop: { fontSize: '18px', fontWeight: '700' } } },
+            { id: genId(), type: 'avatar', props: { media: '{{avatar}}', name: '{{name}}', size: '72', shape: 'circle' }, styles: {} },
+            { id: genId(), type: 'heading', props: { text: '{{name}}', tag: 'h3' }, styles: { desktop: { fontSize: '17px', fontWeight: '700' } } },
             { id: genId(), type: 'paragraph', props: { text: '{{title}}' }, styles: { desktop: { color: 'var(--color-muted)', fontSize: '14px' } } },
           ],
         },

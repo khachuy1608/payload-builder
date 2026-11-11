@@ -4,7 +4,7 @@
  * Lớp phủ vẽ phía trên iframe: viền hover, viền chọn + thanh công cụ, vạch chỉ vị trí thả.
  * Toạ độ đọc bằng getBoundingClientRect trong iframe mỗi frame (rAF) nên luôn đúng khi cuộn/đổi layout.
  */
-import { ArrowUp, BookmarkPlus, Copy, GripVertical, Trash2, Unlink } from 'lucide-react'
+import { ArrowUp, BookmarkPlus, Copy, Database, GripVertical, Trash2, Unlink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getBlock } from '@/builder/registry'
 import { canSaveAsBlock } from '@/builder/schema'
@@ -104,6 +104,11 @@ export function Overlay({ doc }: { doc: Document }) {
               {selectedNode.type === 'blockRef' && (
                 <button className="ed-tool" title="Tách khỏi block gốc (thành bản sao độc lập)" onClick={() => s.detach(selectedNode.id)}>
                   <Unlink size={14} />
+                </button>
+              )}
+              {selectedNode.type !== 'blockRef' && selectedNode.type !== 'dataList' && (
+                <button className="ed-tool" title="Lặp theo dữ liệu: dùng phần tử này làm mẫu cho một Danh sách dữ liệu" onClick={() => s.wrapInDataList(selectedNode.id)}>
+                  <Database size={14} />
                 </button>
               )}
               <button className="ed-tool" title="Xoá (Delete)" onClick={() => s.remove(selectedNode.id)}>

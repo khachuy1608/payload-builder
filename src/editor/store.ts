@@ -10,7 +10,7 @@ import { immer } from 'zustand/middleware/immer'
 import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { canContain } from '@/builder/schema'
-import type { DataMap, DataRecord, SourceInfo } from '@/builder/data'
+import { autoBind, type DataMap, type DataRecord, type SourceInfo } from '@/builder/data'
 import { applyPreset as applyPresetToNode, type BlockPreset } from '@/builder/presets'
 import { defaultTheme, type ThemeTokens } from '@/builder/theme'
 import {
@@ -220,6 +220,10 @@ export interface EditorActions {
 
   /** Áp dụng gợi ý kiểu lên node (giữ nội dung, hoàn tác được) */
   applyPreset(id: string, preset: BlockPreset): void
+  /** Bọc node đang chọn vào một Danh sách dữ liệu (node thành phần tử mẫu, tự gắn trường) */
+  wrapInDataList(id: string, collection?: string): string | null
+  /** Thay phần tử mẫu của Danh sách dữ liệu bằng node mới (tự gắn trường) */
+  setListTemplate(listId: string, template: BuilderNode): void
   setLock(lock: LockState): void
   setSources(sources: SourceInfo[]): void
   setCurrentUser(user: DataRecord | null): void
@@ -538,6 +542,55 @@ export const useEditor = create<Store>()(
           if (loc) loc.parent.children![loc.index] = next
           else Object.assign(node, next)
         }),
+      wrapInDataList: (id, collection) => {
+        const state = get()
+        const node = findNode(state.root, id)
+        const loc = findParent(state.root, id)
+        if (!node || !loc || node.type === 'root' || node.type === BLOCK_REF_TYPE) return null
+        if (!canContain(loc.parent.type, 'dataList')) {
+          get().toast('error', 'Không thể đặt Danh sách dữ liệu ở vị trí này.')
+          return null
+        }
+        const col = collection ?? state.sources[0]?.slug ?? 'users'
+        const fields = state.sources.find((x) => x.slug === col)?.fields.map((f) => f.name) ?? ['id', 'name', 'title', 'bio', 'avatar']
+        const list: BuilderNode = {
+          id: genId(),
+          type: 'dataList',
+          props: { data: { collection: col, mode: 'list', limit: 8 } },
+          styles: { desktop: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '20px' }, mobile: { gridTemplateColumns: '1fr' } },
+          children: [autoBind(structuredClone(node), fields)],
+        }
+        // phần tử mẫu không nên mang flex-grow/basis của hàng cũ
+        const tpl = list.children![0]
+        if (tpl.styles.desktop) {
+          delete tpl.styles.desktop.flexGrow
+          delete tpl.styles.desktop.flexBasis
+        }
+        commit((root) => {
+          const parent = findNode(root, loc.parent.id)
+          if (parent?.children) parent.children.splice(loc.index, 1, list)
+        })
+        set((s) => {
+          s.selectedId = list.id
+        })
+        get().toast('success', `Đã biến thành Danh sách dữ liệu (${col}). Chọn phần tử trong mẫu và bấm ⚡ để đổi trường.`)
+        return list.id
+      },
+      setListTemplate: (listId, template) => {
+        const state = get()
+        const list = findNode(state.root, listId)
+        if (!list || list.type !== 'dataList') return
+        const col = (list.props.data as { collection?: string } | undefined)?.collection ?? 'users'
+        const fields = state.sources.find((x) => x.slug === col)?.fields.map((f) => f.name) ?? ['id', 'name', 'title', 'bio', 'avatar']
+        const next = autoBind(cloneWithNewIds(template), fields)
+        commit((root) => {
+          const l = findNode(root, listId)
+          if (l) l.children = [next]
+        })
+        set((s) => {
+          s.selectedId = next.id
+        })
+      },
       setLock: (lock) =>
         set((s) => {
           s.lock = lock

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUp, BookmarkPlus, ClipboardPaste, Copy, CopyPlus, Settings2, Trash2, Unlink } from 'lucide-react'
+import { ArrowUp, BookmarkPlus, ClipboardPaste, Copy, CopyPlus, Database, Settings2, Trash2, Unlink } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { canSaveAsBlock } from '@/builder/schema'
 import { findNode, findParent } from '@/builder/tree'
@@ -75,6 +75,7 @@ export function ContextMenu() {
         'sep',
         ...(canSaveAsBlock(node.type) ? [{ label: 'Lưu thành My Block', icon: BookmarkPlus, run: act(() => s().openSaveBlock(node.id)) } as Item] : []),
         ...(node.type === 'blockRef' ? [{ label: 'Tách khỏi block gốc', icon: Unlink, run: act(() => s().detach(node.id)) } as Item] : []),
+        ...(node.type !== 'blockRef' && node.type !== 'dataList' ? [{ label: 'Lặp theo dữ liệu (danh sách)', icon: Database, run: act(() => s().wrapInDataList(node.id)) } as Item] : []),
         'sep',
         { label: 'Xoá', icon: Trash2, shortcut: 'Delete', danger: true, run: act(() => s().remove(node.id)) },
       ]

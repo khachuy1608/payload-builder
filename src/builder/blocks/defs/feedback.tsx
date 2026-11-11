@@ -17,6 +17,7 @@ import {
   PieChart,
   Table2,
   Tag,
+  UserCircle2,
   Users,
   Waypoints,
 } from 'lucide-react'
@@ -224,6 +225,42 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
           ))}
           {people.length > max && <span className="b-avatar b-avatar--more">+{people.length - max}</span>}
         </div>
+      )
+    },
+  },
+  {
+    type: 'avatar',
+    label: 'Avatar',
+    category: 'data',
+    icon: UserCircle2,
+    defaults: () => ({ props: { media: null, name: 'Nguyễn Văn A', size: '64', shape: 'circle' }, styles: {} }),
+    contentControls: [
+      { type: 'media', prop: 'media', label: 'Ảnh' },
+      { type: 'text', prop: 'name', label: 'Tên (hiện chữ cái đầu khi không có ảnh)' },
+      { type: 'number', prop: 'size', label: 'Kích thước (px)', min: 16, max: 320 },
+      { type: 'select', prop: 'shape', label: 'Hình', options: [{ value: 'circle', label: 'Tròn' }, { value: 'rounded', label: 'Bo góc' }, { value: 'square', label: 'Vuông' }] },
+    ],
+    styleGroups: ['spacing', 'border', 'effects', 'position', 'child'],
+    Render: ({ node, attrs }) => {
+      const media = node.props.media && typeof node.props.media === 'object' ? (node.props.media as MediaValue) : null
+      const name = text(node.props.name)
+      const size = num(node.props.size, 64)
+      const initials = name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(-2)
+        .map((w) => w[0])
+        .join('')
+        .toUpperCase()
+      return (
+        <span {...attrs} className={`${attrs.className} b-avatar-one b-avatar-one--${text(node.props.shape, 'circle')}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }} title={name || undefined}>
+          {media?.url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={media.url} alt={name || media.alt || ''} loading="lazy" />
+          ) : (
+            <span aria-hidden>{initials || '?'}</span>
+          )}
+        </span>
       )
     },
   },

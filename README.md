@@ -107,7 +107,9 @@ hooks: { afterChange: [({ doc }) => (revalidatePages(), doc)], afterDelete: [({ 
 
 - Block chứa (Div, Flexbox, Card, Masonry, Bento, Danh sách dữ liệu) có mục **Lấy dữ liệu từ collection** ở tab Nội dung: chọn collection, chế độ *Danh sách* hay *Một bản ghi* (tìm theo trường = giá trị), số bản ghi, sắp xếp, bộ lọc (bằng / khác / chứa / lớn hơn / nhỏ hơn / có giá trị / thuộc). Panel báo số bản ghi đã nạp và các trường dùng được.
 - Mọi ô nhập chữ, link, ảnh của phần tử con có nút **⚡** liệt kê trường của nguồn bao quanh và chèn `{{name}}`, `{{avatar.url}}`, `{{nhom.truong}}`, `{{index}}`, `{{count}}`. Ô ảnh nhận `{{avatar}}` (object upload tự thành ảnh).
-- **Danh sách dữ liệu** lặp toàn bộ phần tử con cho từng bản ghi; chỉ bản đầu (mẫu) chọn/sửa được, các bản sao chỉ xem. Block chứa khác có nguồn thì gắn bản ghi đầu tiên vào cây con.
+- **Danh sách dữ liệu** lặp toàn bộ phần tử con cho từng bản ghi; chỉ bản đầu (mẫu) chọn/sửa được, các bản sao chỉ xem. Block chứa khác có nguồn thì gắn bản ghi đầu tiên vào cây con. Mẫu mặc định: avatar (ảnh hoặc chữ cái đầu) + tên + chức danh, lưới 4/2/1 cột.
+- **Render danh sách với block bạn chọn**: (a) chọn phần tử bất kỳ trên trang (thẻ bạn đã dựng, Card, Badge…) rồi bấm nút **🗄 Lặp theo dữ liệu** trên thanh công cụ hoặc menu chuột phải → phần tử được bọc thành Danh sách dữ liệu, các ô chữ/ảnh **tự gắn trường** (heading → `{{name}}`, paragraph → `{{title}}`/`{{bio}}`, ảnh/avatar → `{{avatar}}`); (b) trong panel của Danh sách dữ liệu, mục **Phần tử mẫu** chọn loại block có sẵn hoặc một My Block rồi *Dùng làm mẫu*. Sau đó vẫn chỉnh từng trường bằng ⚡.
+- Block **Avatar** (ảnh hoặc chữ cái đầu từ tên, tròn/bo/vuông) dùng cho thẻ người dùng.
 - Nguồn dữ liệu nằm trong My Block liên kết vẫn hoạt động (nạp trên cây đã triển khai).
 
 **3. Cách chạy** – `src/builder/data.ts` (thuần dữ liệu: chuẩn hoá nguồn, `buildWhere`, `bindString`, `resolveData`), `src/lib/data.ts` (server: `getSources`, `loadDataForTree`). Thứ tự render: `resolveRefs` → nạp dữ liệu → `resolveData` → biên dịch CSS. Editor nạp qua REST của chính collection (quyền của người đăng nhập) và cũng chỉ giữ trường expose.

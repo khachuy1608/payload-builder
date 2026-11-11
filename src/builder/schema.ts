@@ -61,6 +61,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   chart: { isContainer: false },
   timeline: { isContainer: false },
   avatarGroup: { isContainer: false },
+  avatar: { isContainer: false },
   statusDot: { isContainer: false },
   chatBubble: { isContainer: false },
   badge: { isContainer: false },

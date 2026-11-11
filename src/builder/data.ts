@@ -353,10 +353,12 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
   const base = { user }
   const primaryId = collectDataNodes(root).find((n) => n.source.urlParams)?.id
   const primary = primaryId ? lookup(primaryId) : undefined
+  // nguồn nằm trong bản sao của danh sách (id có hậu tố _n) dùng chung dữ liệu với bản mẫu
+  const find = (id: string) => lookup(id) ?? (/_\d+$/.test(id) ? find(id.replace(/_\d+$/, '')) : undefined)
   const visit = (node: BuilderNode): BuilderNode => {
     const source = dataSourceOf(node)
     if (source) {
-      const result = lookup(node.id)
+      const result = find(node.id)
       const records = result?.records ?? []
       const pageExtra = { ...base, total: result?.total ?? records.length, page: result?.page ?? 1, totalPages: result?.totalPages ?? 1 }
       if (node.type === DATA_LIST_TYPE) {
@@ -420,4 +422,37 @@ export function fieldPaths(info: SourceInfo): { path: string; label: string }[] 
     } else out.push({ path: f.name, label: f.label })
   }
   return out
+}
+
+/**
+ * Gắn trường tự động cho một cây mẫu (dùng khi "Lặp theo dữ liệu" / chọn phần tử mẫu):
+ * heading đầu -> {{name}}, các paragraph -> {{title}}, {{bio}}…, avatar/image/card media -> {{avatar}},
+ * avatar.name -> {{name}}. Chỉ dùng trường có trong `fields`.
+ */
+export function autoBind(node: BuilderNode, fields: string[]): BuilderNode {
+  const textFields = ['name', 'title', 'label', 'heading'].filter((f) => fields.includes(f))
+  const paraFields = ['title', 'bio', 'description', 'excerpt', 'summary', 'text', 'content'].filter((f) => fields.includes(f))
+  const mediaField = ['avatar', 'image', 'media', 'photo', 'cover', 'thumbnail'].find((f) => fields.includes(f))
+  let headingUsed = false
+  let para = 0
+  const visit = (n: BuilderNode): BuilderNode => {
+    const props = { ...n.props }
+    if (n.type === 'heading' && !headingUsed && textFields[0]) {
+      props.text = `{{${textFields[0]}}}`
+      headingUsed = true
+    } else if (n.type === 'paragraph' && paraFields[para]) {
+      props.text = `{{${paraFields[para]}}}`
+      para++
+    } else if ((n.type === 'image' || n.type === 'card' || n.type === 'avatar') && mediaField) {
+      props.media = `{{${mediaField}}}`
+      if (n.type === 'avatar' && textFields[0]) props.name = `{{${textFields[0]}}}`
+    } else if (n.type === 'badge' && fields.includes('title')) props.text = '{{title}}'
+    else if (n.type === 'chatBubble') {
+      if (paraFields[0]) props.text = `{{${paraFields[0]}}}`
+      if (textFields[0]) props.name = `{{${textFields[0]}}}`
+    } else if (n.type === 'statusDot' && textFields[0]) props.label = `{{${textFields[0]}}}`
+    else if (n.type === 'button' && fields.includes('id') && typeof props.href === 'string' && !props.href.includes('{{')) props.href = `${props.href === '#' || !props.href ? '' : props.href}` || '#'
+    return { ...n, props, ...(n.children ? { children: n.children.map(visit) } : {}) }
+  }
+  return visit(node)
 }

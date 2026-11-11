@@ -164,6 +164,10 @@ export const BLOCKS_CSS = `
 .b-tour-card button{border:0;background:var(--color-primary);color:#fff;padding:6px 12px;border-radius:var(--radius-sm);cursor:pointer;font:inherit;font-size:13px}
 .b-tour-card button.b-tour-skip{background:transparent;color:var(--color-muted)}
 /* ---- dữ liệu ---- */
+.b-avatar-one{display:inline-flex;align-items:center;justify-content:center;overflow:hidden;background:color-mix(in srgb,var(--color-primary) 15%,var(--color-surface));color:var(--color-primary);font-weight:700;flex:none;line-height:1}
+.b-avatar-one--circle{border-radius:50%}.b-avatar-one--rounded{border-radius:var(--radius-md)}
+.b-avatar-one img{width:100%;height:100%;object-fit:cover}
+.b-data-list{align-items:start}
 .b-table-wrap{overflow-x:auto}
 .b-table{width:100%;border-collapse:collapse;font-size:14px}
 .b-table caption{caption-side:top;text-align:left;font-weight:600;padding:0 0 8px}

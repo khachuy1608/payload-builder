@@ -143,3 +143,16 @@ test('validate: show được làm sạch, condHidden không bao giờ lưu', ()
   const out = validateContent({ version: 1, root: { id: 'root', type: 'root', props: {}, styles: {}, children: [{ id: 'a', type: 'heading', props: { text: 'x', show: { auth: 'guest' }, condHidden: true }, styles: {} }] } })
   assert.deepEqual(out.root.children![0].props, { text: 'x', show: { auth: 'guest' } })
 })
+
+test('autoBind: heading -> name, paragraph -> title/bio, avatar/card -> avatar, chỉ dùng trường có thật', async () => {
+  const { autoBind } = await import('../src/builder/data')
+  const tree: BuilderNode = { id: 'c', type: 'card', props: { media: null }, styles: {}, children: [{ id: 'a', type: 'avatar', props: { media: null, name: 'X' }, styles: {} }, { id: 'h', type: 'heading', props: { text: 'Khắc Huy' }, styles: {} }, { id: 'p1', type: 'paragraph', props: { text: 'mô tả 1' }, styles: {} }, { id: 'p2', type: 'paragraph', props: { text: 'mô tả 2' }, styles: {} }, { id: 'p3', type: 'paragraph', props: { text: 'mô tả 3' }, styles: {} }] }
+  const out = autoBind(tree, ['id', 'name', 'title', 'bio', 'avatar'])
+  assert.equal(out.props.media, '{{avatar}}')
+  assert.deepEqual(out.children!.map((c) => c.props), [{ media: '{{avatar}}', name: '{{name}}' }, { text: '{{name}}' }, { text: '{{title}}' }, { text: '{{bio}}' }, { text: 'mô tả 3' }])
+  const limited = autoBind(tree, ['id', 'label'])
+  assert.equal(limited.children![1].props.text, '{{label}}')
+  assert.equal(limited.children![2].props.text, 'mô tả 1', 'không có trường mô tả -> giữ chữ')
+  assert.equal(limited.props.media, null)
+  assert.equal(tree.children![1].props.text, 'Khắc Huy', 'không đụng cây gốc')
+})

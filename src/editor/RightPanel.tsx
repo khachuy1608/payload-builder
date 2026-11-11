@@ -6,10 +6,10 @@ import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
 import { type DataFilter, type DataSource, FILTER_OPS, SHOW_OPS, type ShowCondition, type SourceInfo, dataSourceOf, fieldPaths, normalizeDataSource, showOf } from '@/builder/data'
 import { EASING_OPTIONS, type FxProps, HOVER_OPTIONS, REVEAL_OPTIONS, TEXT_FX_OPTIONS, DEFAULT_SPRING, springEasing } from '@/builder/effects'
-import { getSchema } from '@/builder/schema'
+import { canContain, getSchema } from '@/builder/schema'
 import { refBlockId } from '@/builder/refs'
 import { sanitizeRichText } from '@/builder/sanitize'
-import { getBlock } from '@/builder/registry'
+import { BLOCKS, getBlock } from '@/builder/registry'
 import { COLOR_TOKEN_LABELS } from '@/builder/theme'
 import { findNode, genId, getAncestors } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
@@ -18,7 +18,7 @@ import { nodeLabel } from './labels'
 import { MediaPicker } from './MediaPicker'
 import { PresetGallery } from './PresetGallery'
 import { RichToolbar } from './RichToolbar'
-import { type BlockScope, effectiveTheme, useEditor } from './store'
+import { type BlockScope, createNodeFromBlock, effectiveTheme, useEditor } from './store'
 
 type Tab = 'content' | 'style' | 'advanced' | 'presets'
 
@@ -483,6 +483,55 @@ function ShowPanel({ node }: { node: BuilderNode }) {
   )
 }
 
+/** Chọn block làm phần tử mẫu của Danh sách dữ liệu (loại block có sẵn hoặc My Block) – tự gắn trường */
+function TemplatePicker({ node }: { node: BuilderNode }) {
+  const blocks = useEditor((s) => s.blocks)
+  const [choice, setChoice] = useState('')
+  const types = Object.values(BLOCKS).filter((b) => !getSchema(b.type)?.hidden && b.type !== 'dataList' && getSchema('dataList')?.isContainer && canContain('dataList', b.type))
+  const myBlocks = Object.values(blocks)
+  const current = node.children?.[0]
+  const apply = () => {
+    if (!choice) return
+    let template: BuilderNode | null = null
+    if (choice.startsWith('my:')) {
+      const b = blocks[choice.slice(3)]
+      if (b) template = structuredClone(b.tree)
+    } else template = createNodeFromBlock(choice)
+    if (template) useEditor.getState().setListTemplate(node.id, template)
+  }
+  return (
+    <div className="ed-field">
+      <span className="ed-label">Phần tử mẫu (lặp cho từng bản ghi)</span>
+      <span className="ed-help">Hiện tại: {current ? (getBlock(current.type)?.label ?? current.type) : 'chưa có'}. Chọn block khác để thay, các ô chữ/ảnh sẽ tự gắn trường (name, title, avatar…).</span>
+      <div className="ed-row">
+        <select className="ed-input" value={choice} onChange={(e) => setChoice(e.target.value)}>
+          <option value="">— chọn block làm mẫu —</option>
+          <optgroup label="Block có sẵn">
+            {types.map((b) => (
+              <option key={b.type} value={b.type}>
+                {b.label}
+              </option>
+            ))}
+          </optgroup>
+          {myBlocks.length > 0 && (
+            <optgroup label="My Blocks">
+              {myBlocks.map((b) => (
+                <option key={b.id} value={`my:${b.id}`}>
+                  {b.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+        <button className="ed-btn" disabled={!choice} onClick={apply}>
+          Dùng làm mẫu
+        </button>
+      </div>
+      <span className="ed-help">Hoặc chọn một phần tử bất kỳ trên trang rồi bấm nút <b>🗄 Lặp theo dữ liệu</b> trên thanh công cụ / menu chuột phải.</span>
+    </div>
+  )
+}
+
 /** Panel "Nguồn dữ liệu" cho block chứa (control custom: 'data') */
 function DataSourcePanel({ node }: { node: BuilderNode }) {
   const sources = useEditor((s) => s.sources)
@@ -590,31 +639,36 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
           <div className="ed-field">
             <span className="ed-label">Bộ lọc</span>
             {filters.map((f, i) => (
-              <div key={i} className="ed-row">
-                <select className="ed-input" value={f.field} onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, field: e.target.value } : x)))}>
-                  {(info?.fields ?? []).map((x) => (
-                    <option key={x.name} value={x.name}>
-                      {x.label}
-                    </option>
-                  ))}
-                </select>
-                <select className="ed-input" value={f.op} onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, op: e.target.value as DataFilter['op'] } : x)))}>
-                  {FILTER_OPS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <input className="ed-input" value={f.value} placeholder="giá trị" onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} />
-                <button className="ed-icon-btn" title="Bỏ lọc" onClick={() => setFilters(filters.filter((_, j) => j !== i))}>
-                  <X size={13} />
-                </button>
+              <div key={i} className="ed-list-card">
+                <div className="ed-row">
+                  <select className="ed-input" value={f.field} onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, field: e.target.value } : x)))}>
+                    {(info?.fields ?? []).map((x) => (
+                      <option key={x.name} value={x.name}>
+                        {x.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select className="ed-input" value={f.op} onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, op: e.target.value as DataFilter['op'] } : x)))}>
+                    {FILTER_OPS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="ed-row">
+                  <input className="ed-input" value={f.value} placeholder="giá trị" disabled={f.op === 'exists'} onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} />
+                  <button className="ed-icon-btn" title="Bỏ điều kiện" onClick={() => setFilters(filters.filter((_, j) => j !== i))}>
+                    <X size={13} />
+                  </button>
+                </div>
               </div>
             ))}
             <button className="ed-btn" onClick={() => setFilters([...filters, { field: info?.fields[1]?.name ?? 'id', op: 'equals', value: '' }])}>
               <Plus size={14} /> Thêm điều kiện
             </button>
           </div>
+          {node.type === 'dataList' && <TemplatePicker node={node} />}
           <span className="ed-help">
             {records ? `Đã nạp ${records.length}/${total ?? records.length} bản ghi.` : 'Đang nạp…'} Trường dùng được: {fields.map((f) => `{{${f.path}}}`).join(', ') || '—'}. Bấm ⚡ cạnh ô nhập của phần tử con để chèn.
           </span>
