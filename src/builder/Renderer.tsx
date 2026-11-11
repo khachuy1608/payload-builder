@@ -6,6 +6,7 @@ import { memo } from 'react'
 import { BuilderRuntime } from './blocks/Runtime'
 import type { NodeAttrs, RenderMode } from './blocks/types'
 import { compileTreeCss } from './css'
+import { type DataLookup, type DataMap, resolveData } from './data'
 import { normalizeFx } from './effects'
 import type { BlockLookup } from './refs'
 import { resolveRefs } from './refs'
@@ -73,6 +74,8 @@ function RenderNodeInner({ node, mode }: { node: BuilderNode; mode: RenderMode }
 /** memo theo tham chiếu node: immer giữ nguyên object không đổi nên chỉ nhánh bị sửa mới render lại */
 export const RenderNode = memo(RenderNodeInner)
 
+export { resolveData }
+
 /**
  * Render cả trang. `blocks` là cây gốc của các My Block được tham chiếu (xem lib/blocks.ts);
  * các node blockRef được triển khai trước khi biên dịch CSS và render.
@@ -83,14 +86,18 @@ export function PageRenderer({
   mode = 'live',
   blocks,
   theme = defaultTheme,
+  data,
 }: {
   content: PageContent
   mode?: RenderMode
   blocks?: Map<string, BuilderNode> | BlockLookup
   theme?: ThemeTokens
+  /** Dữ liệu đã nạp cho các node có nguồn (lib/data.ts) */
+  data?: DataMap | DataLookup
 }) {
   const lookup: BlockLookup = typeof blocks === 'function' ? blocks : (id) => blocks?.get(id)
-  const root = resolveRefs(content.root, lookup)
+  const dataLookup: DataLookup = typeof data === 'function' ? data : (id) => data?.[id]
+  const root = resolveData(resolveRefs(content.root, lookup), dataLookup)
   const css = compileTreeCss(root)
   return (
     <>

@@ -340,3 +340,4 @@ textarea.b-input{resize:none}
 .b-divider--labeled::before,.b-divider--labeled::after{content:'';flex:1;height:1px;background:var(--color-border)}
 .b-divider--vertical{width:1px!important;height:auto!important;align-self:stretch;min-height:24px}
 `
+export const DATA_CSS = ''

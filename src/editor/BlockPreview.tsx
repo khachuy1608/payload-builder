@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { compileTreeCss } from '@/builder/css'
+import { resolveData } from '@/builder/data'
 import { resolveRefs } from '@/builder/refs'
 import { BuilderRuntime } from '@/builder/blocks/Runtime'
 import { RenderNode } from '@/builder/Renderer'
@@ -23,7 +24,8 @@ export function BlockPreview({ tree, height = 96 }: { tree: BuilderNode; height?
   const [mount, setMount] = useState<HTMLElement | null>(null)
   const blocks = useEditor((s) => s.blocks)
   const theme = useEditor(effectiveTheme)
-  const resolved = resolveRefs(tree, blockLookup(blocks))
+  const dataCache = useEditor((s) => s.dataCache)
+  const resolved = resolveData(resolveRefs(tree, blockLookup(blocks)), (id) => dataCache[id])
   const css = compileTreeCss(resolved)
 
   useEffect(() => {

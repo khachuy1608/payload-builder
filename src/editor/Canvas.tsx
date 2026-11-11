@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { compileTreeCss } from '@/builder/css'
+import { resolveData } from '@/builder/data'
 import { resolveRefs } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { sanitizeRichText } from '@/builder/sanitize'
@@ -110,8 +111,9 @@ function startInlineEdit(doc: Document, el: HTMLElement, nodeId: string) {
 function CanvasContent() {
   const root = useEditor((s) => s.root)
   const blocks = useEditor((s) => s.blocks)
-  // triển khai My Block liên kết trước khi biên dịch CSS và render (structural sharing: nhánh khác không render lại)
-  const resolved = useMemo(() => resolveRefs(root, blockLookup(blocks)), [root, blocks])
+  const dataCache = useEditor((s) => s.dataCache)
+  // triển khai My Block liên kết rồi gắn dữ liệu thật trước khi biên dịch CSS và render
+  const resolved = useMemo(() => resolveData(resolveRefs(root, blockLookup(blocks)), (id) => dataCache[id]), [root, blocks, dataCache])
   const css = useMemo(() => compileTreeCss(resolved), [resolved])
   const theme = useEditor(effectiveTheme)
   return (

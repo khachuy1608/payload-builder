@@ -320,3 +320,26 @@ export async function listVersions(pageId: string): Promise<PageVersion[]> {
     updatedAt: d.updatedAt,
   }))
 }
+
+// ======================= Nguồn dữ liệu (data binding) =======================
+
+import { buildWhere, type DataRecord, type DataSource, projectRecord, type SourceInfo } from '@/builder/data'
+
+export async function fetchSources(): Promise<SourceInfo[]> {
+  const res = await fetch('/api/builder/sources', { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  return ((await res.json()) as { sources: SourceInfo[] }).sources
+}
+
+/** Lấy bản ghi cho một nguồn dữ liệu qua REST (người dùng đã đăng nhập); chỉ giữ trường công khai như server */
+export async function fetchData(source: DataSource, info: SourceInfo | undefined): Promise<DataRecord[]> {
+  const q = new URLSearchParams({ limit: String(source.mode === 'one' ? 1 : (source.limit ?? 12)), depth: '1', pagination: 'false' })
+  if (source.sort) q.set('sort', source.sort)
+  const where = buildWhere(source)
+  if (where) q.set('where', JSON.stringify(where))
+  const res = await fetch(`/api/${encodeURIComponent(source.collection)}?${q}`, { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const { docs } = (await res.json()) as { docs: Record<string, unknown>[] }
+  const expose = info ? info.fields.map((f) => f.name) : []
+  return docs.map((d) => (expose.length ? projectRecord(d, expose) : d))
+}

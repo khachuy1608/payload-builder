@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { collectRefIds } from '@/builder/refs'
+import { collectDataNodes } from '@/builder/data'
+import { collectRefIds, resolveRefs } from '@/builder/refs'
 import type { PageContent } from '@/builder/types'
-import { getMyBlock, refreshBlockLibrary, refreshThemes } from './api'
+import { fetchData, fetchSources, getMyBlock, refreshBlockLibrary, refreshThemes } from './api'
 import { Canvas } from './Canvas'
 import { ContextMenu } from './ContextMenu'
 import { HistoryDialog } from './HistoryDialog'
@@ -13,7 +14,7 @@ import { SaveBlockDialog } from './SaveBlockDialog'
 import { ThemeDialog } from './ThemeDialog'
 import { LockBanner, useDocumentLock } from './LockBanner'
 import { handleShortcut } from './shortcuts'
-import { type BlockScope, type EditorKind, type SaveStatus, useEditor } from './store'
+import { type BlockScope, blockLookup, type EditorKind, type SaveStatus, useEditor } from './store'
 import { TopBar } from './TopBar'
 
 export interface EditorInitial {
@@ -63,6 +64,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
 
   useBlockLibrary()
   useDocumentLock()
+  useDataSync()
   const saveBlockFor = useEditor((s) => s.saveBlockFor)
   const themeDialog = useEditor((s) => s.themeDialog)
   const historyDialog = useEditor((s) => s.historyDialog)
@@ -120,6 +122,40 @@ function useBlockLibrary() {
         .finally(() => inflight.current.delete(id))
     }
   }, [root, blocksStatus])
+}
+
+/**
+ * Nguồn dữ liệu: nạp danh sách nguồn một lần; mỗi khi cây đổi, node nào có nguồn mà khai báo thay đổi
+ * (so theo JSON) thì lấy lại dữ liệu qua REST (debounce) để canvas hiện bản ghi thật.
+ */
+function useDataSync() {
+  const root = useEditor((s) => s.root)
+  const blocks = useEditor((s) => s.blocks)
+  const last = useRef<Record<string, string>>({})
+  useEffect(() => {
+    fetchSources()
+      .then((list) => useEditor.getState().setSources(list))
+      .catch(() => useEditor.getState().toast('error', 'Không tải được danh sách nguồn dữ liệu.'))
+  }, [])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const nodes = collectDataNodes(resolveRefs(root, blockLookup(blocks)))
+      const s = useEditor.getState()
+      for (const { id, source } of nodes) {
+        const key = JSON.stringify(source)
+        if (last.current[id] === key) continue
+        last.current[id] = key
+        const info = s.sources.find((x) => x.slug === source.collection)
+        fetchData(source, info)
+          .then((records) => useEditor.getState().setData(id, records))
+          .catch((err) => {
+            useEditor.getState().setData(id, [])
+            useEditor.getState().toast('error', `Nguồn dữ liệu "${source.collection}": ${(err as Error).message}`)
+          })
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [root, blocks])
 }
 
 function Toasts() {

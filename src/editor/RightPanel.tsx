@@ -1,9 +1,10 @@
 'use client'
 
-import { ChevronDown, ChevronRight, ExternalLink, Monitor, Palette, Play, Sparkles, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Database, ExternalLink, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
+import { type DataFilter, type DataSource, FILTER_OPS, type SourceInfo, dataSourceOf, fieldPaths, normalizeDataSource } from '@/builder/data'
 import { EASING_OPTIONS, type FxProps, HOVER_OPTIONS, REVEAL_OPTIONS, TEXT_FX_OPTIONS, DEFAULT_SPRING, springEasing } from '@/builder/effects'
 import { getSchema } from '@/builder/schema'
 import { refBlockId } from '@/builder/refs'
@@ -105,11 +106,12 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
       if (control.component === 'tabs') return <TabsManager node={node} />
       if (control.component === 'blockRef') return <BlockRefPanel node={node} />
       if (control.component === 'children') return <p className="ed-hint" style={{ margin: 0 }}>Nội dung bên trong là các phần tử con – kéo block vào hoặc chọn trong cây Cấu trúc.</p>
+      if (control.component === 'data') return <DataSourcePanel node={node} />
       return <PageSettings />
     case 'text':
     case 'url':
       return (
-        <Field label={control.label} help={control.help}>
+        <Field label={control.label} help={control.help} picker={<BindPicker node={node} onPick={(t) => update(control.type === 'url' ? t : appendTemplate(String(node.props[control.prop] ?? ''), t), false)} />}>
           <input
             className="ed-input"
             value={String(node.props[control.prop] ?? '')}
@@ -120,14 +122,14 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
       )
     case 'richtext':
       return (
-        <Field label={control.label} help={control.help ?? 'Đậm, nghiêng, gạch chân, liên kết. Enter để xuống dòng.'}>
+        <Field label={control.label} help={control.help ?? 'Đậm, nghiêng, gạch chân, liên kết. Enter để xuống dòng.'} picker={<BindPicker node={node} onPick={(t) => update(appendTemplate(String(node.props[control.prop] ?? ''), t), false)} />}>
           <RichTextField value={String(node.props[control.prop] ?? '')} onChange={(v) => update(v)} />
         </Field>
       )
     case 'textarea':
     case 'code':
       return (
-        <Field label={control.label} help={control.help}>
+        <Field label={control.label} help={control.help} picker={control.type === 'textarea' ? <BindPicker node={node} onPick={(t) => update(appendTemplate(String(node.props[control.prop] ?? ''), t), false)} /> : undefined}>
           <textarea
             className={`ed-input ed-textarea${control.type === 'code' ? ' ed-code' : ''}`}
             rows={control.type === 'code' ? 8 : 4}
@@ -158,8 +160,22 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
           {control.label}
         </label>
       )
-    case 'media':
-      return <MediaField label={control.label} value={(node.props[control.prop] as MediaValue | null) ?? null} onChange={(v) => update(v, false)} />
+    case 'media': {
+      const raw = node.props[control.prop]
+      if (typeof raw === 'string' && raw)
+        return (
+          <Field label={control.label} picker={<BindPicker node={node} onPick={(t) => update(t, false)} />}>
+            <div className="ed-row">
+              <code className="ed-code-chip">{raw}</code>
+              <button className="ed-btn" onClick={() => update(null, false)}>
+                Gỡ
+              </button>
+            </div>
+            <span className="ed-help">Ảnh lấy từ dữ liệu.</span>
+          </Field>
+        )
+      return <MediaField label={control.label} value={(raw as MediaValue | null) ?? null} onChange={(v) => update(v, false)} picker={<BindPicker node={node} onPick={(t) => update(t, false)} />} />
+    }
     case 'number':
       return (
         <Field label={control.label} help={control.help}>
@@ -339,21 +355,187 @@ function RichTextField({ value, onChange }: { value: string; onChange: (html: st
   )
 }
 
-function Field({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {
+function Field({ label, help, picker, children }: { label: string; help?: string; picker?: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="ed-field">
-      <span className="ed-label">{label}</span>
+      <span className="ed-label ed-label--row">
+        {label}
+        {picker}
+      </span>
       {children}
       {help && <span className="ed-help">{help}</span>}
     </label>
   )
 }
 
-function MediaField({ label, value, onChange }: { label: string; value: MediaValue | null; onChange: (v: MediaValue | null) => void }) {
+/** Nối {{trường}} vào chữ đang có, tự thêm dấu cách */
+function appendTemplate(current: string, template: string): string {
+  return current && !/\s$/.test(current) ? `${current} ${template}` : current + template
+}
+
+/** Nguồn dữ liệu gần nhất bao quanh node (chính nó hoặc tổ tiên) */
+function useDataContext(node: BuilderNode): { source: DataSource; info?: SourceInfo; ownerId: string } | null {
+  const root = useEditor((s) => s.root)
+  const sources = useEditor((s) => s.sources)
+  const chain = [...getAncestors(root, node.id), node].reverse()
+  for (const n of chain) {
+    const source = dataSourceOf(n)
+    if (source) return { source, info: sources.find((x) => x.slug === source.collection), ownerId: n.id }
+  }
+  return null
+}
+
+/** Nút ⚡ chèn {{trường}} từ nguồn dữ liệu bao quanh */
+function BindPicker({ node, onPick }: { node: BuilderNode; onPick: (template: string) => void }) {
+  const ctx = useDataContext(node)
+  const [open, setOpen] = useState(false)
+  if (!ctx) return null
+  const paths = ctx.info ? fieldPaths(ctx.info) : []
+  return (
+    <span className="ed-bind">
+      <button type="button" className="ed-bind-btn" title={`Lấy từ dữ liệu: ${ctx.info?.label ?? ctx.source.collection}`} onClick={(e) => (e.preventDefault(), setOpen((o) => !o))}>
+        <Zap size={12} />
+      </button>
+      {open && (
+        <span className="ed-popover ed-bind-pop" onMouseDown={(e) => e.preventDefault()}>
+          <span className="ed-label">Trường của {ctx.info?.label ?? ctx.source.collection}</span>
+          {paths.map((p) => (
+            <button key={p.path} type="button" className="ed-token" onClick={() => (onPick(`{{${p.path}}}`), setOpen(false))}>
+              {p.label} <code>{`{{${p.path}}}`}</code>
+            </button>
+          ))}
+          <button type="button" className="ed-token" onClick={() => (onPick('{{index}}'), setOpen(false))}>
+            Số thứ tự <code>{'{{index}}'}</code>
+          </button>
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** Panel "Nguồn dữ liệu" cho block chứa (control custom: 'data') */
+function DataSourcePanel({ node }: { node: BuilderNode }) {
+  const sources = useEditor((s) => s.sources)
+  const records = useEditor((s) => s.dataCache[node.id])
+  const source = dataSourceOf(node)
+  const s = useEditor.getState
+  const set = (patch: Partial<DataSource>) => s().updateProps(node.id, { data: normalizeDataSource({ ...(source ?? { collection: sources[0]?.slug ?? 'users', mode: 'list', limit: 8 }), ...patch }) })
+  const info = sources.find((x) => x.slug === source?.collection)
+  const fields = info ? fieldPaths(info) : []
+  const filters = source?.filters ?? []
+  const setFilters = (next: DataFilter[]) => set({ filters: next })
+  return (
+    <div className="ed-field ed-data">
+      <label className="ed-toggle">
+        <input type="checkbox" checked={!!source} onChange={(e) => (e.target.checked ? set({}) : s().updateProps(node.id, { data: undefined }))} />
+        <span className="ed-toggle-ui" />
+        <Database size={14} /> Lấy dữ liệu từ collection
+      </label>
+      {!sources.length && <span className="ed-help">Chưa có collection nào khai báo `custom.builder` (xem README).</span>}
+      {source && (
+        <div className="ed-fields" style={{ padding: 0 }}>
+          <Field label="Collection">
+            <select className="ed-input" value={source.collection} onChange={(e) => set({ collection: e.target.value, filters: [], sort: undefined, byField: undefined })}>
+              {sources.map((x) => (
+                <option key={x.slug} value={x.slug}>
+                  {x.label} ({x.slug})
+                </option>
+              ))}
+              {!info && <option value={source.collection}>{source.collection}</option>}
+            </select>
+          </Field>
+          <Field label="Chế độ">
+            <select className="ed-input" value={source.mode} onChange={(e) => set({ mode: e.target.value as DataSource['mode'] })}>
+              <option value="list">Danh sách bản ghi{node.type === 'dataList' ? ' (lặp phần tử mẫu)' : ' (dùng bản ghi đầu)'}</option>
+              <option value="one">Một bản ghi</option>
+            </select>
+          </Field>
+          {source.mode === 'one' ? (
+            <div className="ed-row">
+              <label className="ed-field" style={{ flex: 1 }}>
+                <span className="ed-help">Tìm theo trường</span>
+                <select className="ed-input" value={source.byField ?? 'id'} onChange={(e) => set({ byField: e.target.value })}>
+                  {(info?.fields ?? [{ name: 'id', label: 'ID', type: 'text' }]).map((f) => (
+                    <option key={f.name} value={f.name}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="ed-field" style={{ flex: 1 }}>
+                <span className="ed-help">Bằng giá trị</span>
+                <input className="ed-input" value={source.byValue ?? ''} onChange={(e) => set({ byValue: e.target.value })} />
+              </label>
+            </div>
+          ) : (
+            <div className="ed-row">
+              <label className="ed-field" style={{ flex: 1 }}>
+                <span className="ed-help">Số bản ghi</span>
+                <input className="ed-input" type="number" min={1} max={100} value={source.limit ?? 12} onChange={(e) => set({ limit: Number(e.target.value) })} />
+              </label>
+              <label className="ed-field" style={{ flex: 2 }}>
+                <span className="ed-help">Sắp xếp</span>
+                <select className="ed-input" value={source.sort ?? ''} onChange={(e) => set({ sort: e.target.value || undefined })}>
+                  <option value="">Mặc định</option>
+                  {(info?.fields ?? []).flatMap((f) => [
+                    <option key={f.name} value={f.name}>
+                      {f.label} ↑
+                    </option>,
+                    <option key={'-' + f.name} value={'-' + f.name}>
+                      {f.label} ↓
+                    </option>,
+                  ])}
+                  <option value="-createdAt">Mới nhất</option>
+                  <option value="createdAt">Cũ nhất</option>
+                </select>
+              </label>
+            </div>
+          )}
+          <div className="ed-field">
+            <span className="ed-label">Bộ lọc</span>
+            {filters.map((f, i) => (
+              <div key={i} className="ed-row">
+                <select className="ed-input" value={f.field} onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, field: e.target.value } : x)))}>
+                  {(info?.fields ?? []).map((x) => (
+                    <option key={x.name} value={x.name}>
+                      {x.label}
+                    </option>
+                  ))}
+                </select>
+                <select className="ed-input" value={f.op} onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, op: e.target.value as DataFilter['op'] } : x)))}>
+                  {FILTER_OPS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <input className="ed-input" value={f.value} placeholder="giá trị" onChange={(e) => setFilters(filters.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} />
+                <button className="ed-icon-btn" title="Bỏ lọc" onClick={() => setFilters(filters.filter((_, j) => j !== i))}>
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+            <button className="ed-btn" onClick={() => setFilters([...filters, { field: info?.fields[1]?.name ?? 'id', op: 'equals', value: '' }])}>
+              <Plus size={14} /> Thêm điều kiện
+            </button>
+          </div>
+          <span className="ed-help">
+            {records ? `Đã nạp ${records.length} bản ghi.` : 'Đang nạp…'} Trường dùng được: {fields.map((f) => `{{${f.path}}}`).join(', ') || '—'}. Bấm ⚡ cạnh ô nhập của phần tử con để chèn.
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MediaField({ label, value, onChange, picker }: { label: string; value: MediaValue | null; onChange: (v: MediaValue | null) => void; picker?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="ed-field">
-      <span className="ed-label">{label}</span>
+      <span className="ed-label ed-label--row">
+        {label}
+        {picker}
+      </span>
       <div className="ed-media-field">
         {value?.url ? (
           // eslint-disable-next-line @next/next/no-img-element

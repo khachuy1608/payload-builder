@@ -334,3 +334,14 @@ select.ed-input + .ed-reset { right: 22px; }
 .ed-list-card-head { display: flex; align-items: center; gap: 2px; }
 .ed-list-card-head .ed-help { flex: 1; font-weight: 600; }
 .ed-list-card-head .ed-icon-btn { width: 24px; height: 24px; }
+
+/* ---------- data binding ---------- */
+.ed-label--row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.ed-bind { position: relative; display: inline-flex; }
+.ed-bind-btn { width: 20px; height: 20px; border: 1px solid var(--ed-line-strong); border-radius: 4px; background: #fff; color: #b45309; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.ed-bind-btn:hover { background: #fef3c7; border-color: #f59e0b; }
+.ed-bind-pop { width: 260px; max-height: 300px; overflow-y: auto; }
+.ed-bind-pop .ed-token { justify-content: space-between; }
+.ed-bind-pop code, .ed-code-chip { font: 11px/1.4 ui-monospace, monospace; background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 3px; }
+.ed-code-chip { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 8px; }
+.ed-data .ed-row .ed-input { min-width: 0; }

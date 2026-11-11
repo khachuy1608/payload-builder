@@ -60,6 +60,7 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     contentControls: [
       { type: 'select', prop: 'columns', label: 'Số cột', options: ['2', '3', '4', '5'].map((v) => ({ value: v, label: v + ' cột' })) },
       { type: 'number', prop: 'gap', label: 'Khoảng cách (px)', min: 0, max: 80 },
+      { type: 'custom', component: 'data' },
       { type: 'custom', component: 'children' },
     ],
     styleGroups: CONTAINER_GROUPS,
@@ -118,11 +119,13 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     contentControls: [
       { type: 'media', prop: 'media', label: 'Ảnh (media)' },
       { type: 'select', prop: 'mediaPosition', label: 'Vị trí ảnh', options: [{ value: 'top', label: 'Trên' }, { value: 'left', label: 'Trái' }, { value: 'right', label: 'Phải' }] },
+      { type: 'custom', component: 'data' },
       { type: 'custom', component: 'children' },
     ],
     styleGroups: CONTAINER_GROUPS,
     Render: ({ node, attrs, children }) => {
-      const media = node.props.media as MediaValue | null
+      const raw = node.props.media
+      const media = raw && typeof raw === 'object' ? (raw as MediaValue) : null
       const pos = text(node.props.mediaPosition, 'top')
       return (
         <div {...attrs} className={`${attrs.className} b-card b-card--${media?.url ? pos : 'none'}`}>

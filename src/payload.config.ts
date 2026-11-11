@@ -10,6 +10,7 @@ import { Pages } from './collections/Pages'
 import { Themes } from './collections/Themes'
 import { SiteSettings } from './globals/SiteSettings'
 import { Users } from './collections/Users'
+import { getSources } from './lib/data'
 import { migrations } from './migrations'
 import { seed } from './seed'
 
@@ -23,6 +24,17 @@ export default buildConfig({
     meta: { titleSuffix: ' – Page Builder' },
   },
   collections: [Pages, MyBlocks, Themes, FormSubmissions, Media, Users],
+  endpoints: [
+    {
+      // Danh sách nguồn dữ liệu + trường công khai cho bộ chọn ⚡ của Visual Builder (cần đăng nhập)
+      path: '/builder/sources',
+      method: 'get',
+      handler: (req) => {
+        if (!req.user) return Response.json({ errors: [{ message: 'Unauthorized' }] }, { status: 401 })
+        return Response.json({ sources: getSources(req.payload) })
+      },
+    },
+  ],
   globals: [SiteSettings],
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },

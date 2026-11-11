@@ -18,5 +18,5 @@ export default async function Page({ params }: Args) {
   const { slug } = await params
   const page = await getPageBySlug(slug)
   if (!page) notFound()
-  return <PageRenderer content={page.content} blocks={(id) => page.blocks[id]} theme={page.theme} />
+  return <PageRenderer content={page.content} blocks={(id) => page.blocks[id]} theme={page.theme} data={page.data} />
 }

@@ -31,6 +31,8 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   blockRef: { isContainer: false, hidden: true },
 
   // ---- Bố cục ----
+  /** Danh sách dữ liệu: lặp các con cho từng bản ghi của nguồn dữ liệu */
+  dataList: { isContainer: true },
   masonry: { isContainer: true },
   bento: { isContainer: true },
   card: { isContainer: true },

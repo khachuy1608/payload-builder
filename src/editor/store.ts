@@ -10,6 +10,7 @@ import { immer } from 'zustand/middleware/immer'
 import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { canContain } from '@/builder/schema'
+import type { DataMap, SourceInfo } from '@/builder/data'
 import { defaultTheme, type ThemeTokens } from '@/builder/theme'
 import {
   cloneWithNewIds,
@@ -135,6 +136,11 @@ export interface EditorState {
   /** Khoá tài liệu (xem lock.ts): owned = mình giữ khoá, locked = người khác đang sửa */
   lock: LockState
 
+  /** Nguồn dữ liệu có thể bind (từ /api/builder/sources) */
+  sources: SourceInfo[]
+  /** Bản ghi đã nạp theo id node có nguồn (canvas dùng để hiện dữ liệu thật) */
+  dataCache: DataMap
+
   selectedId: string | null
   hoveredId: string | null
   editingId: string | null
@@ -204,6 +210,8 @@ export interface EditorActions {
   openThemeDialog(open: boolean): void
 
   setLock(lock: LockState): void
+  setSources(sources: SourceInfo[]): void
+  setData(nodeId: string, records: DataMap[string]): void
   openContextMenu(menu: EditorState['contextMenu']): void
   openHistory(open: boolean): void
   /** Đưa nội dung một phiên bản cũ vào editor như một bước chỉnh sửa (hoàn tác được) */
@@ -316,6 +324,8 @@ export const useEditor = create<Store>()(
       contextMenu: null,
       historyDialog: false,
       lock: { state: 'checking' },
+      sources: [],
+      dataCache: {},
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -505,6 +515,14 @@ export const useEditor = create<Store>()(
       setLock: (lock) =>
         set((s) => {
           s.lock = lock
+        }),
+      setSources: (sources) =>
+        set((s) => {
+          s.sources = sources
+        }),
+      setData: (nodeId, records) =>
+        set((s) => {
+          s.dataCache[nodeId] = records
         }),
       openContextMenu: (menu) =>
         set((s) => {

@@ -8,6 +8,7 @@
 import {
   AlignLeft,
   Columns3,
+  Database,
   FileText,
   Heading as HeadingIcon,
   Image as ImageIcon,
@@ -28,7 +29,7 @@ import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
 import { richHasBlock, sanitizeRichText, sanitizeSvg } from './sanitize'
 import { genId } from './tree'
-import type { BlockRefProps, MediaValue } from './types'
+import type { BlockRefProps, BuilderNode, MediaValue } from './types'
 
 // ---------- helpers ----------
 
@@ -67,12 +68,45 @@ const BLOCK_LIST: BlockDefinition[] = [
     ),
   },
   {
+    type: 'dataList',
+    label: 'Danh sách dữ liệu',
+    category: 'layout',
+    icon: Database,
+    defaults: () => ({
+      props: { data: { collection: 'users', mode: 'list', limit: 8, sort: 'name' } },
+      styles: { desktop: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' }, mobile: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } },
+      children: [
+        {
+          id: genId(),
+          type: 'card',
+          props: { media: '{{avatar}}', mediaPosition: 'top' },
+          styles: { desktop: { backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' } },
+          children: [
+            { id: genId(), type: 'heading', props: { text: '{{name}}', tag: 'h3' }, styles: { desktop: { fontSize: '18px', fontWeight: '700' } } },
+            { id: genId(), type: 'paragraph', props: { text: '{{title}}' }, styles: { desktop: { color: 'var(--color-muted)', fontSize: '14px' } } },
+          ],
+        },
+      ] as BuilderNode[],
+    }),
+    contentControls: [
+      { type: 'custom', component: 'data' },
+      { type: 'custom', component: 'children' },
+    ],
+    styleGroups: CONTAINER_GROUPS,
+    Render: ({ node, attrs, children, mode }) => (
+      <div {...attrs} className={attrs.className + ' b-data-list'}>
+        {children}
+        {mode === 'editor' && !node.children?.length && <span className="bld-ph">Kéo phần tử mẫu vào đây – nó sẽ lặp cho từng bản ghi</span>}
+      </div>
+    ),
+  },
+  {
     type: 'div',
     label: 'Div Block',
     category: 'layout',
     icon: Square,
     defaults: () => ({ props: {}, styles: { desktop: { padding: '16px' } }, children: [] }),
-    contentControls: [],
+    contentControls: [{ type: 'custom', component: 'data' }],
     styleGroups: CONTAINER_GROUPS,
     Render: ContainerRender,
   },
@@ -86,7 +120,7 @@ const BLOCK_LIST: BlockDefinition[] = [
       styles: { desktop: { display: 'flex', flexDirection: 'row', gap: '16px', padding: '16px' }, mobile: { flexDirection: 'column' } },
       children: [],
     }),
-    contentControls: [],
+    contentControls: [{ type: 'custom', component: 'data' }],
     styleGroups: CONTAINER_GROUPS,
     Render: ContainerRender,
   },
@@ -251,8 +285,8 @@ const BLOCK_LIST: BlockDefinition[] = [
     ],
     styleGroups: ['size', 'media', 'spacing', 'border', 'effects', 'child'],
     Render: ({ node, attrs, mode }) => {
-      const media = node.props.media as MediaValue | null
-      if (!media?.url) return mode === 'editor' ? <Placeholder attrs={attrs} label="Chọn ảnh ở panel bên phải" icon={ImageIcon} /> : null
+      const media = node.props.media && typeof node.props.media === 'object' ? (node.props.media as MediaValue) : null
+      if (!media?.url) return mode === 'editor' ? <Placeholder attrs={attrs} label={typeof node.props.media === 'string' ? `Ảnh từ dữ liệu: ${node.props.media}` : 'Chọn ảnh ở panel bên phải'} icon={ImageIcon} /> : null
       const img = (
         // eslint-disable-next-line @next/next/no-img-element
         <img

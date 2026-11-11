@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { revalidatePages } from '../lib/revalidate'
 
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -11,4 +12,12 @@ export const Media: CollectionConfig = {
     mimeTypes: ['image/*'],
   },
   fields: [{ name: 'alt', label: 'Mô tả ảnh (alt)', type: 'text' }],
+  hooks: {
+    afterChange: [
+      ({ doc }) => {
+        revalidatePages()
+        return doc
+      },
+    ],
+  },
 }

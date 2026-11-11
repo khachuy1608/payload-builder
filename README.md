@@ -1,4 +1,4 @@
-# Payload Page Builder (P0 → P5 + UI Kit)
+# Payload Page Builder (P0 → P5 + UI Kit + Data Binding)
 
 Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu Elementor** tự xây (không dùng thư viện page builder bên ngoài).
 
@@ -12,6 +12,7 @@ Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu E
   - Undo/redo, nhân bản, copy/paste, phím tắt, nhấp đúp để sửa chữ trực tiếp.
 - **P2** – Front-end render bằng **cùng một renderer** với canvas. Có responsive (Desktop/Tablet/Mobile), trạng thái Hover, ẩn theo thiết bị, lưu nháp, xem trước bản nháp và xuất bản.
 - **P3** – **My Blocks**: lưu một phần tử/vùng đã dựng thành block riêng (collection `my-blocks`), chèn lại vào trang dạng **bản sao** hoặc **liên kết** (sửa bản gốc thì mọi trang cập nhật, có nút *Tách*), sửa bản gốc bằng chính Visual Builder tại `/builder/block/:id`, chặn vòng lặp tham chiếu.
+- **Data Binding** – block chứa khai báo **nguồn dữ liệu** (collection, danh sách/một bản ghi, lọc, sắp xếp, giới hạn); ô nhập nào cũng có nút ⚡ chèn `{{truong}}`; block **Danh sách dữ liệu** lặp phần tử mẫu cho từng bản ghi. Collection nào cũng dùng được chỉ bằng một khai báo `custom.builder` (whitelist trường công khai). Canvas hiện dữ liệu thật, trang công khai render phía server và tự làm mới cache khi dữ liệu đổi.
 - **UI Kit (theo namethatui.com)** – 36 block UI mới (header/navbar có hamburger, carousel, accordion, card, bento, masonry, marquee, breadcrumbs, pagination, steps, toggle group, bottom navigation, floating button, scrollspy, waffle menu, submenu/cascader/drill-down, overflow menu, command palette, product tour, data table, pie/donut chart, timeline, avatar group, status dot, chat bubble, badge/chip/pill/tag, progress/spinner, skeleton, empty state, alert/callout/banner, toast, modal/drawer/sheet, popover/dropdown/tooltip/hover card, lightbox, form + form field, sign-in form) và hệ **hiệu ứng** chọn được cho mọi phần tử (scroll reveal, spring/easing, hover highlight/lift/spotlight, text scramble/typewriter/rotating words/shimmer, parallax, stacking cards, hide-on-scroll header, sticky/fixed, truncation, scrim, focus ring).
 - **P5** – **Hoàn thiện**: rich text cho Paragraph (đậm/nghiêng/gạch chân/link, thanh công cụ nổi khi sửa trực tiếp), menu chuột phải trên canvas và cây Cấu trúc, kéo thả trực tiếp phần tử trên canvas không cần tay cầm, lịch sử phiên bản trong editor (xem trước, khôi phục, hoàn tác được), cache trang công khai + làm mới tự động khi xuất bản/sửa block/theme.
 - **P4** – **Themes**: collection `themes` (màu, font, bo góc, kiểu nút, link Google Fonts) với 4 preset chỉ đọc, nhân bản thành My Theme để chỉnh; global `site-settings` chọn theme của site, trang có thể ghi đè; hộp thoại *Quản lý theme* trong editor xem thử ngay trên canvas; bộ chọn màu lấy token theo theme đang dùng.
@@ -85,6 +86,32 @@ Chạy production không dùng Docker: `npm run build && npm start`. Migration t
 - **Khoá khi nhiều người cùng sửa:** dùng collection `payload-locked-documents` sẵn có của Payload (admin cũng dùng, nên admin và builder thấy khoá của nhau). Mở editor là giữ khoá, gia hạn mỗi 60s, thả khi rời trang (`pagehide` + `keepalive`); Payload coi khoá quá 300s là hết hạn. Người thứ hai thấy băng rôn "đang được X sửa", nút lưu bị vô hiệu, có *Kiểm tra lại* và *Chiếm quyền sửa*. Lưu gửi `overrideLock=false` nên server trả 423 nếu khoá thuộc người khác; vì Payload xoá khoá sau mỗi update, editor tự lấy lại khoá sau khi lưu.
 - **Cache:** trang công khai đọc từ `unstable_cache` theo tag `pages`; hook `afterChange`/`afterDelete` của Pages, My Blocks, Themes và Site Settings gọi `revalidateTag` (hết hạn ngay) kèm `revalidatePath` của trang. Draft mode luôn đọc bản nháp mới nhất, không cache.
 
+## Data Binding – trang lấy dữ liệu từ CMS
+
+Repo này là nền để dựng bất kỳ web nào, nên hệ dữ liệu không gắn với collection cụ thể.
+
+**1. Đăng ký nguồn dữ liệu** – trong `CollectionConfig` của collection muốn dùng (ví dụ `src/collections/Users.ts`):
+
+```ts
+custom: { builder: { label: 'Người dùng', expose: ['name', 'title', 'bio', 'avatar'] } },
+hooks: { afterChange: [({ doc }) => (revalidatePages(), doc)], afterDelete: [({ doc }) => (revalidatePages(), doc)] },
+```
+
+- `expose` là **whitelist** các trường được đưa ra trang công khai; server chỉ trả đúng các trường này (email, mật khẩu… không bao giờ lộ) dù trang đọc bằng `overrideAccess`.
+- Hook `revalidatePages()` làm mới cache trang khi dữ liệu đổi. Muốn thêm collection mới (bài viết, sản phẩm…) cho web khác: tạo collection như thường lệ của Payload + 2 dòng trên.
+- `GET /api/builder/sources` (cần đăng nhập) trả danh sách nguồn và trường để editor dựng bộ chọn.
+
+**2. Trong editor**
+
+- Block chứa (Div, Flexbox, Card, Masonry, Bento, Danh sách dữ liệu) có mục **Lấy dữ liệu từ collection** ở tab Nội dung: chọn collection, chế độ *Danh sách* hay *Một bản ghi* (tìm theo trường = giá trị), số bản ghi, sắp xếp, bộ lọc (bằng / khác / chứa / lớn hơn / nhỏ hơn / có giá trị / thuộc). Panel báo số bản ghi đã nạp và các trường dùng được.
+- Mọi ô nhập chữ, link, ảnh của phần tử con có nút **⚡** liệt kê trường của nguồn bao quanh và chèn `{{name}}`, `{{avatar.url}}`, `{{nhom.truong}}`, `{{index}}`, `{{count}}`. Ô ảnh nhận `{{avatar}}` (object upload tự thành ảnh).
+- **Danh sách dữ liệu** lặp toàn bộ phần tử con cho từng bản ghi; chỉ bản đầu (mẫu) chọn/sửa được, các bản sao chỉ xem. Block chứa khác có nguồn thì gắn bản ghi đầu tiên vào cây con.
+- Nguồn dữ liệu nằm trong My Block liên kết vẫn hoạt động (nạp trên cây đã triển khai).
+
+**3. Cách chạy** – `src/builder/data.ts` (thuần dữ liệu: chuẩn hoá nguồn, `buildWhere`, `bindString`, `resolveData`), `src/lib/data.ts` (server: `getSources`, `loadDataForTree`). Thứ tự render: `resolveRefs` → nạp dữ liệu → `resolveData` → biên dịch CSS. Editor nạp qua REST của chính collection (quyền của người đăng nhập) và cũng chỉ giữ trường expose.
+
+**Gợi ý bước sau:** trang mẫu động theo slug (`/bai-viet/[slug]` bind "bản ghi hiện tại"), phân trang/lọc thật trên trang, điều kiện hiển thị, dữ liệu theo người đang đăng nhập.
+
 ## UI Kit & hiệu ứng (theo namethatui.com)
 
 Toàn bộ 58 mục nền web của [namethatui.com](https://namethatui.com/?platform=web) được đưa vào builder: mục là **thành phần UI** thành block ở panel *Phần tử* (nhóm Bố cục, Điều hướng, Dữ liệu & hiển thị, Phản hồi & trạng thái, Lớp phủ, Form); mục là **hiệu ứng** thành lựa chọn trong tab *Kiểu* (nhóm *Chuyển động*, *Vị trí*, *Chữ → Giới hạn dòng*, *Nền → Lớp phủ*, *Hiệu ứng → Easing / Viền khi focus*). Drag & Drop là tương tác của chính editor; Tabs và Divider đã có từ trước (Divider thêm biến thể Rule / Separator / có chữ / dọc).
@@ -147,7 +174,8 @@ src/
 ├── collections/             # Pages, MyBlocks, Themes, FormSubmissions, Media, Users
 ├── globals/SiteSettings.ts  # theme đang dùng của site
 ├── lib/pages.ts             # server: lấy trang (cache theo tag `pages`, draft mode đọc tươi)
-├── lib/revalidate.ts        # làm mới cache sau khi xuất bản / sửa block / theme
+├── lib/revalidate.ts        # làm mới cache sau khi xuất bản / sửa block / theme / dữ liệu nguồn
+├── lib/data.ts              # server: danh sách nguồn (custom.builder) + nạp bản ghi cho cây
 ├── lib/blocks.ts            # server: nạp cây block được trang tham chiếu (kể cả lồng nhau)
 ├── lib/themes.ts            # server: theme hiệu lực của trang (ghi đè → site → mặc định)
 ├── app/

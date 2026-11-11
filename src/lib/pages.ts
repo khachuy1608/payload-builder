@@ -3,10 +3,13 @@ import { draftMode } from 'next/headers'
 import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import { cache } from 'react'
+import type { DataMap } from '../builder/data'
+import { resolveRefs } from '../builder/refs'
 import type { ThemeTokens } from '../builder/theme'
 import type { BuilderNode, PageContent } from '../builder/types'
 import { normalizeContent } from '../builder/validate'
 import { loadBlocksForContent } from './blocks'
+import { loadDataForTree } from './data'
 import { PAGES_TAG } from './revalidate'
 import { loadThemeForPage } from './themes'
 
@@ -17,6 +20,8 @@ export interface LoadedPage {
   /** Cây gốc của các My Block liên kết mà trang dùng (object thuần để cache được) */
   blocks: Record<string, BuilderNode>
   theme: ThemeTokens
+  /** Bản ghi đã nạp cho các node có nguồn dữ liệu (kể cả trong My Block liên kết) */
+  data: DataMap
   draft: boolean
 }
 
@@ -37,7 +42,9 @@ async function fetchPage(slug: string, draft: boolean): Promise<LoadedPage | nul
   if (!doc) return null
   const content = normalizeContent(doc.content)
   const [blocks, theme] = await Promise.all([loadBlocksForContent(payload, content), loadThemeForPage(payload, doc.theme)])
-  return { title: doc.title, slug: doc.slug, content, blocks: Object.fromEntries(blocks), theme: theme.tokens, draft }
+  // nguồn dữ liệu có thể nằm trong My Block liên kết -> thu thập trên cây đã triển khai
+  const data = await loadDataForTree(payload, resolveRefs(content.root, (id) => blocks.get(id)))
+  return { title: doc.title, slug: doc.slug, content, blocks: Object.fromEntries(blocks), theme: theme.tokens, data, draft }
 }
 
 /**
