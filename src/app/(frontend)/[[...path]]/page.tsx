@@ -12,7 +12,9 @@ import { PageView } from '../PageView'
  * - /            trang chủ (slug home)      - /en          trang chủ tiếng Anh
  * - /gioi-thieu  trang thường               - /en/gioi-thieu
  * - /bai-viet/<slug bài>  trang mẫu động    - /en/bai-viet/<slug bài>
- * Render động để kiểm tra draft mode mỗi request và không chạm DB lúc build; dữ liệu trang lấy từ cache theo tag (lib/pages.ts).
+ * Render động mỗi request: trang phụ thuộc query (?page/?q/?take) và cookie người dùng nên không ISR được
+ * (Next báo DYNAMIC_SERVER_USAGE khi route ISR đọc searchParams). Toàn bộ dữ liệu trang lấy từ cache theo tag `pages`
+ * (lib/pages.ts) nên chi phí mỗi request chỉ là render React. Bản nháp xem ở /preview (route riêng). Build không chạm DB.
  */
 export const dynamic = 'force-dynamic'
 

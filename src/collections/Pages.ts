@@ -21,7 +21,7 @@ export const Pages: CollectionConfig = {
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', '_status', 'updatedAt'],
-    preview: (doc) => `${process.env.NEXT_PUBLIC_SERVER_URL || ''}/preview?slug=${encodeURIComponent(String(doc?.slug ?? ''))}`,
+    preview: (doc) => `${process.env.NEXT_PUBLIC_SERVER_URL || ''}/preview/enter?slug=${encodeURIComponent(String(doc?.slug ?? ''))}`,
   },
   access: {
     read: readPublishedOrLoggedIn,

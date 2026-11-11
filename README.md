@@ -158,6 +158,20 @@ npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redir
 npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
 ```
 
+## Hiệu năng & kỹ thuật (đợt 5)
+
+- **Render & cache:** trang công khai render động mỗi request nhưng toàn bộ dữ liệu (nội dung, block, theme, bản ghi) lấy từ cache theo tag `pages` → chi phí chỉ là render React (vài chục ms). Không dùng ISR vì trang phụ thuộc query (`?page`, `?q`, `?take`) và cookie người dùng (Next báo `DYNAMIC_SERVER_USAGE` khi route ISR đọc `searchParams`). Build không chạm DB.
+- **Xem thử tách riêng:** `/preview/enter?slug=…&locale=…` (bật draft mode, chỉ nhân sự CMS) → `/preview/<đường dẫn>` render động bản nháp mới nhất, có thanh “Đang xem bản nháp”; `/preview/exit` tắt. Trang công khai không còn kiểm tra draft mode.
+- **CSS nền ra file:** `/builder.css?v=<hash>` (block, hiệu ứng) cache 1 năm, đổi nội dung là đổi hash; HTML trang chỉ còn CSS theme + CSS riêng của trang.
+- **CI** (`.github/workflows/ci.yml`): Postgres service → unit test → typecheck → migration trên DB sạch → build → chạy server production → `npm run e2e` (smoke + a11y). Chạy tại chỗ: `BASE=http://localhost:3000 npm run e2e` (đặt `PW_CHROMIUM=/đường/dẫn/chrome` nếu không muốn `npx playwright install chromium`).
+- **E2E smoke** (`e2e/smoke.mjs`): health, trang chủ, `/builder.css`, đăng nhập (tự tạo admin trên DB trống), API nguồn dữ liệu, tạo + xuất bản trang qua API, danh sách dữ liệu, `/en`, bản nháp không lộ, xem thử, sitemap/robots/404, mở editor và xuất bản, **a11y bằng axe-core** (WCAG 2 A/AA, fail khi có vi phạm serious/critical). Màu `muted` của các theme preset đã chỉnh để đạt tương phản AA.
+- **Production với HTTPS:** `docker-compose.prod.yml` (Postgres + app standalone + Caddy tự cấp chứng chỉ Let's Encrypt, header bảo mật, cache file tĩnh) và `Caddyfile`:
+
+```bash
+cp .env.example .env   # đặt DOMAIN, PAYLOAD_SECRET, POSTGRES_PASSWORD, SMTP_*
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
 ## Đa ngôn ngữ & nhiều site (đợt 4)
 
 - **Ngôn ngữ:** khai báo một chỗ trong `src/lib/locale.ts` (`vi` mặc định, `en`); Payload localization bật với fallback về mặc định. Trường localized: tiêu đề/nội dung/SEO của trang, cây My Block (header/footer dịch được), tên/mô tả site, các trường văn bản của collection nội dung.
@@ -323,6 +337,7 @@ Không cần viết UI cho panel: editor tự sinh control từ `contentControls
 ```bash
 npm test          # unit test lõi: cây, CSS, validate, sanitize, My Blocks, theme/token, data binding, presets, SEO, diff, access, rich text, tải thêm
 npm run typecheck
+npm run e2e      # smoke + a11y, cần server đang chạy ở BASE (mặc định http://localhost:3000)
 ```
 
 ## Giới hạn hiện tại và việc tiếp theo

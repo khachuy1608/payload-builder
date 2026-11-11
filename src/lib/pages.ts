@@ -1,5 +1,4 @@
 import config from '@payload-config'
-import { draftMode } from 'next/headers'
 import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import { cache } from 'react'
@@ -117,10 +116,9 @@ const getPublishedPage = unstable_cache((slug: string, param: string | undefined
 /**
  * Lấy trang theo slug cho front-end.
  * - Bình thường: trang đã xuất bản, từ cache.
- * - Draft mode (bật qua /preview khi đã đăng nhập): luôn đọc bản nháp mới nhất, không cache.
+ * - draft = true (route /preview, đã bật draft mode): luôn đọc bản nháp mới nhất, không cache.
  */
-export const getPageBySlug = cache(async (slug: string, param?: string, params: UrlParams = {}, locale: string = DEFAULT_LOCALE): Promise<LoadedPage | null> => {
-  const { isEnabled: draft } = await draftMode()
+export const getPageBySlug = cache(async (slug: string, param?: string, params: UrlParams = {}, locale: string = DEFAULT_LOCALE, draft = false): Promise<LoadedPage | null> => {
   const loc = isLocale(locale) ? locale : DEFAULT_LOCALE
   // tham số URL là một phần của khoá cache (sắp xếp khoá để ổn định)
   const key = JSON.stringify(Object.fromEntries(Object.entries(params).sort(([a], [b]) => a.localeCompare(b))))

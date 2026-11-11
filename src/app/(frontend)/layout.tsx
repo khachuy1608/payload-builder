@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
-import { draftMode } from 'next/headers'
 import type { ReactNode } from 'react'
-import { BASE_CSS } from '@/builder/theme'
+import { BASE_CSS_HASH } from '@/builder/theme'
 import { getSiteSettings } from '@/lib/pages'
 import { siteInfoFrom } from '@/lib/seo'
 
@@ -11,40 +10,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: { default: site.siteName, template: `%s – ${site.siteName}` } }
 }
 
-export default async function FrontendLayout({ children }: { children: ReactNode }) {
-  const { isEnabled: draft } = await draftMode()
+export default function FrontendLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="vi">
       <head>
-        {/* token màu/font của theme do PageRenderer phát theo từng trang */}
-        <style dangerouslySetInnerHTML={{ __html: BASE_CSS }} />
+        {/* CSS nền cho block/hiệu ứng là file ngoài (cache lâu); token màu/font của theme do PageRenderer phát theo từng trang */}
+        <link rel="stylesheet" href={`/builder.css?v=${BASE_CSS_HASH}`} />
       </head>
       <body>
-        {draft && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 16,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 9999,
-              background: '#111827',
-              color: '#fff',
-              padding: '8px 16px',
-              borderRadius: 999,
-              fontSize: 13,
-              display: 'flex',
-              gap: 12,
-              alignItems: 'center',
-              boxShadow: '0 8px 24px rgba(0,0,0,.25)',
-            }}
-          >
-            Đang xem bản nháp
-            <a href="/preview/exit" style={{ color: '#a5b4fc' }}>
-              Thoát
-            </a>
-          </div>
-        )}
         {children}
       </body>
     </html>

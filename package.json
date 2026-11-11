@@ -14,7 +14,8 @@
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "test": "tsx --test tests/*.test.ts",
     "export": "cross-env NODE_OPTIONS=--no-deprecation tsx --env-file-if-exists=.env scripts/export.ts",
-    "import": "cross-env NODE_OPTIONS=--no-deprecation tsx --env-file-if-exists=.env scripts/import.ts"
+    "import": "cross-env NODE_OPTIONS=--no-deprecation tsx --env-file-if-exists=.env scripts/import.ts",
+    "e2e": "node e2e/smoke.mjs"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.93.0",
@@ -39,6 +40,8 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/sanitize-html": "^2.13.0",
+    "axe-core": "^4.10.3",
+    "playwright": "^1.57.0",
     "tsx": "^4.23.15",
     "typescript": "^5.7.2"
   },

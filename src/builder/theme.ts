@@ -64,7 +64,7 @@ export const defaultTheme: ThemeTokens = {
     secondary: '#0f172a',
     accent: '#f59e0b',
     text: '#1f2937',
-    muted: '#6b7280',
+    muted: '#5b6472',
     background: '#ffffff',
     surface: '#f3f4f6',
     border: '#e5e7eb',
@@ -309,7 +309,15 @@ img,svg,video,iframe{display:block;max-width:100%}
 .b-lang{font-size:14px}.b-lang-item{display:inline-flex;align-items:center;gap:6px}.b-lang-sep{color:var(--color-border)}.b-lang-link{color:var(--color-muted);text-decoration:none}.b-lang-link.is-active{color:var(--color-primary);font-weight:600}.b-lang-select{padding:6px 10px;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-background);font:inherit}
 .b-load-more .b-button{background:var(--color-primary);color:#fff;padding:12px 24px}
 .b-load-more-done{color:var(--color-muted);font-size:14px}
+.bld-draft-bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#111827;color:#fff;padding:8px 16px;border-radius:999px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25)}.bld-draft-bar a{color:#a5b4fc}
 ` + FX_CSS + BLOCKS_CSS
+
+/** Băm nội dung CSS nền để đặt ?v= cho /builder.css (đổi CSS là đổi URL -> không dính cache cũ) */
+export const BASE_CSS_HASH = (() => {
+  let h = 5381
+  for (let i = 0; i < BASE_CSS.length; i++) h = ((h << 5) + h + BASE_CSS.charCodeAt(i)) >>> 0
+  return h.toString(36)
+})()
 
 /** Các theme preset (chỉ đọc) được seed vào collection `themes` – nhóm thiếu lấy từ mặc định */
 const PRESET_SOURCE: { name: string; tokens: Partial<ThemeTokens> }[] = [
@@ -317,7 +325,7 @@ const PRESET_SOURCE: { name: string; tokens: Partial<ThemeTokens> }[] = [
   {
     name: 'Ocean',
     tokens: {
-      colors: { primary: '#0e7490', secondary: '#082f49', accent: '#f97316', text: '#1e293b', muted: '#64748b', background: '#f8fafc', surface: '#e0f2fe', border: '#cbd5e1' },
+      colors: { primary: '#0e7490', secondary: '#082f49', accent: '#f97316', text: '#1e293b', muted: '#526275', background: '#f8fafc', surface: '#e0f2fe', border: '#cbd5e1' },
       fonts: { heading: "'Be Vietnam Pro', " + SYSTEM_SANS, body: "'Be Vietnam Pro', " + SYSTEM_SANS, mono: SYSTEM_MONO },
       radius: { sm: '6px', md: '12px', lg: '24px' },
       button: { radius: '999px', weight: '600', transform: 'none' },
@@ -327,7 +335,7 @@ const PRESET_SOURCE: { name: string; tokens: Partial<ThemeTokens> }[] = [
   {
     name: 'Sunset',
     tokens: {
-      colors: { primary: '#e11d48', secondary: '#431407', accent: '#f59e0b', text: '#292524', muted: '#78716c', background: '#fffbf5', surface: '#ffedd5', border: '#fed7aa' },
+      colors: { primary: '#e11d48', secondary: '#431407', accent: '#f59e0b', text: '#292524', muted: '#6b625b', background: '#fffbf5', surface: '#ffedd5', border: '#fed7aa' },
       fonts: { heading: "'Playfair Display', " + SYSTEM_SERIF, body: "'Lora', " + SYSTEM_SERIF, mono: SYSTEM_MONO },
       radius: { sm: '2px', md: '6px', lg: '12px' },
       button: { radius: '6px', weight: '700', transform: 'uppercase' },
@@ -337,7 +345,7 @@ const PRESET_SOURCE: { name: string; tokens: Partial<ThemeTokens> }[] = [
   {
     name: 'Mono',
     tokens: {
-      colors: { primary: '#111111', secondary: '#111111', accent: '#facc15', text: '#171717', muted: '#737373', background: '#ffffff', surface: '#f5f5f5', border: '#d4d4d4' },
+      colors: { primary: '#111111', secondary: '#111111', accent: '#facc15', text: '#171717', muted: '#616161', background: '#ffffff', surface: '#f5f5f5', border: '#d4d4d4' },
       fonts: { heading: "'Inter', " + SYSTEM_SANS, body: "'Inter', " + SYSTEM_SANS, mono: SYSTEM_MONO },
       radius: { sm: '0px', md: '0px', lg: '0px' },
       button: { radius: '0px', weight: '600', transform: 'uppercase' },

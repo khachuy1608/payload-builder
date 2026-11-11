@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: builder
+          POSTGRES_PASSWORD: builder
+          POSTGRES_DB: builder
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U builder -d builder"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URI: postgres://builder:builder@127.0.0.1:5432/builder
+      PAYLOAD_SECRET: ci-secret-not-for-production
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Unit test
+        run: npm test
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Migration trên DB sạch
+        run: npm run payload -- migrate
+      - name: Build (không cần DB)
+        run: npm run build
+      - name: Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Khởi động server production
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          (cd .next/standalone && HOSTNAME=127.0.0.1 PORT=3000 nohup node server.js > ../../server.log 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://localhost:3000/api/health && break; sleep 2; done
+      - name: E2E smoke + a11y
+        run: npm run e2e
+      - name: Log server khi lỗi
+        if: failure()
+        run: tail -n 200 server.log || true

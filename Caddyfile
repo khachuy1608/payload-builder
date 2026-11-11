@@ -1,0 +1,14 @@
+# Reverse proxy + HTTPS tự động cho app (docker-compose.prod.yml). DOMAIN lấy từ biến môi trường.
+{$DOMAIN} {
+	encode zstd gzip
+	# file tĩnh của Next và media cache lâu
+	@static path /_next/static/* /builder.css /media/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	reverse_proxy app:3000
+}

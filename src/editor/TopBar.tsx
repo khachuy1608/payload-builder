@@ -74,7 +74,7 @@ export function TopBar() {
         return
       }
     }
-    const url = `/preview?slug=${encodeURIComponent(useEditor.getState().slug)}&locale=${encodeURIComponent(useEditor.getState().locale)}`
+    const url = `/preview/enter?slug=${encodeURIComponent(useEditor.getState().slug)}&locale=${encodeURIComponent(useEditor.getState().locale)}`
     if (win) win.location.href = url
     else window.open(url, '_blank')
   }
