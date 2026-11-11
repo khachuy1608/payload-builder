@@ -4,8 +4,8 @@ import type { BuilderNode, PageContent } from '@/builder/types'
 import type { MediaValue } from '@/builder/types'
 import { normalizeTheme, type ThemeTokens } from '@/builder/theme'
 import { genId } from '@/builder/tree'
-import { validateBlockTree } from '@/builder/validate'
-import { type BlockScope, type MyBlock, type ThemeDoc, useEditor } from './store'
+import { normalizeContent, validateBlockTree } from '@/builder/validate'
+import { type BlockScope, type MyBlock, type SaveStatus, type ThemeDoc, useEditor } from './store'
 
 /** id quan hệ gửi lên Payload: số nếu là số (Postgres serial) */
 const relValue = (id: string | null) => (id == null ? null : /^\d+$/.test(id) ? Number(id) : id)
@@ -286,4 +286,30 @@ export async function refreshThemes(): Promise<void> {
     useEditor.getState().setThemesStatus('error')
     useEditor.getState().toast('error', `Không tải được theme: ${(err as Error).message}`)
   }
+}
+
+// ======================= Lịch sử phiên bản =======================
+
+export interface PageVersion {
+  id: string
+  title: string
+  slug: string
+  status: SaveStatus
+  content: PageContent
+  updatedAt: string
+}
+
+export async function listVersions(pageId: string): Promise<PageVersion[]> {
+  const q = new URLSearchParams({ 'where[parent][equals]': pageId, sort: '-updatedAt', limit: '40', depth: '0' })
+  const res = await fetch(`/api/pages/versions?${q}`, { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  const { docs } = (await res.json()) as { docs: { id: string | number; updatedAt: string; version: { title?: string; slug?: string; _status?: string; content?: unknown } }[] }
+  return docs.map((d) => ({
+    id: String(d.id),
+    title: d.version.title ?? '',
+    slug: d.version.slug ?? '',
+    status: d.version._status === 'published' ? 'published' : 'draft',
+    content: normalizeContent(d.version.content),
+    updatedAt: d.updatedAt,
+  }))
 }

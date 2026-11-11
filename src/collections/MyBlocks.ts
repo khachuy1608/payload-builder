@@ -3,6 +3,7 @@ import { APIError } from 'payload'
 import { collectRefIds, reachesBlock } from '../builder/refs'
 import { ContentValidationError, validateBlockTree } from '../builder/validate'
 import { loadBlockTrees } from '../lib/blocks'
+import { revalidatePages } from '../lib/revalidate'
 
 const loggedIn: Access = ({ req: { user } }) => Boolean(user)
 
@@ -73,6 +74,18 @@ export const MyBlocks: CollectionConfig = {
     },
   ],
   hooks: {
+    afterChange: [
+      ({ doc }) => {
+        revalidatePages()
+        return doc
+      },
+    ],
+    afterDelete: [
+      ({ doc }) => {
+        revalidatePages()
+        return doc
+      },
+    ],
     beforeChange: [
       async ({ data, req, operation, originalDoc }) => {
         if (!data) return data

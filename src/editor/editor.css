@@ -293,3 +293,29 @@ select.ed-input + .ed-reset { right: 22px; }
 .ed-theme-color > span { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .ed-theme-color b { font-size: 11px; color: var(--ed-ink-2); font-weight: 500; }
 .ed-theme-color .ed-input { height: 26px; font-size: 12px; }
+
+/* ---------- P5: rich text, context menu, lịch sử ---------- */
+.ed-rich-bar { display: inline-flex; align-items: center; gap: 1px; }
+.ed-toolbar--rich { gap: 4px; }
+.ed-toolbar--rich .ed-toolbar-label { font-weight: 400; opacity: .85; }
+.ed-rich { display: flex; flex-direction: column; gap: 4px; }
+.ed-rich .ed-rich-bar { background: #eef0f3; border-radius: 5px; padding: 2px; }
+.ed-rich .ed-rich-bar .ed-tool { color: var(--ed-ink-2); }
+.ed-rich .ed-rich-bar .ed-tool:hover { background: #fff; color: var(--ed-accent); }
+.ed-rich-area { height: auto; min-height: 90px; padding: 6px 8px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ed-rich-area a { color: var(--ed-accent); }
+
+.ed-ctx {
+  position: fixed; z-index: 150; min-width: 220px; padding: 4px; background: #fff; border: 1px solid var(--ed-line);
+  border-radius: 8px; box-shadow: 0 10px 30px rgba(15, 23, 42, .18); display: flex; flex-direction: column;
+}
+.ed-ctx-title { font-size: 11px; color: var(--ed-ink-3); padding: 4px 10px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-ctx-sep { height: 1px; background: var(--ed-line); margin: 4px 0; }
+.ed-ctx-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; border: 0; background: none; border-radius: 5px; cursor: pointer; text-align: left; color: var(--ed-ink); }
+.ed-ctx-item:hover:not(:disabled) { background: var(--ed-accent-soft); color: var(--ed-accent-ink); }
+.ed-ctx-item:disabled { opacity: .45; cursor: default; }
+.ed-ctx-item.is-danger:hover:not(:disabled) { background: #fee2e2; color: #991b1b; }
+.ed-ctx-item span { flex: 1; }
+.ed-ctx-item kbd { font: 11px/1 var(--ed-font); color: var(--ed-ink-3); }
+
+.ed-version-row .ed-theme-name { justify-content: space-between; }

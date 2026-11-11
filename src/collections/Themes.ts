@@ -1,5 +1,6 @@
 import type { Access, CollectionConfig } from 'payload'
 import { BUTTON_TOKEN_LABELS, COLOR_TOKEN_LABELS, FONT_TOKEN_LABELS, RADIUS_TOKEN_LABELS, defaultTheme } from '../builder/theme'
+import { revalidatePages } from '../lib/revalidate'
 
 const loggedIn: Access = ({ req: { user } }) => Boolean(user)
 /** Preset chỉ đọc: người dùng nhân bản thành My Theme để chỉnh */
@@ -81,6 +82,18 @@ export const Themes: CollectionConfig = {
     },
   ],
   hooks: {
+    afterChange: [
+      ({ doc }) => {
+        revalidatePages()
+        return doc
+      },
+    ],
+    afterDelete: [
+      ({ doc }) => {
+        revalidatePages()
+        return doc
+      },
+    ],
     beforeChange: [
       ({ data, req, operation }) => {
         if (!data) return data

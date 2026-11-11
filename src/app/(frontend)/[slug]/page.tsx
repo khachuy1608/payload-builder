@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { PageRenderer } from '@/builder/Renderer'
 import { getPageBySlug } from '@/lib/pages'
 
-// Luôn đọc dữ liệu mới nhất sau khi xuất bản (xem README: bật cache + revalidate khi cần)
+// Render động để kiểm tra draft mode mỗi request và không chạm DB lúc build; dữ liệu trang lấy từ cache theo tag (lib/pages.ts)
 export const dynamic = 'force-dynamic'
 
 type Args = { params: Promise<{ slug: string }> }
@@ -18,5 +18,5 @@ export default async function Page({ params }: Args) {
   const { slug } = await params
   const page = await getPageBySlug(slug)
   if (!page) notFound()
-  return <PageRenderer content={page.content} blocks={page.blocks} theme={page.theme} />
+  return <PageRenderer content={page.content} blocks={(id) => page.blocks[id]} theme={page.theme} />
 }

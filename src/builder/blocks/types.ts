@@ -33,7 +33,7 @@ export interface BlockDefinition {
   contentControls: ContentControl[]
   /** id các nhóm trong STYLE_GROUPS */
   styleGroups: string[]
-  /** Cho phép double-click để sửa chữ trực tiếp trên canvas */
-  inlineEdit?: { prop: string; multiline?: boolean }
+  /** Cho phép double-click để sửa chữ trực tiếp trên canvas. rich = HTML inline (đậm/nghiêng/link) */
+  inlineEdit?: { prop: string; multiline?: boolean; rich?: boolean }
   Render: ComponentType<RenderProps>
 }

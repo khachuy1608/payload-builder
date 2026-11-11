@@ -6,9 +6,11 @@
  */
 import { ArrowUp, BookmarkPlus, Copy, GripVertical, Trash2, Unlink } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { getBlock } from '@/builder/registry'
 import { canSaveAsBlock } from '@/builder/schema'
 import { findNode, findParent } from '@/builder/tree'
 import { nodeLabel } from './labels'
+import { RichToolbar } from './RichToolbar'
 import { type Rect, useEditor } from './store'
 
 interface Boxes {
@@ -64,6 +66,12 @@ export function Overlay({ doc }: { doc: Document }) {
           className={`ed-box ed-box--selected${editingId ? ' is-editing' : ''}${selectedNode.type === 'blockRef' ? ' ed-box--linked' : ''}`}
           style={rectStyle(boxes.selected)}
         >
+          {editingId === selectedNode.id && getBlock(selectedNode.type)?.inlineEdit?.rich && (
+            <div className={`ed-toolbar ed-toolbar--rich${boxes.selected.y < 30 ? ' ed-toolbar--inside' : ''}`}>
+              <RichToolbar exec={(cmd, value) => doc.execCommand(cmd, false, value)} />
+              <span className="ed-toolbar-label">Ctrl+Enter để xong · Esc huỷ</span>
+            </div>
+          )}
           {!drag && !editingId && selectedNode.type !== 'root' && (
             <div className={`ed-toolbar${boxes.selected.y < 30 ? ' ed-toolbar--inside' : ''}`}>
               <span

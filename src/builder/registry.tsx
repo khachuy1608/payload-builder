@@ -22,7 +22,7 @@ import {
 import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
-import { sanitizeSvg } from './sanitize'
+import { sanitizeRichText, sanitizeSvg } from './sanitize'
 import { genId } from './tree'
 import type { BlockRefProps, MediaValue } from './types'
 
@@ -162,10 +162,11 @@ const BLOCK_LIST: BlockDefinition[] = [
       props: { text: 'Đây là một đoạn văn. Nhấp đúp để sửa trực tiếp, hoặc sửa trong panel bên phải.' },
       styles: {},
     }),
-    contentControls: [{ type: 'textarea', prop: 'text', label: 'Nội dung' }],
+    contentControls: [{ type: 'richtext', prop: 'text', label: 'Nội dung' }],
     styleGroups: TEXT_GROUPS,
-    inlineEdit: { prop: 'text', multiline: true },
-    Render: ({ node, attrs }) => <p {...attrs}>{text(node.props.text)}</p>,
+    inlineEdit: { prop: 'text', multiline: true, rich: true },
+    // text là HTML inline đã làm sạch (đậm, nghiêng, link, xuống dòng); văn bản thuần cũ vẫn hiển thị như trước
+    Render: ({ node, attrs }) => <p {...attrs} dangerouslySetInnerHTML={{ __html: sanitizeRichText(text(node.props.text)) }} />,
   },
   {
     type: 'button',
