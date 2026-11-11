@@ -9,11 +9,11 @@ import { createPortal } from 'react-dom'
 import { compileTreeCss } from '@/builder/css'
 import { resolveRefs } from '@/builder/refs'
 import { RenderNode } from '@/builder/Renderer'
-import { BASE_CSS, defaultTheme, themeToCss } from '@/builder/theme'
+import { BASE_CSS, themeToCss } from '@/builder/theme'
 import type { BuilderNode } from '@/builder/types'
-import { blockLookup, useEditor } from './store'
+import { blockLookup, effectiveTheme, useEditor } from './store'
 
-const PREVIEW_DOC = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><style>${themeToCss(defaultTheme)}${BASE_CSS}html,body{overflow:hidden;background:transparent;pointer-events:none}#m{position:absolute;left:0;top:0;width:1280px;transform-origin:0 0;visibility:hidden}#m.ready{visibility:visible}.bld-root{min-height:0}</style></head><body><div id="m"></div></body></html>`
+const PREVIEW_DOC = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><style>${BASE_CSS}html,body{overflow:hidden;background:transparent;pointer-events:none}#m{position:absolute;left:0;top:0;width:1280px;transform-origin:0 0;visibility:hidden}#m.ready{visibility:visible}.bld-root{min-height:0}</style></head><body><div id="m"></div></body></html>`
 
 export function BlockPreview({ tree, height = 96 }: { tree: BuilderNode; height?: number }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -21,6 +21,7 @@ export function BlockPreview({ tree, height = 96 }: { tree: BuilderNode; height?
   const [visible, setVisible] = useState(false)
   const [mount, setMount] = useState<HTMLElement | null>(null)
   const blocks = useEditor((s) => s.blocks)
+  const theme = useEditor(effectiveTheme)
   const resolved = resolveRefs(tree, blockLookup(blocks))
   const css = compileTreeCss(resolved)
 
@@ -71,7 +72,8 @@ export function BlockPreview({ tree, height = 96 }: { tree: BuilderNode; height?
       {mount &&
         createPortal(
           <>
-            <style dangerouslySetInnerHTML={{ __html: css }} />
+            {theme.fontUrl && <link rel="stylesheet" href={theme.fontUrl} />}
+            <style dangerouslySetInnerHTML={{ __html: themeToCss(theme) + css }} />
             <RenderNode node={resolved} mode="live" />
           </>,
           mount,

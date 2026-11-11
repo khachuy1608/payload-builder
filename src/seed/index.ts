@@ -1,4 +1,5 @@
 import type { Payload } from 'payload'
+import { PRESET_THEMES } from '../builder/theme'
 import type { BuilderNode, PageContent } from '../builder/types'
 
 let n = 0
@@ -71,8 +72,6 @@ export function demoHomeContent(): PageContent {
                 backgroundColor: 'var(--color-primary)',
                 color: '#ffffff',
                 padding: '14px 28px',
-                borderRadius: 'var(--radius-md)',
-                fontWeight: '600',
                 transition: 'opacity .2s ease',
               },
               hover: { opacity: '0.85' },
@@ -120,7 +119,27 @@ export function demoBlockTree(): BuilderNode {
   return feature('Block dùng lại', 'Lưu một vùng đã dựng thành My Block, chèn vào trang khác dạng bản sao hoặc liên kết.')
 }
 
+/** Theme preset (chỉ đọc) + chọn theme đầu tiên cho site nếu chưa có – chạy độc lập với trang mẫu */
+async function seedThemes(payload: Payload) {
+  const { totalDocs } = await payload.count({ collection: 'themes' })
+  if (totalDocs > 0) return
+  let first: string | number | null = null
+  for (const preset of PRESET_THEMES) {
+    const { fontUrl, ...groups } = preset.tokens
+    const doc = await payload.create({ collection: 'themes', data: { name: preset.name, isPreset: true, fontUrl: fontUrl ?? null, ...groups } as never })
+    first ??= doc.id
+  }
+  const settings = await payload.findGlobal({ slug: 'site-settings', depth: 0 })
+  if (!settings.theme && first != null) await payload.updateGlobal({ slug: 'site-settings', data: { theme: first } })
+  payload.logger.info(`Đã tạo ${PRESET_THEMES.length} theme preset.`)
+}
+
 export async function seed(payload: Payload) {
+  try {
+    await seedThemes(payload)
+  } catch (err) {
+    payload.logger.error({ err }, 'Không tạo được theme preset')
+  }
   try {
     const { totalDocs } = await payload.count({ collection: 'pages' })
     if (totalDocs > 0) return

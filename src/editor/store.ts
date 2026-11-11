@@ -10,6 +10,7 @@ import { immer } from 'zustand/middleware/immer'
 import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { canContain } from '@/builder/schema'
+import { defaultTheme, type ThemeTokens } from '@/builder/theme'
 import {
   cloneWithNewIds,
   findNode,
@@ -45,6 +46,23 @@ export interface MyBlock {
 }
 
 export const blockLookup = (blocks: Record<string, MyBlock>): BlockLookup => (id) => blocks[id]?.tree
+
+/** Một theme trong thư viện (đã chuẩn hoá từ doc của collection themes) */
+export interface ThemeDoc {
+  id: string
+  name: string
+  isPreset: boolean
+  owner: string | null
+  tokens: ThemeTokens
+  updatedAt: string
+}
+
+/** Theme hiệu lực trên canvas: bản xem thử (đang chỉnh trong hộp thoại) -> ghi đè của trang -> theme site -> mặc định */
+export function effectiveTheme(s: Pick<EditorState, 'themePreview' | 'themes' | 'pageThemeId' | 'siteThemeId'>): ThemeTokens {
+  if (s.themePreview) return s.themePreview
+  const id = s.pageThemeId ?? s.siteThemeId
+  return (id && s.themes[id]?.tokens) || defaultTheme
+}
 
 export interface Rect {
   x: number
@@ -93,6 +111,17 @@ export interface EditorState {
   /** Đang mở hộp thoại "Lưu thành My Block" cho node này */
   saveBlockFor: string | null
 
+  /** Thư viện theme, key = id */
+  themes: Record<string, ThemeDoc>
+  themesStatus: 'idle' | 'loading' | 'ready' | 'error'
+  /** Theme trong site-settings */
+  siteThemeId: string | null
+  /** Ghi đè theme của trang đang sửa (null = theo site) */
+  pageThemeId: string | null
+  /** Token đang xem thử khi chỉnh theme trong hộp thoại (không lưu) */
+  themePreview: ThemeTokens | null
+  themeDialog: boolean
+
   selectedId: string | null
   hoveredId: string | null
   editingId: string | null
@@ -125,6 +154,7 @@ export interface EditorActions {
     scope?: BlockScope
     readOnly?: boolean
     userId: string | null
+    pageThemeId?: string | null
   }): void
   select(id: string | null): void
   hover(id: string | null): void
@@ -148,6 +178,17 @@ export interface EditorActions {
   replaceNode(id: string, node: BuilderNode): boolean
   /** Tách blockRef thành bản sao độc lập */
   detach(id: string): void
+
+  // ----- Themes -----
+  setThemes(list: ThemeDoc[], siteThemeId: string | null): void
+  setThemesStatus(status: EditorState['themesStatus']): void
+  upsertTheme(theme: ThemeDoc): void
+  removeTheme(id: string): void
+  setSiteThemeId(id: string | null): void
+  /** Đổi ghi đè theme của trang (ghi vào trang khi lưu) */
+  setPageTheme(id: string | null): void
+  setThemePreview(tokens: ThemeTokens | null): void
+  openThemeDialog(open: boolean): void
 
   insertBlock(type: string, target?: DropTarget): string | null
   insertNode(node: BuilderNode, target: DropTarget): boolean
@@ -247,6 +288,12 @@ export const useEditor = create<Store>()(
       missingBlocks: {},
       insertMode: 'copy',
       saveBlockFor: null,
+      themes: {},
+      themesStatus: 'idle',
+      siteThemeId: null,
+      pageThemeId: null,
+      themePreview: null,
+      themeDialog: false,
       selectedId: null,
       hoveredId: null,
       editingId: null,
@@ -280,6 +327,9 @@ export const useEditor = create<Store>()(
           s.dirty = false
           s.selectedId = null
           s.saveBlockFor = null
+          s.pageThemeId = data.pageThemeId ?? null
+          s.themePreview = null
+          s.themeDialog = false
         }),
 
       select: (id) =>
@@ -389,6 +439,46 @@ export const useEditor = create<Store>()(
         })
         return true
       },
+
+      // ----- Themes -----
+      setThemes: (list, siteThemeId) =>
+        set((s) => {
+          s.themes = Object.fromEntries(list.map((t) => [t.id, s.themes[t.id]?.updatedAt === t.updatedAt ? s.themes[t.id] : t]))
+          s.siteThemeId = siteThemeId
+          s.themesStatus = 'ready'
+        }),
+      setThemesStatus: (status) =>
+        set((s) => {
+          s.themesStatus = status
+        }),
+      upsertTheme: (theme) =>
+        set((s) => {
+          s.themes[theme.id] = theme
+        }),
+      removeTheme: (id) =>
+        set((s) => {
+          delete s.themes[id]
+          if (s.siteThemeId === id) s.siteThemeId = null
+          if (s.pageThemeId === id) s.pageThemeId = null
+        }),
+      setSiteThemeId: (id) =>
+        set((s) => {
+          s.siteThemeId = id
+        }),
+      setPageTheme: (id) =>
+        set((s) => {
+          s.pageThemeId = id
+          s.dirty = true
+        }),
+      setThemePreview: (tokens) =>
+        set((s) => {
+          s.themePreview = tokens
+        }),
+      openThemeDialog: (open) =>
+        set((s) => {
+          s.themeDialog = open
+          if (!open) s.themePreview = null
+        }),
 
       detach: (id) => {
         const state = get()

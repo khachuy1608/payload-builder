@@ -22,5 +22,5 @@ export default async function HomePage() {
       </main>
     )
   }
-  return <PageRenderer content={page.content} blocks={page.blocks} />
+  return <PageRenderer content={page.content} blocks={page.blocks} theme={page.theme} />
 }

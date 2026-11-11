@@ -11,12 +11,12 @@ import { compileTreeCss } from '@/builder/css'
 import { resolveRefs } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
 import { RenderNode } from '@/builder/Renderer'
-import { BASE_CSS, defaultTheme, themeToCss } from '@/builder/theme'
+import { BASE_CSS, themeToCss } from '@/builder/theme'
 import { findNode, getAncestors } from '@/builder/tree'
 import { computeDrop } from './dnd'
 import { Overlay } from './Overlay'
 import { handleShortcut } from './shortcuts'
-import { blockLookup, useEditor } from './store'
+import { blockLookup, effectiveTheme, useEditor } from './store'
 
 const CANVAS_CSS = `
 body{user-select:none;-webkit-user-select:none}
@@ -36,7 +36,7 @@ a[data-node-id]{cursor:default}
 /** Bề rộng khung theo thiết bị. Desktop là bề rộng tối thiểu (trên breakpoint tablet 1024px) */
 const DEVICE_PX = { desktop: 1280, tablet: 768, mobile: 375 } as const
 
-const SRC_DOC = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${themeToCss(defaultTheme)}${BASE_CSS}${CANVAS_CSS}</style></head><body><div id="bld-mount"></div></body></html>`
+const SRC_DOC = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${BASE_CSS}${CANVAS_CSS}</style></head><body><div id="bld-mount"></div></body></html>`
 
 function nodeElement(target: EventTarget | null): HTMLElement | null {
   const el = target as Element | null
@@ -97,8 +97,11 @@ function CanvasContent() {
   // triển khai My Block liên kết trước khi biên dịch CSS và render (structural sharing: nhánh khác không render lại)
   const resolved = useMemo(() => resolveRefs(root, blockLookup(blocks)), [root, blocks])
   const css = useMemo(() => compileTreeCss(resolved), [resolved])
+  const theme = useEditor(effectiveTheme)
   return (
     <>
+      {theme.fontUrl && <link rel="stylesheet" href={theme.fontUrl} />}
+      <style dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />
       <style dangerouslySetInnerHTML={{ __html: css }} />
       <RenderNode node={resolved} mode="editor" />
     </>

@@ -3,11 +3,12 @@
 import { useEffect, useRef } from 'react'
 import { collectRefIds } from '@/builder/refs'
 import type { PageContent } from '@/builder/types'
-import { getMyBlock, refreshBlockLibrary } from './api'
+import { getMyBlock, refreshBlockLibrary, refreshThemes } from './api'
 import { Canvas } from './Canvas'
 import { LeftPanel } from './LeftPanel'
 import { RightPanel } from './RightPanel'
 import { SaveBlockDialog } from './SaveBlockDialog'
+import { ThemeDialog } from './ThemeDialog'
 import { handleShortcut } from './shortcuts'
 import { type BlockScope, type EditorKind, type SaveStatus, useEditor } from './store'
 import { TopBar } from './TopBar'
@@ -22,6 +23,8 @@ export interface EditorInitial {
   scope?: BlockScope
   readOnly?: boolean
   userId: string | null
+  /** Ghi đè theme của trang (kind = page) */
+  pageThemeId?: string | null
 }
 
 export function Editor({ initial }: { initial: EditorInitial }) {
@@ -38,6 +41,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       scope: initial.scope,
       readOnly: initial.readOnly,
       userId: initial.userId,
+      pageThemeId: initial.pageThemeId ?? null,
     })
     ready.current = true
   }
@@ -56,6 +60,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
 
   useBlockLibrary()
   const saveBlockFor = useEditor((s) => s.saveBlockFor)
+  const themeDialog = useEditor((s) => s.themeDialog)
 
   return (
     <div className="ed">
@@ -66,6 +71,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
         <RightPanel />
       </div>
       {saveBlockFor && <SaveBlockDialog nodeId={saveBlockFor} />}
+      {themeDialog && <ThemeDialog />}
       <Toasts />
     </div>
   )
@@ -81,11 +87,13 @@ function useBlockLibrary() {
 
   useEffect(() => {
     void refreshBlockLibrary()
+    void refreshThemes()
     let last = Date.now()
     const onFocus = () => {
       if (Date.now() - last < 3000) return
       last = Date.now()
       void refreshBlockLibrary()
+      if (!useEditor.getState().themeDialog) void refreshThemes()
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)

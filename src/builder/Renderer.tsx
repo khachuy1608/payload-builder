@@ -9,6 +9,7 @@ import type { BlockLookup } from './refs'
 import { resolveRefs } from './refs'
 import { getBlock } from './registry'
 import { getSchema, ID_PATTERN } from './schema'
+import { defaultTheme, type ThemeTokens, themeToCss } from './theme'
 import type { AdvancedProps, BuilderNode, PageContent } from './types'
 
 const CLASS_PATTERN = /^[A-Za-z_-][A-Za-z0-9_-]*$/
@@ -59,21 +60,26 @@ export const RenderNode = memo(RenderNodeInner)
 /**
  * Render cả trang. `blocks` là cây gốc của các My Block được tham chiếu (xem lib/blocks.ts);
  * các node blockRef được triển khai trước khi biên dịch CSS và render.
+ * `theme` là token hiệu lực của trang (lib/themes.ts) – phát thành CSS variables ngay tại đây.
  */
 export function PageRenderer({
   content,
   mode = 'live',
   blocks,
+  theme = defaultTheme,
 }: {
   content: PageContent
   mode?: RenderMode
   blocks?: Map<string, BuilderNode> | BlockLookup
+  theme?: ThemeTokens
 }) {
   const lookup: BlockLookup = typeof blocks === 'function' ? blocks : (id) => blocks?.get(id)
   const root = resolveRefs(content.root, lookup)
   const css = compileTreeCss(root)
   return (
     <>
+      {theme.fontUrl && <link rel="stylesheet" href={theme.fontUrl} />}
+      <style data-builder-theme="" dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />
       <style data-builder-css="" dangerouslySetInnerHTML={{ __html: css }} />
       <RenderNode node={root} mode={mode} />
     </>

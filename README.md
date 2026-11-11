@@ -1,4 +1,4 @@
-# Payload Page Builder (P0 → P3)
+# Payload Page Builder (P0 → P4)
 
 Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu Elementor** tự xây (không dùng thư viện page builder bên ngoài).
 
@@ -12,6 +12,7 @@ Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu E
   - Undo/redo, nhân bản, copy/paste, phím tắt, nhấp đúp để sửa chữ trực tiếp.
 - **P2** – Front-end render bằng **cùng một renderer** với canvas. Có responsive (Desktop/Tablet/Mobile), trạng thái Hover, ẩn theo thiết bị, lưu nháp, xem trước bản nháp và xuất bản.
 - **P3** – **My Blocks**: lưu một phần tử/vùng đã dựng thành block riêng (collection `my-blocks`), chèn lại vào trang dạng **bản sao** hoặc **liên kết** (sửa bản gốc thì mọi trang cập nhật, có nút *Tách*), sửa bản gốc bằng chính Visual Builder tại `/builder/block/:id`, chặn vòng lặp tham chiếu.
+- **P4** – **Themes**: collection `themes` (màu, font, bo góc, kiểu nút, link Google Fonts) với 4 preset chỉ đọc, nhân bản thành My Theme để chỉnh; global `site-settings` chọn theme của site, trang có thể ghi đè; hộp thoại *Quản lý theme* trong editor xem thử ngay trên canvas; bộ chọn màu lấy token theo theme đang dùng.
 
 ## Chạy thử
 
@@ -50,6 +51,7 @@ npm run dev                   # http://localhost:3000
 2. Vào **Trang → Trang chủ**, bấm **✦ Mở Visual Builder** ở sidebar.
 3. Kéo phần tử vào trang và chỉnh sửa, sau đó bấm **Lưu nháp**, **Xem trước** hoặc **Xuất bản**.
 4. Chọn một phần tử rồi bấm nút **🔖 Lưu thành My Block** trên thanh công cụ của nó. Mở tab **My Blocks** ở panel trái để kéo block vào trang khác.
+5. Bấm **Cài đặt trang** (khi chưa chọn phần tử nào) → **Quản lý theme…** để đổi theme của site hoặc ghi đè theme cho trang.
 
 ## My Blocks (P3)
 
@@ -63,6 +65,13 @@ npm run dev                   # http://localhost:3000
 - **An toàn:** block lồng nhau tối đa 5 cấp; hook `beforeChange` của `my-blocks` từ chối block tham chiếu (trực tiếp hay gián tiếp) tới chính nó; editor cũng không cho chèn block gây vòng lặp. Block bị xoá: trên trang thật phần tử đó bị bỏ qua, trong editor hiện ô báo.
 
 Chạy production không dùng Docker: `npm run build && npm start`. Migration trong `src/migrations` tự chạy khi khởi động.
+
+## Themes (P4)
+
+- **Token:** `colors` (8 màu), `fonts` (tiêu đề/nội dung/mono), `radius` (sm/md/lg), `button` (bo góc, độ đậm, kiểu chữ) và `fontUrl` (stylesheet font ngoài, chỉ nhận https). Chúng thành CSS variables `--color-*`, `--font-*`, `--radius-*`, `--button-*` (src/builder/theme.ts). Block Button và CSS nền dùng `var(--button-*)` nên đổi theme là đổi kiểu nút cả site.
+- **Preset:** 4 theme chỉ đọc được seed (Indigo, Ocean, Sunset, Mono). Người dùng bấm **Nhân bản** để có My Theme rồi chỉnh (ô màu, font gợi ý hoặc font stack tuỳ chỉnh, link Google Fonts). Chỉ seed mới tạo được preset; API luôn ép `isPreset=false` với người dùng.
+- **Áp dụng:** global **Cài đặt site** chọn theme của site; field *Ghi đè theme* trên trang (hoặc ô *Theme* trong Cài đặt trang của editor) ghi đè riêng cho trang đó. Thứ tự ưu tiên khi render: ghi đè của trang → theme site → mặc định (src/lib/themes.ts). Xoá theme đang dùng thì tự quay về bậc tiếp theo.
+- **Editor:** hộp thoại *Quản lý theme* xem thử ngay trên canvas khi chọn hoặc chỉnh theme (chưa lưu thì không ảnh hưởng gì). Bộ chọn màu trong tab Kiểu hiện đúng màu token của theme đang dùng. Mọi giá trị token được làm sạch (`normalizeTheme`) trước khi phát CSS.
 
 ## Phím tắt trong Builder
 
@@ -87,7 +96,7 @@ src/
 │   ├── controls.ts          # mô tả control & nhóm style (UI tự sinh từ đây)
 │   ├── Renderer.tsx         # render cây node (server + client)
 │   ├── css.ts               # styles JSON → CSS scoped `.n-<id>` + media query + :hover
-│   ├── theme.ts             # design tokens → CSS variables (nền móng cho Themes ở P4)
+│   ├── theme.ts             # design tokens → CSS variables, normalizeTheme, 4 preset
 │   ├── refs.ts              # My Block liên kết: resolveRefs (triển khai blockRef), chặn vòng lặp, nạp block lồng nhau
 │   ├── tree.ts              # thao tác cây: tìm, chèn, di chuyển, nhân bản
 │   ├── validate.ts          # kiểm tra/làm sạch nội dung trang và cây block trước khi lưu
@@ -102,11 +111,14 @@ src/
 │   ├── MyBlocksPanel.tsx    # thư viện block: chế độ Bản sao/Liên kết, kéo thả, xoá
 │   ├── BlockPreview.tsx     # preview thu nhỏ của block (iframe dùng chung renderer, lazy)
 │   ├── SaveBlockDialog.tsx  # hộp thoại "Lưu thành My Block"
+│   ├── ThemeDialog.tsx      # quản lý theme: preset, nhân bản, chỉnh token, xem thử trên canvas
 │   ├── RightPanel.tsx       # Nội dung / Kiểu / Nâng cao (+ panel blockRef, cài đặt block)
 │   ├── MediaPicker.tsx      # thư viện ảnh + upload
 │   ├── TopBar.tsx, Editor.tsx, api.ts, shortcuts.ts, labels.ts, editor.css
-├── collections/             # Pages, MyBlocks, Media, Users
+├── collections/             # Pages, MyBlocks, Themes, Media, Users
+├── globals/SiteSettings.ts  # theme đang dùng của site
 ├── lib/blocks.ts            # server: nạp cây block được trang tham chiếu (kể cả lồng nhau)
+├── lib/themes.ts            # server: theme hiệu lực của trang (ghi đè → site → mặc định)
 ├── app/
 │   ├── (payload)/           # admin + REST/GraphQL API của Payload
 │   ├── (builder)/builder/[id]        # editor trang (yêu cầu đăng nhập)
@@ -173,12 +185,12 @@ Không cần viết UI cho panel: editor tự sinh control từ `contentControls
 - **Canvas là iframe cùng origin, render bằng React portal.** Cách này cách ly CSS của editor với CSS của trang. Media query cũng chạy đúng theo bề rộng thiết bị: desktop tối thiểu 1280px, tablet 768px, mobile 375px. Khi màn hình hẹp, canvas tự thu nhỏ (góc dưới hiện %).
 - **Một renderer duy nhất.** `RenderNode` được dùng cho cả canvas và site thật. Nhờ `memo` cùng cấu trúc dùng chung của immer, chỉ nhánh bị sửa mới render lại.
 - **CSS theo node.** Mỗi node có class `.n-<id>`, CSS được biên dịch từ `styles` theo thứ tự desktop-first. Giá trị được làm sạch để không chèn được CSS hay thoát khỏi thẻ `<style>`.
-- **Màu toàn cục.** Màu lấy từ token (`var(--color-primary)`…). P4 chỉ cần thay bộ token để đổi theme cho cả site.
+- **Màu toàn cục.** Màu lấy từ token (`var(--color-primary)`…); `PageRenderer` phát bộ token của theme hiệu lực ngay trong trang nên đổi theme không cần đụng tới nội dung.
 
 ## Kiểm thử
 
 ```bash
-npm test          # unit test lõi: cây, CSS, validate, sanitize SVG, link/YouTube, My Blocks (resolveRefs, vòng lặp…)
+npm test          # unit test lõi: cây, CSS, validate, sanitize SVG, link/YouTube, My Blocks (resolveRefs, vòng lặp…), theme
 npm run typecheck
 ```
 
@@ -189,6 +201,6 @@ npm run typecheck
 - **Paragraph là văn bản thuần** (giữ xuống dòng). Rich text (đậm, nghiêng, link trong đoạn) sẽ làm sau.
 - **Đổi schema** (thêm field hoặc collection): ở dev, schema tự push. Trước khi deploy, chạy `npm run payload migrate:create <tên>`.
 - **My Blocks:** preview trong thư viện dựng bằng iframe nhỏ (không chụp ảnh). Field `thumbnail` có sẵn trong admin nếu muốn gắn ảnh thủ công. Xoá block đang được trang dùng dạng liên kết không bị chặn (trang thật bỏ qua phần tử đó).
+- **Themes:** font ngoài chỉ nạp qua `fontUrl` (một stylesheet); chưa có bộ chọn Google Fonts tích hợp. Theme không có lịch sử phiên bản.
 - Lộ trình tiếp theo:
-  - **P4 – Themes:** collection `themes`, các theme preset, My Theme, bộ chọn theme.
   - **P5:** context menu, lịch sử phiên bản trong editor, kéo thả trực tiếp trên canvas không cần handle.

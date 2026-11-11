@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import { cache } from 'react'
 import { normalizeContent } from '../builder/validate'
 import { loadBlocksForContent } from './blocks'
+import { loadThemeForPage } from './themes'
 
 /**
  * Lấy trang theo slug cho front-end.
@@ -28,6 +29,6 @@ export const getPageBySlug = cache(async (slug: string) => {
   if (!doc) return null
   const content = normalizeContent(doc.content)
   // cây gốc của các My Block liên kết mà trang dùng (kể cả lồng nhau)
-  const blocks = await loadBlocksForContent(payload, content)
-  return { title: doc.title, slug: doc.slug, content, blocks, draft }
+  const [blocks, theme] = await Promise.all([loadBlocksForContent(payload, content), loadThemeForPage(payload, doc.theme)])
+  return { title: doc.title, slug: doc.slug, content, blocks, theme: theme.tokens, draft }
 })
