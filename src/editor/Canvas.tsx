@@ -50,11 +50,13 @@ function nodeElement(target: EventTarget | null): HTMLElement | null {
 }
 
 /** Nhấp đúp vào Heading/Paragraph/Button để sửa chữ ngay trên canvas */
-function startInlineEdit(doc: Document, el: HTMLElement, nodeId: string) {
+function startInlineEdit(doc: Document, outer: HTMLElement, nodeId: string) {
   const s = useEditor.getState()
   const node = findNode(s.root, nodeId)
   const def = node ? getBlock(node.type) : undefined
   if (!node || !def?.inlineEdit || s.editingId) return
+  // block có icon (Button): chỉ sửa phần chữ
+  const el = (outer.querySelector(':scope > .b-button-text') as HTMLElement | null) ?? outer
   const { prop, multiline, rich } = def.inlineEdit
   const original = String(node.props[prop] ?? '')
 

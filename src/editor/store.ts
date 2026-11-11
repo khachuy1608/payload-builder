@@ -11,6 +11,7 @@ import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId }
 import { getBlock } from '@/builder/registry'
 import { canContain } from '@/builder/schema'
 import type { DataMap, DataRecord, SourceInfo } from '@/builder/data'
+import { applyPreset as applyPresetToNode, type BlockPreset } from '@/builder/presets'
 import { defaultTheme, type ThemeTokens } from '@/builder/theme'
 import {
   cloneWithNewIds,
@@ -217,6 +218,8 @@ export interface EditorActions {
   setThemePreview(tokens: ThemeTokens | null): void
   openThemeDialog(open: boolean): void
 
+  /** Áp dụng gợi ý kiểu lên node (giữ nội dung, hoàn tác được) */
+  applyPreset(id: string, preset: BlockPreset): void
   setLock(lock: LockState): void
   setSources(sources: SourceInfo[]): void
   setCurrentUser(user: DataRecord | null): void
@@ -526,6 +529,15 @@ export const useEditor = create<Store>()(
           if (!open) s.themePreview = null
         }),
 
+      applyPreset: (id, preset) =>
+        commit((root) => {
+          const loc = findParent(root, id)
+          const node = findNode(root, id)
+          if (!node) return
+          const next = applyPresetToNode(node, preset)
+          if (loc) loc.parent.children![loc.index] = next
+          else Object.assign(node, next)
+        }),
       setLock: (lock) =>
         set((s) => {
           s.lock = lock

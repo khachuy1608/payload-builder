@@ -7,6 +7,7 @@ import { FormSubmissions } from './collections/FormSubmissions'
 import { Media } from './collections/Media'
 import { MyBlocks } from './collections/MyBlocks'
 import { Pages } from './collections/Pages'
+import { StylePresets } from './collections/StylePresets'
 import { Themes } from './collections/Themes'
 import { SiteSettings } from './globals/SiteSettings'
 import { Users } from './collections/Users'
@@ -23,7 +24,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' – Page Builder' },
   },
-  collections: [Pages, MyBlocks, Themes, FormSubmissions, Media, Users],
+  collections: [Pages, MyBlocks, Themes, StylePresets, FormSubmissions, Media, Users],
   endpoints: [
     {
       // Danh sách nguồn dữ liệu + trường công khai cho bộ chọn ⚡ của Visual Builder (cần đăng nhập)

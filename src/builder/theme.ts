@@ -184,7 +184,8 @@ img,svg,video,iframe{display:block;max-width:100%}
 .b-image-link{display:block}
 .b-svg{display:inline-flex;line-height:0}
 .b-svg svg{width:100%;height:100%}
-.b-button{display:inline-block;cursor:pointer;text-decoration:none;font:inherit;border:0;border-radius:var(--button-radius);font-weight:var(--button-weight);text-transform:var(--button-transform)}
+.b-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;font:inherit;border:0;border-radius:var(--button-radius);font-weight:var(--button-weight);text-transform:var(--button-transform)}
+.b-button-icon{flex:none}
 .b-youtube{position:relative;width:100%;aspect-ratio:16/9}
 .b-youtube iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .b-tabs-nav{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--color-border)}

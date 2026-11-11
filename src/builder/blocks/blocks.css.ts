@@ -335,6 +335,18 @@ textarea.b-input{resize:none}
 .b-signin-submit{background:var(--color-primary);color:#fff;padding:11px 18px;text-align:center;cursor:pointer}
 .b-signin-foot{margin:0;text-align:center;font-size:14px;color:var(--color-muted)}
 .b-signin-foot a{color:var(--color-primary)}
+/* ---- tabs biến thể ---- */
+.b-tabs--pills .b-tabs-nav{border:0;gap:8px}
+.b-tabs--pills .b-tabs-btn{border:1px solid var(--color-border);border-radius:999px;margin:0;padding:8px 16px}
+.b-tabs--pills .b-tabs-btn[aria-selected=true]{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+.b-tabs--segmented .b-tabs-nav{border:0;gap:2px;background:var(--color-surface);border-radius:var(--radius-md);padding:3px;width:max-content}
+.b-tabs--segmented .b-tabs-btn{border:0;border-radius:calc(var(--radius-md) - 2px);margin:0;padding:7px 14px}
+.b-tabs--segmented .b-tabs-btn[aria-selected=true]{background:var(--color-background);color:var(--color-text);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.b-tabs--vertical{display:flex;gap:24px;align-items:flex-start}
+.b-tabs--vertical .b-tabs-nav{flex-direction:column;border:0;border-right:1px solid var(--color-border);gap:2px;min-width:160px}
+.b-tabs--vertical .b-tabs-btn{text-align:left;border:0;border-right:2px solid transparent;margin:0 -1px 0 0}
+.b-tabs--vertical .b-tabs-btn[aria-selected=true]{border-right-color:var(--color-primary)}
+.b-tabs--vertical .b-tabs-panel{flex:1}
 /* ---- tìm kiếm ---- */
 .b-search-row{display:flex;align-items:center;gap:8px;position:relative}
 .b-search-icon{position:absolute;left:12px;color:var(--color-muted);pointer-events:none}

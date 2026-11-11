@@ -345,3 +345,11 @@ select.ed-input + .ed-reset { right: 22px; }
 .ed-bind-pop code, .ed-code-chip { font: 11px/1.4 ui-monospace, monospace; background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 3px; }
 .ed-code-chip { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 8px; }
 .ed-data .ed-row .ed-input { min-width: 0; }
+
+/* ---------- gợi ý kiểu ---------- */
+.ed-presets { display: flex; flex-direction: column; gap: 8px; }
+.ed-presets-frame { width: 100%; border: 0; min-height: 200px; display: block; }
+.ed-presets-mine { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px; }
+.ed-presets-mine .ed-chip { gap: 6px; padding: 3px 8px; }
+.ed-chip-x { border: 0; background: transparent; color: inherit; display: inline-flex; cursor: pointer; padding: 0; opacity: .7; }
+.ed-chip-x:hover { opacity: 1; color: var(--ed-danger); }

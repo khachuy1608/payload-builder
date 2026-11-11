@@ -23,7 +23,7 @@ import {
 import { FEEDBACK_BLOCKS } from './blocks/defs/feedback'
 import { FORM_BLOCKS } from './blocks/defs/forms'
 import { LAYOUT_BLOCKS } from './blocks/defs/layout'
-import { parseYouTubeId, safeHref } from './blocks/helpers'
+import { Icon, ICON_OPTIONS, num, parseYouTubeId, safeHref } from './blocks/helpers'
 import type { BlockDefinition, RenderProps } from './blocks/types'
 import { TabsRender } from './blocks/TabsRender'
 import type { RefError } from './refs'
@@ -130,7 +130,7 @@ const BLOCK_LIST: BlockDefinition[] = [
     category: 'layout',
     icon: PanelTop,
     defaults: () => ({
-      props: { defaultIndex: '0' },
+      props: { defaultIndex: '0', variant: 'underline' },
       styles: {},
       children: [1, 2].map((i) => ({
         id: genId(),
@@ -140,7 +140,10 @@ const BLOCK_LIST: BlockDefinition[] = [
         children: [],
       })),
     }),
-    contentControls: [{ type: 'custom', component: 'tabs' }],
+    contentControls: [
+      { type: 'select', prop: 'variant', label: 'Kiểu tab', options: [{ value: 'underline', label: 'Gạch chân' }, { value: 'pills', label: 'Pills rời' }, { value: 'segmented', label: 'Segmented' }, { value: 'vertical', label: 'Dọc' }] },
+      { type: 'custom', component: 'tabs' },
+    ],
     styleGroups: ['typography', 'spacing', 'size', 'background', 'border', 'child'],
     Render: TabsRender,
   },
@@ -202,7 +205,7 @@ const BLOCK_LIST: BlockDefinition[] = [
     category: 'basic',
     icon: MousePointerClick,
     defaults: () => ({
-      props: { text: 'Bấm vào đây', href: '#', newTab: false },
+      props: { text: 'Bấm vào đây', href: '#', newTab: false, icon: '', iconPosition: 'left', iconSize: '18' },
       styles: {
         desktop: {
           backgroundColor: 'var(--color-primary)',
@@ -217,11 +220,18 @@ const BLOCK_LIST: BlockDefinition[] = [
       { type: 'text', prop: 'text', label: 'Chữ trên nút' },
       { type: 'url', prop: 'href', label: 'Liên kết', placeholder: 'https:// hoặc /duong-dan' },
       { type: 'toggle', prop: 'newTab', label: 'Mở tab mới' },
+      { type: 'select', prop: 'icon', label: 'Icon', options: ICON_OPTIONS },
+      { type: 'select', prop: 'iconPosition', label: 'Vị trí icon', options: [{ value: 'left', label: 'Trước chữ' }, { value: 'right', label: 'Sau chữ' }, { value: 'only', label: 'Chỉ icon (ẩn chữ)' }] },
+      { type: 'number', prop: 'iconSize', label: 'Cỡ icon (px)', min: 10, max: 64 },
     ],
     styleGroups: TEXT_GROUPS,
     inlineEdit: { prop: 'text' },
     Render: ({ node, attrs }) => {
       const newTab = node.props.newTab === true
+      const icon = text(node.props.icon)
+      const pos = text(node.props.iconPosition, 'left')
+      const size = num(node.props.iconSize, 18)
+      const label = text(node.props.text)
       return (
         <a
           {...attrs}
@@ -229,8 +239,11 @@ const BLOCK_LIST: BlockDefinition[] = [
           href={safeHref(node.props.href)}
           target={newTab ? '_blank' : undefined}
           rel={newTab ? 'noopener noreferrer' : undefined}
+          aria-label={icon && pos === 'only' ? label || undefined : undefined}
         >
-          {text(node.props.text)}
+          {icon && pos !== 'right' && <Icon name={icon} size={size} className="b-button-icon" />}
+          {!(icon && pos === 'only') && <span className="b-button-text">{label}</span>}
+          {icon && pos === 'right' && <Icon name={icon} size={size} className="b-button-icon" />}
         </a>
       )
     },

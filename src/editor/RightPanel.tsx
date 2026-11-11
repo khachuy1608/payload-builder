@@ -16,10 +16,11 @@ import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@
 import { slugify } from '@/lib/slug'
 import { nodeLabel } from './labels'
 import { MediaPicker } from './MediaPicker'
+import { PresetGallery } from './PresetGallery'
 import { RichToolbar } from './RichToolbar'
 import { type BlockScope, effectiveTheme, useEditor } from './store'
 
-type Tab = 'content' | 'style' | 'advanced'
+type Tab = 'content' | 'style' | 'advanced' | 'presets'
 
 export function RightPanel() {
   const selectedId = useEditor((s) => s.selectedId)
@@ -67,9 +68,9 @@ export function RightPanel() {
         </div>
       </header>
       <div className="ed-tabs ed-tabs--small">
-        {(['content', 'style', 'advanced'] as Tab[]).map((t) => (
+        {(['content', 'style', 'advanced', ...(node.type !== 'root' && node.type !== 'blockRef' ? (['presets'] as Tab[]) : [])] as Tab[]).map((t) => (
           <button key={t} className={tab === t ? 'is-active' : ''} onClick={() => setTab(t)}>
-            {t === 'content' ? 'Nội dung' : t === 'style' ? 'Kiểu' : 'Nâng cao'}
+            {t === 'content' ? 'Nội dung' : t === 'style' ? 'Kiểu' : t === 'advanced' ? 'Nâng cao' : '✦ Gợi ý'}
           </button>
         ))}
       </div>
@@ -77,6 +78,7 @@ export function RightPanel() {
         {tab === 'content' && <ContentTab node={node} />}
         {tab === 'style' && <StyleTab node={node} />}
         {tab === 'advanced' && <AdvancedTab node={node} />}
+        {tab === 'presets' && <PresetGallery node={node} />}
       </div>
     </aside>
   )

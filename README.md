@@ -12,6 +12,7 @@ Payload CMS 3 + Next.js 16 + Postgres, kèm **Visual Builder kéo thả kiểu E
   - Undo/redo, nhân bản, copy/paste, phím tắt, nhấp đúp để sửa chữ trực tiếp.
 - **P2** – Front-end render bằng **cùng một renderer** với canvas. Có responsive (Desktop/Tablet/Mobile), trạng thái Hover, ẩn theo thiết bị, lưu nháp, xem trước bản nháp và xuất bản.
 - **P3** – **My Blocks**: lưu một phần tử/vùng đã dựng thành block riêng (collection `my-blocks`), chèn lại vào trang dạng **bản sao** hoặc **liên kết** (sửa bản gốc thì mọi trang cập nhật, có nút *Tách*), sửa bản gốc bằng chính Visual Builder tại `/builder/block/:id`, chặn vòng lặp tham chiếu.
+- **Gợi ý kiểu (presets)** – tab **✦ Gợi ý** ở panel phải: thư viện biến thể của chính phần tử đang chọn (render thật với nội dung hiện có), bấm để áp dụng, hoàn tác được. Có sẵn cho mọi loại block (Button 23 kiểu: đặc/viền/mờ/pill/gradient/kính/CTA/có icon trước-sau/chỉ icon…), Button có icon (34 icon nội bộ). "Lưu kiểu này" ghi kiểu hiện tại thành **Gợi ý của tôi** (collection `style-presets`, riêng tôi / dùng chung).
 - **Trang động & người dùng** – trang mẫu theo slug (`/slug/<giá trị>` bind cả trang vào bản ghi), phân trang/tìm kiếm/lọc thật qua tham số URL, điều kiện hiển thị theo đăng nhập hoặc theo trường, `{{user.*}}`, Sign-in Form đăng nhập thật và `#logout`.
 - **Data Binding** – block chứa khai báo **nguồn dữ liệu** (collection, danh sách/một bản ghi, lọc, sắp xếp, giới hạn); ô nhập nào cũng có nút ⚡ chèn `{{truong}}`; block **Danh sách dữ liệu** lặp phần tử mẫu cho từng bản ghi. Collection nào cũng dùng được chỉ bằng một khai báo `custom.builder` (whitelist trường công khai). Canvas hiện dữ liệu thật, trang công khai render phía server và tự làm mới cache khi dữ liệu đổi.
 - **UI Kit (theo namethatui.com)** – 36 block UI mới (header/navbar có hamburger, carousel, accordion, card, bento, masonry, marquee, breadcrumbs, pagination, steps, toggle group, bottom navigation, floating button, scrollspy, waffle menu, submenu/cascader/drill-down, overflow menu, command palette, product tour, data table, pie/donut chart, timeline, avatar group, status dot, chat bubble, badge/chip/pill/tag, progress/spinner, skeleton, empty state, alert/callout/banner, toast, modal/drawer/sheet, popover/dropdown/tooltip/hover card, lightbox, form + form field, sign-in form) và hệ **hiệu ứng** chọn được cho mọi phần tử (scroll reveal, spring/easing, hover highlight/lift/spotlight, text scramble/typewriter/rotating words/shimmer, parallax, stacking cards, hide-on-scroll header, sticky/fixed, truncation, scrim, focus ring).
@@ -119,6 +120,13 @@ hooks: { afterChange: [({ doc }) => (revalidatePages(), doc)], afterDelete: [({ 
 
 **Gợi ý bước sau:** đăng ký tài khoản công khai (collection khách hàng riêng, không dùng users admin), dữ liệu theo người dùng (`where owner = {{user.id}}`), sitemap/SEO cho trang mẫu động.
 
+## Gợi ý kiểu (presets)
+
+- Chọn phần tử → tab **✦ Gợi ý**. Mỗi gợi ý là chính phần tử đó với preset áp dụng, render trong một iframe bằng đúng renderer và theme nên thấy ngay với chữ/ảnh của bạn. Bấm để áp dụng; Ctrl+Z hoàn tác. Preset chỉ đổi kiểu (desktop + hover, và tablet/mobile nếu preset có) và prop hình thức (icon, biến thể…), không đụng nội dung, link, ảnh, nguồn dữ liệu.
+- Thư viện có sẵn: `src/builder/presets.ts` – mọi loại block đều có ít nhất 2 gợi ý; Button 23 (nhóm Kiểu nút, Kích cỡ, Có icon), Heading 8, Div/Flexbox (section, khung, hộp), Card, Image, Tabs (gạch chân/pills/segmented/dọc), Alert, Badge, Progress, Form, Sign-in… Thêm gợi ý mới chỉ cần thêm một mục vào `PRESETS[type]`.
+- **Button có icon**: prop `icon` (34 icon SVG nội bộ trong `blocks/helpers.tsx`), `iconPosition` trước / sau / chỉ icon (tự có `aria-label`), `iconSize`.
+- **Gợi ý của tôi**: nút *Lưu kiểu này* lưu styles + prop hình thức của phần tử (bỏ nội dung) vào collection `style-presets` theo loại block, phạm vi riêng tôi / dùng chung; hiện đầu thư viện, chủ sở hữu xoá được.
+
 ## UI Kit & hiệu ứng (theo namethatui.com)
 
 Toàn bộ 58 mục nền web của [namethatui.com](https://namethatui.com/?platform=web) được đưa vào builder: mục là **thành phần UI** thành block ở panel *Phần tử* (nhóm Bố cục, Điều hướng, Dữ liệu & hiển thị, Phản hồi & trạng thái, Lớp phủ, Form); mục là **hiệu ứng** thành lựa chọn trong tab *Kiểu* (nhóm *Chuyển động*, *Vị trí*, *Chữ → Giới hạn dòng*, *Nền → Lớp phủ*, *Hiệu ứng → Easing / Viền khi focus*). Drag & Drop là tương tác của chính editor; Tabs và Divider đã có từ trước (Divider thêm biến thể Rule / Separator / có chữ / dọc).
@@ -171,6 +179,7 @@ src/
 │   ├── BlockPreview.tsx     # preview thu nhỏ của block (iframe dùng chung renderer, lazy)
 │   ├── SaveBlockDialog.tsx  # hộp thoại "Lưu thành My Block"
 │   ├── ThemeDialog.tsx      # quản lý theme: preset, nhân bản, chỉnh token, xem thử trên canvas
+│   ├── PresetGallery.tsx    # tab Gợi ý: biến thể của phần tử đang chọn, lưu/xoá gợi ý của tôi
 │   ├── HistoryDialog.tsx    # lịch sử phiên bản: xem trước, khôi phục vào editor
 │   ├── ContextMenu.tsx      # menu chuột phải (canvas + cây Cấu trúc)
 │   ├── RichToolbar.tsx      # thanh công cụ rich text dùng chung
@@ -178,7 +187,7 @@ src/
 │   ├── RightPanel.tsx       # Nội dung / Kiểu / Nâng cao (+ panel blockRef, cài đặt block)
 │   ├── MediaPicker.tsx      # thư viện ảnh + upload
 │   ├── TopBar.tsx, Editor.tsx, api.ts, shortcuts.ts, labels.ts, editor.css
-├── collections/             # Pages, MyBlocks, Themes, FormSubmissions, Media, Users
+├── collections/             # Pages, MyBlocks, Themes, StylePresets, FormSubmissions, Media, Users
 ├── globals/SiteSettings.ts  # theme đang dùng của site
 ├── lib/pages.ts             # server: lấy trang (cache theo tag `pages`, draft mode đọc tươi)
 ├── lib/revalidate.ts        # làm mới cache sau khi xuất bản / sửa block / theme / dữ liệu nguồn

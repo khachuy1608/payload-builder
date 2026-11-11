@@ -4,6 +4,7 @@ import * as migration_20261111_050633_themes from './20261111_050633_themes';
 import * as migration_20261111_075937_form_submissions from './20261111_075937_form_submissions';
 import * as migration_20261111_084335_users_profile from './20261111_084335_users_profile';
 import * as migration_20261111_085618_page_template from './20261111_085618_page_template';
+import * as migration_20261111_103251_style_presets from './20261111_103251_style_presets';
 
 export const migrations = [
   {
@@ -34,6 +35,11 @@ export const migrations = [
   {
     up: migration_20261111_085618_page_template.up,
     down: migration_20261111_085618_page_template.down,
-    name: '20261111_085618_page_template'
+    name: '20261111_085618_page_template',
+  },
+  {
+    up: migration_20261111_103251_style_presets.up,
+    down: migration_20261111_103251_style_presets.down,
+    name: '20261111_103251_style_presets'
   },
 ];

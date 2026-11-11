@@ -346,3 +346,38 @@ export async function fetchData(source: DataSource, info: SourceInfo | undefined
   const expose = info ? info.fields.map((f) => f.name) : []
   return { records: body.docs.map((d) => (expose.length ? projectRecord(d, expose) : d)), total: body.totalDocs, totalPages: Math.max(1, body.totalPages), page: body.page ?? 1, limit }
 }
+
+// ======================= Gợi ý của tôi (style-presets) =======================
+
+import type { BlockPreset } from '@/builder/presets'
+import type { NodeStyles } from '@/builder/types'
+
+export interface MyPreset extends BlockPreset {
+  docId: string
+  blockType: string
+  scope: BlockScope
+  owner: string | null
+}
+
+function toMyPreset(doc: Record<string, unknown>): MyPreset {
+  const owner = doc.owner == null ? null : typeof doc.owner === 'object' ? String((doc.owner as { id: unknown }).id) : String(doc.owner)
+  return { id: `my-${doc.id}`, docId: String(doc.id), label: String(doc.name ?? ''), blockType: String(doc.blockType ?? ''), scope: doc.scope === 'shared' ? 'shared' : 'private', owner, props: (doc.props as Record<string, unknown>) ?? {}, styles: (doc.styles as NodeStyles) ?? {}, group: 'Gợi ý của tôi' }
+}
+
+export async function listMyPresets(blockType: string): Promise<MyPreset[]> {
+  const q = new URLSearchParams({ 'where[blockType][equals]': blockType, limit: '100', depth: '0', sort: '-updatedAt' })
+  const res = await fetch(`/api/style-presets?${q}`, { credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+  return ((await res.json()) as { docs: Record<string, unknown>[] }).docs.map(toMyPreset)
+}
+
+export async function createMyPreset(data: { name: string; blockType: string; scope: BlockScope; props: Record<string, unknown>; styles: NodeStyles }): Promise<MyPreset> {
+  const res = await fetch('/api/style-presets?depth=0', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+  if (!res.ok) throw new Error(await readError(res))
+  return toMyPreset((await res.json()).doc)
+}
+
+export async function deleteMyPreset(docId: string): Promise<void> {
+  const res = await fetch(`/api/style-presets/${encodeURIComponent(docId)}`, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) throw new Error(await readError(res))
+}

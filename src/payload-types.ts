@@ -70,6 +70,7 @@ export interface Config {
     pages: Page;
     'my-blocks': MyBlock;
     themes: Theme;
+    'style-presets': StylePreset;
     'form-submissions': FormSubmission;
     media: Media;
     users: User;
@@ -83,6 +84,7 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     'my-blocks': MyBlocksSelect<false> | MyBlocksSelect<true>;
     themes: ThemesSelect<false> | ThemesSelect<true>;
+    'style-presets': StylePresetsSelect<false> | StylePresetsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -321,6 +323,39 @@ export interface MyBlock {
   createdAt: string;
 }
 /**
+ * Kiểu người dùng lưu từ Visual Builder (tab Gợi ý) để dùng lại cho block cùng loại.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "style-presets".
+ */
+export interface StylePreset {
+  id: number;
+  name: string;
+  blockType: string;
+  scope: 'private' | 'shared';
+  owner?: (number | null) | User;
+  props?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  styles:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Dữ liệu người dùng gửi qua block Form trong Visual Builder.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -377,6 +412,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'themes';
         value: number | Theme;
+      } | null)
+    | ({
+        relationTo: 'style-presets';
+        value: number | StylePreset;
       } | null)
     | ({
         relationTo: 'form-submissions';
@@ -502,6 +541,20 @@ export interface ThemesSelect<T extends boolean = true> {
         weight?: T;
         transform?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "style-presets_select".
+ */
+export interface StylePresetsSelect<T extends boolean = true> {
+  name?: T;
+  blockType?: T;
+  scope?: T;
+  owner?: T;
+  props?: T;
+  styles?: T;
   updatedAt?: T;
   createdAt?: T;
 }
