@@ -99,8 +99,19 @@ await run('editor', async (b) => {
   assert(true, 'bình luận của người khác tự hiện (badge 2, chưa xem)')
   await pg.keyboard.press('c')
   await pg.locator('.ed-mode-badge:not(.is-unread)').waitFor()
-  const pinInfo = await pg.locator('[data-comment-pin="box"]').evaluate((el) => ({ avatars: el.querySelectorAll('.ed-cav').length, count: el.querySelector('.ed-cpin-count').textContent.trim() }))
-  assert(pinInfo.avatars === 2 && pinInfo.count === '2', 'huy hiệu: 2 avatar + số 2')
+  // huy hiệu cập nhật theo khung hình (rAF) -> chờ tới khi đủ 2 avatar + số 2 thay vì đọc ngay
+  const pinOk = await pg
+    .waitForFunction(
+      () => {
+        const el = document.querySelector('[data-comment-pin="box"]')
+        return !!el && el.querySelectorAll('.ed-cpin-av').length === 2 && el.querySelector('.ed-cpin-count')?.textContent.trim() === '2'
+      },
+      null,
+      { timeout: 20000 },
+    )
+    .then(() => true, () => false)
+  const pinInfo = await pg.locator('[data-comment-pin="box"]').evaluate((el) => `${el.querySelectorAll('.ed-cpin-av').length} avatar, số ${el.querySelector('.ed-cpin-count')?.textContent.trim()}`)
+  assert(pinOk, `huy hiệu: 2 avatar + số 2 (đang: ${pinInfo})`)
   await pg.locator('[data-comment-pin="box"]').click()
   await pg.locator('[data-comment-pop="box"] .ed-cpop-item').nth(1).waitFor()
   await pg.locator('.ed-cpop-item .ed-linkbtn', { hasText: 'Đã xong' }).first().click()
