@@ -827,6 +827,29 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
     }
     cleanups.push(endTour)
 
+    // ---------- Chống chữ mồ côi (1 chữ nằm riêng ở dòng cuối) ----------
+    // CSS text-wrap: pretty / balance (theme.ts) lo việc này; trình duyệt chưa hỗ trợ thì nối 2 chữ cuối bằng
+    // khoảng trắng không ngắt (U+00A0). Chỉ trang thật – canvas editor đang sửa chữ trực tiếp.
+    const supportsPretty = !!win.CSS?.supports?.('text-wrap', 'pretty') || !!win.CSS?.supports?.('text-wrap-style', 'pretty')
+    const glueOrphans = (scope: ParentNode) => {
+      scope.querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6,p,li,dt,dd,figcaption,blockquote,label,td,th,.b-button,.b-badge').forEach((el) => {
+        if (el.dataset.nbsp || el.isContentEditable || el.closest('[data-fx-text],script,style,pre,code,textarea')) return
+        el.dataset.nbsp = ''
+        if ((el.textContent ?? '').trim().split(/\s+/).length < 3) return
+        const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        let last: Text | null = null
+        for (let t = walker.nextNode(); t; t = walker.nextNode()) if (t.nodeValue?.trim()) last = t as Text
+        const m = last?.nodeValue?.match(/^([\s\S]*\S)[ \t]+(\S{1,16}\s*)$/)
+        if (last && m) last.nodeValue = `${m[1]} ${m[2]}`
+      })
+    }
+    if (!editor && !supportsPretty) {
+      glueOrphans(doc)
+      const onPnGlue = () => glueOrphans(doc)
+      doc.addEventListener('bld:pn-updated', onPnGlue)
+      cleanups.push(() => doc.removeEventListener('bld:pn-updated', onPnGlue))
+    }
+
     // ---------- Cập nhật danh sách tại chỗ (không tải lại trang) ----------
     // Phân trang, Xem thêm, Ô tìm kiếm, Toggle Group lọc: tải ngầm URL mới rồi chỉ thay danh sách có tham số đổi
     // ([data-pn=list], so chữ ký data-pn-sig) và các block điều khiển ([data-pn=ctl]). Link/form vẫn là thật nên

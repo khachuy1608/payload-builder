@@ -23,6 +23,9 @@
 
 * { box-sizing: border-box; }
 html, body.ed-body { margin: 0; height: 100%; overflow: hidden; }
+/* chữ không xuống hàng còn 1 từ (mồ côi): pretty cho đoạn văn, balance cho tiêu đề/nhãn ngắn */
+body.ed-body { text-wrap: pretty; }
+body.ed-body :is(h1, h2, h3, h4, .ed-label, .ed-help, .ed-warn, .ed-toast, .ed-tile, button, label) { text-wrap-style: balance; }
 .ed-body { font: 13px/1.45 var(--ed-font); color: var(--ed-ink); background: var(--ed-bg); }
 .ed-body button { font: inherit; color: inherit; }
 

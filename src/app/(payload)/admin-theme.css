@@ -62,6 +62,11 @@ html[data-theme='dark'] {
 }
 
 body { font-family: var(--font-body); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* chữ không xuống hàng còn 1 từ (mồ côi): đoạn văn "pretty", tiêu đề/nhãn/nút "balance".
+   Dùng longhand text-wrap-style để không ghi đè white-space: nowrap của Payload. */
+body { text-wrap: pretty; }
+:is(h1, h2, h3, h4, h5, h6, .card__title, .field-label, .field-description, .btn__label, .pill__label, .doc-controls__label,
+    .pb-dash__title, .pb-dash__lead, .pb-dash__stat-label, .pb-login-aside__title, label, th) { text-wrap-style: balance; }
 ::selection { background: rgba(99, 102, 241, .22); }
 
 /* ---------- thanh trên (breadcrumb, ngôn ngữ, tài khoản) ---------- */
@@ -70,6 +75,12 @@ body { font-family: var(--font-body); -webkit-font-smoothing: antialiased; -moz-
 .step-nav a { color: var(--theme-elevation-500); text-decoration: none; border-radius: 6px; }
 .step-nav a:hover { color: var(--pb-accent); }
 .step-nav__last { color: var(--theme-text); font-weight: 600; }
+/* breadcrumb không rớt mũi tên / chữ cuối xuống dòng riêng */
+.step-nav { flex-wrap: nowrap; min-width: 0; white-space: nowrap; }
+.step-nav > * { min-width: 0; }
+.step-nav__last, .dashboard-breadcrumb-select .rs__single-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-breadcrumb-select .rs__control { flex-wrap: nowrap; }
+.dashboard-breadcrumb-select .rs__value-container { flex-wrap: nowrap; overflow: hidden; }
 .localizer-button { height: 32px; padding-inline: 12px 8px; border-radius: 999px; background: var(--pb-surface); border: 1px solid var(--theme-elevation-150); box-shadow: var(--pb-shadow-sm); transition: border-color .15s; }
 .localizer-button:hover { border-color: var(--pb-accent); }
 .localizer-button__label { color: var(--theme-elevation-450); }

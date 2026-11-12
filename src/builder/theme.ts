@@ -277,7 +277,8 @@ export function themeFontLink(theme: ThemeTokens): string {
 export const BASE_CSS = `
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{font-family:var(--font-body);color:var(--color-text);background:var(--color-background);line-height:1.6;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font-body);color:var(--color-text);background:var(--color-background);line-height:1.6;-webkit-font-smoothing:antialiased;text-wrap:pretty}
+:is(h1,h2,h3,h4,h5,h6,.b-heading,.b-button,.b-badge,figcaption,blockquote,label,th,dt){text-wrap-style:balance}
 img,svg,video,iframe{display:block;max-width:100%}
 .bld-root{min-height:100vh}
 .b-heading{margin:0;font-family:var(--font-heading);line-height:1.2;color:var(--color-secondary)}
