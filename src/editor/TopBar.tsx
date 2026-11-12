@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, ChevronDown, ExternalLink, History, Keyboard, LayoutTemplate, Loader2, Monitor, Moon, MousePointer2, Pointer, Redo2, Smartphone, Sun, Tablet, Undo2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ExternalLink, History, Keyboard, LayoutTemplate, Loader2, Monitor, Moon, MessageSquare, MousePointer2, Pointer, Redo2, Smartphone, Sun, Tablet, Undo2 } from 'lucide-react'
 import { PublishMenu } from './PublishMenu'
 import type { Device } from '@/builder/types'
 import { LOCALES } from '@/lib/locale'
@@ -195,6 +195,7 @@ function PointerModeSwitch() {
   const items = [
     { id: 'edit' as const, label: 'Chế độ chỉnh sửa – chọn, kéo thả, sửa chữ (E)', icon: MousePointer2 },
     { id: 'view' as const, label: 'Chế độ xem – bấm nút, mở dialog, chuyển tab… như trang thật (V)', icon: Pointer },
+    { id: 'comment' as const, label: 'Chế độ bình luận – bấm vào phần tử để thêm và xem bình luận (C)', icon: MessageSquare },
   ]
   return (
     <div className="ed-seg ed-seg--lg ed-pointer-mode" role="group" aria-label="Chế độ chuột">

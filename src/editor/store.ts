@@ -94,7 +94,7 @@ export interface DropIndicator extends DropTarget {
 
 export type SaveStatus = 'draft' | 'published'
 
-export type PointerMode = 'edit' | 'view'
+export type PointerMode = 'edit' | 'view' | 'comment'
 
 export interface Toast {
   id: number
@@ -180,8 +180,10 @@ export interface EditorState {
   previewAsGuest: boolean
   /** Trạng thái xem Đóng/Mở đã ghim của block tương tác (chỉ trong editor, không lưu); chưa ghim = tự động */
   viewStates: Record<string, ViewState>
-  /** Chế độ chuột trên canvas: 'edit' = chọn/kéo/sửa; 'view' = tương tác như trang thật (bấm nút, mở dialog, tab…) */
+  /** Chế độ chuột trên canvas: 'edit' = chọn/kéo/sửa; 'view' = tương tác như trang thật (bấm nút, mở dialog, tab…); 'comment' = bấm phần tử để bình luận */
   pointerMode: PointerMode
+  /** Khung bình luận đang mở trên canvas (chế độ Bình luận): phần tử + toạ độ cửa sổ để đặt khung */
+  commentPop: { nodeId: string; x: number; y: number } | null
 
   selectedId: string | null
   hoveredId: string | null
@@ -284,6 +286,7 @@ export interface EditorActions {
   /** Ghim trạng thái xem Đóng/Mở cho block (null = tự động: mở khi đang chọn, còn lại như trang thật) */
   setViewState(id: string, state: ViewState | null): void
   setPointerMode(mode: PointerMode): void
+  openCommentPop(pop: { nodeId: string; x: number; y: number } | null): void
   setData(nodeId: string, records: DataMap[string]): void
   openContextMenu(menu: EditorState['contextMenu']): void
   openHistory(open: boolean): void
@@ -416,6 +419,7 @@ export const useEditor = create<Store>()(
       previewAsGuest: false,
       viewStates: {},
       pointerMode: 'edit',
+      commentPop: null,
       template: null,
       seo: { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '' },
       siteParts: { header: null, footer: null },
@@ -479,8 +483,11 @@ export const useEditor = create<Store>()(
       select: (id) =>
         set((s) => {
           s.selectedId = id
-          // chọn phần tử (cây Cấu trúc, chèn block, bình luận…) khi đang ở chế độ xem -> quay về chỉnh sửa
-          if (id && s.pointerMode === 'view') s.pointerMode = 'edit'
+          // chọn phần tử (cây Cấu trúc, chèn block…) khi đang ở chế độ xem / bình luận -> quay về chỉnh sửa
+          if (id && s.pointerMode !== 'edit') {
+            s.pointerMode = 'edit'
+            s.commentPop = null
+          }
         }),
       hover: (id) => {
         if (get().hoveredId !== id)
@@ -769,13 +776,18 @@ export const useEditor = create<Store>()(
         set((s) => {
           if (s.pointerMode === mode) return
           s.pointerMode = mode
-          // sang chế độ xem: bỏ chọn / hover / sửa chữ để canvas giống hệt trang thật
-          if (mode === 'view') {
+          s.commentPop = null
+          // sang chế độ xem / bình luận: bỏ chọn / hover / sửa chữ (chế độ bình luận chỉ mở khung bình luận, không chọn)
+          if (mode !== 'edit') {
             s.selectedId = null
             s.hoveredId = null
             s.editingId = null
             s.contextMenu = null
           }
+        }),
+      openCommentPop: (pop) =>
+        set((s) => {
+          s.commentPop = pop
         }),
       setViewState: (id, state) =>
         set((s) => {
@@ -1054,7 +1066,10 @@ export const useEditor = create<Store>()(
 
       startDrag: (payload) =>
         set((s) => {
-          if (s.pointerMode === 'view') s.pointerMode = 'edit'
+          if (s.pointerMode !== 'edit') {
+            s.pointerMode = 'edit'
+            s.commentPop = null
+          }
           s.drag = payload
           s.drop = null
         }),

@@ -3,14 +3,11 @@
 import { Check, Loader2, MessageSquare, RotateCcw, Send, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { findNode } from '@/builder/tree'
-import { createComment, deleteComment, updateComment } from './api'
+import { addComment, formatCommentTime, removeComment, setCommentResolved } from './commentActions'
 import { nodeLabel } from './labels'
 import { useEditor } from './store'
 
-const fmt = (iso: string) => {
-  const d = new Date(iso)
-  return isNaN(d.getTime()) ? iso : d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
-}
+const fmt = formatCommentTime
 
 /** Tab Bình luận: thêm bình luận cho phần tử đang chọn, danh sách mở / đã giải quyết, nhảy tới phần tử */
 export function CommentsPanel() {
@@ -28,33 +25,11 @@ export function CommentsPanel() {
   const add = async () => {
     if (!text.trim() || !target) return
     setBusy(true)
-    try {
-      const c = await createComment({ pageId: useEditor.getState().pageId, nodeId: target.id, text: text.trim() })
-      useEditor.getState().setComments([c, ...useEditor.getState().comments])
-      setText('')
-    } catch (err) {
-      useEditor.getState().toast('error', `Không gửi được: ${(err as Error).message}`)
-    } finally {
-      setBusy(false)
-    }
+    if (await addComment(target.id, text)) setText('')
+    setBusy(false)
   }
-  const resolve = async (id: string, resolved: boolean) => {
-    try {
-      const c = await updateComment(id, { resolved })
-      useEditor.getState().setComments(useEditor.getState().comments.map((x) => (x.id === id ? c : x)))
-    } catch (err) {
-      useEditor.getState().toast('error', (err as Error).message)
-    }
-  }
-  const remove = async (id: string) => {
-    if (!confirm('Xoá bình luận này?')) return
-    try {
-      await deleteComment(id)
-      useEditor.getState().setComments(useEditor.getState().comments.filter((x) => x.id !== id))
-    } catch (err) {
-      useEditor.getState().toast('error', (err as Error).message)
-    }
-  }
+  const resolve = (id: string, resolved: boolean) => setCommentResolved(id, resolved)
+  const remove = (id: string) => removeComment(id)
 
   return (
     <div className="ed-comments">

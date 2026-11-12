@@ -19,6 +19,7 @@ import { sitePartOf, withSiteParts } from '@/builder/siteParts'
 import { findNode, getAncestors } from '@/builder/tree'
 import { applyViewStates, viewStateInfo } from '@/builder/viewState'
 import { computeDrop } from './dnd'
+import { CommentPopover } from './CommentPopover'
 import { Overlay } from './Overlay'
 import { handleShortcut } from './shortcuts'
 import { blockLookup, effectiveTheme, useEditor } from './store'
@@ -30,6 +31,7 @@ body{user-select:none;-webkit-user-select:none}
 [data-empty]::after{content:'Kéo phần tử vào đây';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#818cf8;font:13px/1.4 system-ui,sans-serif;pointer-events:none}
 .bld-root[data-empty]{outline:none}
 .bld-root[data-empty]::after{content:'Kéo phần tử từ panel bên trái vào đây, hoặc bấm vào một phần tử để thêm';}
+body.bld-commenting,body.bld-commenting *{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 3h20a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H11l-6 5v-5H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z' fill='%234f46e5' stroke='white' stroke-width='1.5'/%3E%3Cpath d='M14 7v8M10 11h8' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 5 26,crosshair!important}
 .bld-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;background:#f1f5f9;color:#64748b;font:13px/1.4 system-ui,sans-serif;border:1px dashed #cbd5e1;border-radius:6px;text-align:center;padding:12px}
 [data-node-id] iframe{pointer-events:none}
 [contenteditable]{outline:none;cursor:text;user-select:text;-webkit-user-select:text}
@@ -170,6 +172,11 @@ export function Canvas() {
   const device = useEditor((s) => s.device)
   const selectedId = useEditor((s) => s.selectedId)
   const viewing = useEditor((s) => s.pointerMode === 'view')
+  const commentMode = useEditor((s) => s.pointerMode === 'comment')
+  // con trỏ bình luận trong iframe
+  useEffect(() => {
+    doc?.body.classList.toggle('bld-commenting', commentMode)
+  }, [doc, commentMode])
 
   const attach = useCallback(() => {
     const d = iframeRef.current?.contentDocument
@@ -209,6 +216,13 @@ export function Canvas() {
       else store().endDrag()
     }
     const viewing = () => store().pointerMode === 'view'
+    const commenting = () => store().pointerMode === 'comment'
+    /** toạ độ trong iframe -> toạ độ cửa sổ editor (iframe có thể bị thu nhỏ) */
+    const toWindow = (x: number, y: number) => {
+      const frame = iframeRef.current?.getBoundingClientRect()
+      const scale = frame ? frame.width / (doc.documentElement.clientWidth || 1) : 1
+      return { x: (frame?.left ?? 0) + x * scale, y: (frame?.top ?? 0) + y * scale }
+    }
     /** Chế độ xem: cho trang tự xử lý mọi tương tác, chỉ chặn việc rời canvas (link sang trang khác, đăng xuất) */
     // không lặp cùng một thông báo liên tục khi bấm nhiều lần
     const lastToast = new Map<string, number>()
@@ -236,7 +250,7 @@ export function Canvas() {
     }
     const onMouseDown = (e: MouseEvent) => {
       press = null
-      if (viewing()) return
+      if (viewing() || commenting()) return
       if (e.button !== 0 || store().editingId || (e.target as HTMLElement).isContentEditable) return
       const id = nodeElement(e.target)?.dataset.nodeId
       if (id && id !== 'root' && !sitePartOf(id)) press = { id, x: e.clientX, y: e.clientY }
@@ -264,6 +278,14 @@ export function Canvas() {
     const onLeave = () => store().hover(null)
     const onClick = (e: MouseEvent) => {
       if (viewing()) return guardViewClick(e)
+      if (commenting()) {
+        // chế độ bình luận: bấm phần tử -> mở khung bình luận tại chỗ bấm (không chọn, không điều hướng)
+        e.preventDefault()
+        e.stopPropagation()
+        const id = nodeElement(e.target as HTMLElement)?.dataset.nodeId ?? 'root'
+        store().openCommentPop({ nodeId: id, ...toWindow(e.clientX, e.clientY) })
+        return
+      }
       const t = e.target as HTMLElement
       if (t.closest('a')) e.preventDefault() // không bao giờ điều hướng trong canvas
       if (t.isContentEditable) return
@@ -272,7 +294,7 @@ export function Canvas() {
       if (el) store().select(el.dataset.nodeId!)
     }
     const onContextMenu = (e: MouseEvent) => {
-      if (viewing() || (e.target as HTMLElement).isContentEditable) return
+      if (viewing() || commenting() || (e.target as HTMLElement).isContentEditable) return
       e.preventDefault()
       const id = nodeElement(e.target)?.dataset.nodeId ?? 'root'
       store().select(id)
@@ -289,7 +311,7 @@ export function Canvas() {
     }
     const onWindowUp = () => endPointerDrag(false)
     const onDblClick = (e: MouseEvent) => {
-      if (viewing()) return
+      if (viewing() || commenting()) return
       const el = nodeElement(e.target)
       if (el) startInlineEdit(doc, el, el.dataset.nodeId!)
     }
@@ -393,7 +415,7 @@ export function Canvas() {
   const frameH = scale > 0 ? avail.h / scale : avail.h
 
   return (
-    <div className={`ed-canvas${viewing ? ' is-view' : ''}`} ref={canvasRef} onDragOver={(e) => e.preventDefault()}>
+    <div className={`ed-canvas${viewing ? ' is-view' : ''}${commentMode ? ' is-comment' : ''}`} ref={canvasRef} onDragOver={(e) => e.preventDefault()}>
       <div className="ed-sizer" style={{ width: frameW * scale, height: avail.h }}>
         <div
           className={`ed-frame ed-frame--${device}`}
@@ -404,6 +426,17 @@ export function Canvas() {
         </div>
       </div>
       {scale < 1 && <span className="ed-zoom">{Math.round(scale * 100)}%</span>}
+      {commentMode && (
+        <div className="ed-view-badge" role="status" data-comment-badge="">
+          <span>
+            Chế độ bình luận – bấm vào phần tử để bình luận · <kbd>E</kbd> để sửa
+          </span>
+          <button type="button" onClick={() => useEditor.getState().setPointerMode('edit')}>
+            Xong
+          </button>
+        </div>
+      )}
+      {commentMode && <CommentPopover />}
       {viewing && (
         <div className="ed-view-badge" role="status" data-view-badge="">
           <span>

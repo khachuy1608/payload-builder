@@ -43,11 +43,12 @@ export function handleShortcut(e: KeyboardEvent) {
     e.preventDefault()
     s.remove(s.selectedId)
   } else if (key === 'escape') {
-    s.select(null)
-  } else if (!mod && !e.altKey && (key === 'e' || key === 'v')) {
-    // chế độ chuột: E = chỉnh sửa, V = xem (tương tác như trang thật)
+    if (s.commentPop) s.openCommentPop(null)
+    else s.select(null)
+  } else if (!mod && !e.altKey && (key === 'e' || key === 'v' || key === 'c')) {
+    // chế độ chuột: E = chỉnh sửa, V = xem (tương tác như trang thật), C = bình luận
     e.preventDefault()
-    s.setPointerMode(key === 'v' ? 'view' : 'edit')
+    s.setPointerMode(key === 'v' ? 'view' : key === 'c' ? 'comment' : 'edit')
   } else if ((e.key === '?' && !mod) || (mod && e.key === '/')) {
     e.preventDefault()
     s.openShortcuts(!s.shortcutsDialog)

@@ -4,7 +4,7 @@
  * Lớp phủ vẽ phía trên iframe: viền hover, viền chọn + thanh công cụ, vạch chỉ vị trí thả.
  * Toạ độ đọc bằng getBoundingClientRect trong iframe mỗi frame (rAF) nên luôn đúng khi cuộn/đổi layout.
  */
-import { ArrowUp, BookmarkPlus, Copy, Database, Eye, EyeOff, ExternalLink, GripVertical, Trash2, Unlink } from 'lucide-react'
+import { ArrowUp, BookmarkPlus, Copy, Database, Eye, EyeOff, ExternalLink, GripVertical, MessageSquare, Trash2, Unlink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getBlock } from '@/builder/registry'
 import { canSaveAsBlock } from '@/builder/schema'
@@ -106,20 +106,39 @@ export function Overlay({ doc }: { doc: Document }) {
   const drop = useEditor((s) => s.drop)
   const root = useEditor((s) => s.root)
   const [boxes, setBoxes] = useState<Boxes>({ hover: null, selected: null, pad: null })
+  const pointerMode = useEditor((s) => s.pointerMode)
+  const commentPop = useEditor((s) => s.commentPop)
+  const comments = useEditor((s) => s.comments)
+  // chế độ bình luận: vị trí huy hiệu 💬 của các phần tử có bình luận đang mở + phần tử đang mở khung bình luận
+  const commenting = pointerMode === 'comment'
+  const pinIds = commenting ? [...new Set(comments.filter((c) => !c.resolved).map((c) => c.nodeId))] : []
+  const pinKey = pinIds.join(',')
+  const [pins, setPins] = useState<{ id: string; rect: Rect; count: number }[]>([])
+  const [popBox, setPopBox] = useState<Rect | null>(null)
 
   useEffect(() => {
     let raf = 0
     const tick = () => {
       const next: Boxes = { hover: measure(doc, hoveredId), selected: measure(doc, selectedId), pad: padOf(doc, selectedId) }
       setBoxes((prev) => (same(prev.hover, next.hover) && same(prev.selected, next.selected) && samePad(prev.pad, next.pad) ? prev : next))
+      if (commenting) {
+        const ids = pinKey ? pinKey.split(',') : []
+        const counts = useEditor.getState().comments.filter((c) => !c.resolved)
+        const nextPins = ids.flatMap((id) => {
+          const rect = measure(doc, id)
+          return rect ? [{ id, rect, count: counts.filter((c) => c.nodeId === id).length }] : []
+        })
+        setPins((prev) => (prev.length === nextPins.length && prev.every((p, i) => p.id === nextPins[i].id && p.count === nextPins[i].count && same(p.rect, nextPins[i].rect)) ? prev : nextPins))
+        const pb = commentPop ? measure(doc, commentPop.nodeId) : null
+        setPopBox((prev) => (same(prev, pb) ? prev : pb))
+      }
       raf = requestAnimationFrame(tick)
     }
     tick()
     return () => cancelAnimationFrame(raf)
-  }, [doc, hoveredId, selectedId])
+  }, [doc, hoveredId, selectedId, commenting, pinKey, commentPop])
 
   const siteParts = useEditor((s) => s.siteParts)
-  const comments = useEditor((s) => s.comments)
   const commentCount = (id: string) => comments.filter((c) => !c.resolved && c.nodeId === id).length
   // header/footer toàn site không nằm trong cây của store: dựng node tạm để hiện nhãn/khung
   const nodeOf = (id: string | null) => {
@@ -135,11 +154,30 @@ export function Overlay({ doc }: { doc: Document }) {
 
   return (
     <div className="ed-overlay">
+      {commenting && popBox && commentPop && <div className="ed-box ed-box--comment" style={rectStyle(popBox)} />}
       {boxes.hover && hoverNode && !drag && (
-        <div className={`ed-box ed-box--hover${hoverNode.type === 'blockRef' ? ' ed-box--linked' : ''}`} style={rectStyle(boxes.hover)}>
-          <span className="ed-box-tag">{sitePartOf(hoverNode.id) ? SITE_PART_LABELS[sitePartOf(hoverNode.id)!] : nodeLabel(hoverNode)}</span>
+        <div className={`ed-box ed-box--hover${hoverNode.type === 'blockRef' ? ' ed-box--linked' : ''}${commenting ? ' ed-box--comment-hover' : ''}`} style={rectStyle(boxes.hover)}>
+          <span className="ed-box-tag">
+            {commenting ? '💬 ' : ''}
+            {sitePartOf(hoverNode.id) ? SITE_PART_LABELS[sitePartOf(hoverNode.id)!] : nodeLabel(hoverNode)}
+          </span>
         </div>
       )}
+      {commenting &&
+        pins.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            className={`ed-cpin${commentPop?.nodeId === p.id ? ' is-active' : ''}`}
+            data-comment-pin={p.id}
+            title={`${p.count} bình luận – bấm để xem`}
+            style={{ transform: `translate(${Math.max(2, Math.min(doc.documentElement.clientWidth - 52, p.rect.x + p.rect.w - 16))}px, ${Math.max(2, p.rect.y - 12)}px)` }}
+            onClick={(e) => s.openCommentPop({ nodeId: p.id, x: e.clientX, y: e.clientY })}
+          >
+            <MessageSquare size={12} />
+            {p.count}
+          </button>
+        ))}
 
       {boxes.selected && selectedNode && (
         <div
