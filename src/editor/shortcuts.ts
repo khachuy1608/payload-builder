@@ -44,6 +44,10 @@ export function handleShortcut(e: KeyboardEvent) {
     s.remove(s.selectedId)
   } else if (key === 'escape') {
     s.select(null)
+  } else if (!mod && !e.altKey && (key === 'e' || key === 'v')) {
+    // chế độ chuột: E = chỉnh sửa, V = xem (tương tác như trang thật)
+    e.preventDefault()
+    s.setPointerMode(key === 'v' ? 'view' : 'edit')
   } else if ((e.key === '?' && !mod) || (mod && e.key === '/')) {
     e.preventDefault()
     s.openShortcuts(!s.shortcutsDialog)

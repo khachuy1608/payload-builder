@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, ChevronDown, ExternalLink, History, Keyboard, LayoutTemplate, Loader2, Monitor, Moon, Redo2, Smartphone, Sun, Tablet, Undo2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ExternalLink, History, Keyboard, LayoutTemplate, Loader2, Monitor, Moon, MousePointer2, Pointer, Redo2, Smartphone, Sun, Tablet, Undo2 } from 'lucide-react'
 import { PublishMenu } from './PublishMenu'
 import type { Device } from '@/builder/types'
 import { LOCALES } from '@/lib/locale'
@@ -50,7 +50,10 @@ export function TopBar() {
             <span>Bản gốc My Block – các trang dùng liên kết sẽ tự cập nhật</span>
           </div>
         </div>
-        <DeviceSwitch device={device} />
+        <div className="ed-top-center">
+          <PointerModeSwitch />
+          <DeviceSwitch device={device} />
+        </div>
         <div className="ed-top-right">
           <LocaleSwitch />
           <UiTools />
@@ -99,7 +102,10 @@ export function TopBar() {
         <Presence list={presence} />
       </div>
 
-      <DeviceSwitch device={device} />
+      <div className="ed-top-center">
+        <PointerModeSwitch />
+        <DeviceSwitch device={device} />
+      </div>
 
       <div className="ed-top-right">
         <LocaleSwitch />
@@ -179,6 +185,24 @@ function Presence({ list }: { list: { id: string; name: string }[] }) {
       ))}
       {list.length > 4 && <span className="ed-avatar">+{list.length - 4}</span>}
       <span className="ed-presence-label">{list.length === 1 ? `${list[0].name} đang xem` : `${list.length} người đang xem`}</span>
+    </div>
+  )
+}
+
+/** Chế độ chuột: Chỉnh sửa (chọn, kéo thả, sửa chữ) / Xem (bấm nút, mở dialog, tab… như khách truy cập) */
+function PointerModeSwitch() {
+  const mode = useEditor((s) => s.pointerMode)
+  const items = [
+    { id: 'edit' as const, label: 'Chế độ chỉnh sửa – chọn, kéo thả, sửa chữ (E)', icon: MousePointer2 },
+    { id: 'view' as const, label: 'Chế độ xem – bấm nút, mở dialog, chuyển tab… như trang thật (V)', icon: Pointer },
+  ]
+  return (
+    <div className="ed-seg ed-seg--lg ed-pointer-mode" role="group" aria-label="Chế độ chuột">
+      {items.map((m) => (
+        <button key={m.id} type="button" title={m.label} aria-label={m.label} aria-pressed={mode === m.id} data-pointer-mode={m.id} className={mode === m.id ? 'is-active' : ''} onClick={() => useEditor.getState().setPointerMode(m.id)}>
+          <m.icon size={16} />
+        </button>
+      ))}
     </div>
   )
 }

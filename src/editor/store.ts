@@ -94,6 +94,8 @@ export interface DropIndicator extends DropTarget {
 
 export type SaveStatus = 'draft' | 'published'
 
+export type PointerMode = 'edit' | 'view'
+
 export interface Toast {
   id: number
   kind: 'success' | 'error' | 'info'
@@ -178,6 +180,8 @@ export interface EditorState {
   previewAsGuest: boolean
   /** Trạng thái xem Đóng/Mở đã ghim của block tương tác (chỉ trong editor, không lưu); chưa ghim = tự động */
   viewStates: Record<string, ViewState>
+  /** Chế độ chuột trên canvas: 'edit' = chọn/kéo/sửa; 'view' = tương tác như trang thật (bấm nút, mở dialog, tab…) */
+  pointerMode: PointerMode
 
   selectedId: string | null
   hoveredId: string | null
@@ -279,6 +283,7 @@ export interface EditorActions {
   setPreviewAsGuest(on: boolean): void
   /** Ghim trạng thái xem Đóng/Mở cho block (null = tự động: mở khi đang chọn, còn lại như trang thật) */
   setViewState(id: string, state: ViewState | null): void
+  setPointerMode(mode: PointerMode): void
   setData(nodeId: string, records: DataMap[string]): void
   openContextMenu(menu: EditorState['contextMenu']): void
   openHistory(open: boolean): void
@@ -410,6 +415,7 @@ export const useEditor = create<Store>()(
       currentUser: null,
       previewAsGuest: false,
       viewStates: {},
+      pointerMode: 'edit',
       template: null,
       seo: { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '' },
       siteParts: { header: null, footer: null },
@@ -473,6 +479,8 @@ export const useEditor = create<Store>()(
       select: (id) =>
         set((s) => {
           s.selectedId = id
+          // chọn phần tử (cây Cấu trúc, chèn block, bình luận…) khi đang ở chế độ xem -> quay về chỉnh sửa
+          if (id && s.pointerMode === 'view') s.pointerMode = 'edit'
         }),
       hover: (id) => {
         if (get().hoveredId !== id)
@@ -757,6 +765,18 @@ export const useEditor = create<Store>()(
         set((s) => {
           s.previewAsGuest = on
         }),
+      setPointerMode: (mode) =>
+        set((s) => {
+          if (s.pointerMode === mode) return
+          s.pointerMode = mode
+          // sang chế độ xem: bỏ chọn / hover / sửa chữ để canvas giống hệt trang thật
+          if (mode === 'view') {
+            s.selectedId = null
+            s.hoveredId = null
+            s.editingId = null
+            s.contextMenu = null
+          }
+        }),
       setViewState: (id, state) =>
         set((s) => {
           if (state) s.viewStates[id] = state
@@ -1034,6 +1054,7 @@ export const useEditor = create<Store>()(
 
       startDrag: (payload) =>
         set((s) => {
+          if (s.pointerMode === 'view') s.pointerMode = 'edit'
           s.drag = payload
           s.drop = null
         }),

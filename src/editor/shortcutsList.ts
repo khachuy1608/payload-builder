@@ -33,6 +33,7 @@ export const SHORTCUT_GROUPS: { title: string; items: { keys: string; label: str
   {
     title: 'Khác',
     items: [
+      { keys: 'E / V', label: 'Chế độ chuột: Chỉnh sửa / Xem (tương tác như trang thật)' },
       { keys: '?', label: 'Hộp phím tắt này' },
       { keys: 'Ctrl + Enter (ô bình luận)', label: 'Gửi bình luận' },
       { keys: 'Shift + kéo tay cầm', label: 'Bước 8px' },

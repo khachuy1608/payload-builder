@@ -32,6 +32,7 @@ type Tab = 'content' | 'style' | 'advanced' | 'presets'
 
 export function RightPanel() {
   const selectedId = useEditor((s) => s.selectedId)
+  const pointerMode = useEditor((s) => s.pointerMode)
   const root = useEditor((s) => s.root)
   const node = selectedId ? findNode(root, selectedId) : null
   const sitePart = sitePartOf(selectedId)
@@ -49,7 +50,7 @@ export function RightPanel() {
       <aside className="ed-right">
         <div className="ed-empty">
           <MousePointer2 size={28} strokeWidth={1.5} />
-          <p>Chọn một phần tử trên trang để chỉnh sửa.</p>
+          <p>{pointerMode === 'view' ? 'Đang ở chế độ xem: bấm thử nút, dialog, tab… trên trang như khách truy cập. Nhấn E (hoặc nút mũi tên trên thanh trên) để quay lại chỉnh sửa.' : 'Chọn một phần tử trên trang để chỉnh sửa.'}</p>
           <button className="ed-btn" onClick={() => useEditor.getState().select('root')}>
             Cài đặt trang
           </button>

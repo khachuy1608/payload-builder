@@ -130,6 +130,9 @@ function CanvasContent() {
   // pathKey chỉ đổi khi tập block tương tác trên đường chọn đổi -> chọn phần tử thường không biên dịch lại CSS
   const selectedId = useEditor((s) => s.selectedId)
   const viewStates = useEditor((s) => s.viewStates)
+  // chế độ chuột "Xem": render y như trang thật (mode live, runtime đầy đủ) để bấm nút, mở dialog, chuyển tab…
+  const viewing = useEditor((s) => s.pointerMode === 'view')
+  const mode = viewing ? 'live' : 'editor'
   const pathKey = useMemo(() => {
     if (!selectedId) return ''
     const self = findNode(display, selectedId)
@@ -140,11 +143,12 @@ function CanvasContent() {
   }, [display, selectedId])
   const resolved = useMemo(
     () =>
-      resolveData(applyViewStates(resolveRefs(display, blockLookup(blocks)), viewStates, new Set(pathKey ? pathKey.split(',') : [])), (id) => dataCache[id], {
-        user: previewAsGuest ? null : currentUser,
-        keepHidden: true,
-      }),
-    [display, blocks, dataCache, currentUser, previewAsGuest, viewStates, pathKey],
+      resolveData(
+        viewing ? resolveRefs(display, blockLookup(blocks)) : applyViewStates(resolveRefs(display, blockLookup(blocks)), viewStates, new Set(pathKey ? pathKey.split(',') : [])),
+        (id) => dataCache[id],
+        { user: previewAsGuest ? null : currentUser, keepHidden: !viewing },
+      ),
+    [display, blocks, dataCache, currentUser, previewAsGuest, viewStates, pathKey, viewing],
   )
   const css = useMemo(() => compileTreeCss(resolved), [resolved])
   const theme = useEditor(effectiveTheme)
@@ -153,8 +157,9 @@ function CanvasContent() {
       {theme.fontUrl && <link rel="stylesheet" href={theme.fontUrl} />}
       <style dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />
       <style dangerouslySetInnerHTML={{ __html: css }} />
-      <RenderNode node={resolved} mode="editor" />
-      <BuilderRuntime mode="editor" />
+      {/* key theo chế độ: đổi chế độ thì dựng lại sạch (dialog/accordion đang mở do tương tác không lẫn sang chế độ kia) */}
+      <RenderNode key={mode} node={resolved} mode={mode} />
+      <BuilderRuntime key={'rt-' + mode} mode={mode} />
     </>
   )
 }
@@ -164,6 +169,7 @@ export function Canvas() {
   const [doc, setDoc] = useState<Document | null>(null)
   const device = useEditor((s) => s.device)
   const selectedId = useEditor((s) => s.selectedId)
+  const viewing = useEditor((s) => s.pointerMode === 'view')
 
   const attach = useCallback(() => {
     const d = iframeRef.current?.contentDocument
@@ -202,8 +208,35 @@ export function Canvas() {
       if (commit) store().commitDrop()
       else store().endDrag()
     }
+    const viewing = () => store().pointerMode === 'view'
+    /** Chế độ xem: cho trang tự xử lý mọi tương tác, chỉ chặn việc rời canvas (link sang trang khác, đăng xuất) */
+    // không lặp cùng một thông báo liên tục khi bấm nhiều lần
+    const lastToast = new Map<string, number>()
+    const blockInView = (e: Event, message: string) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (Date.now() - (lastToast.get(message) ?? 0) > 1500) {
+        lastToast.set(message, Date.now())
+        store().toast('info', message)
+      }
+    }
+    const guardViewClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement
+      const a = t.closest<HTMLAnchorElement>('a[href]')
+      const host = a ? null : t.closest<HTMLElement>('[data-click="link"]')
+      const href = a ? a.getAttribute('href') : (host?.dataset.clickHref ?? null)
+      if (href == null) return
+      if (href === '#logout') return blockInView(e, 'Đăng xuất không chạy trong chế độ xem.')
+      if (href.startsWith('#')) {
+        // cuộn tới phần trong trang vẫn chạy; '#' trống thì không làm gì
+        if (href.length < 2 || !doc.getElementById(decodeURIComponent(href.slice(1)))) e.preventDefault()
+        return
+      }
+      blockInView(e, `Link “${href.length > 60 ? href.slice(0, 57) + '…' : href}” – chế độ xem không mở trang khác.`)
+    }
     const onMouseDown = (e: MouseEvent) => {
       press = null
+      if (viewing()) return
       if (e.button !== 0 || store().editingId || (e.target as HTMLElement).isContentEditable) return
       const id = nodeElement(e.target)?.dataset.nodeId
       if (id && id !== 'root' && !sitePartOf(id)) press = { id, x: e.clientX, y: e.clientY }
@@ -225,11 +258,12 @@ export function Canvas() {
         if (pointerDrag) scheduleDrop(e.clientX, e.clientY)
         return
       }
-      if (store().editingId) return
+      if (store().editingId || viewing()) return
       store().hover(nodeElement(e.target)?.dataset.nodeId ?? null)
     }
     const onLeave = () => store().hover(null)
     const onClick = (e: MouseEvent) => {
+      if (viewing()) return guardViewClick(e)
       const t = e.target as HTMLElement
       if (t.closest('a')) e.preventDefault() // không bao giờ điều hướng trong canvas
       if (t.isContentEditable) return
@@ -238,7 +272,7 @@ export function Canvas() {
       if (el) store().select(el.dataset.nodeId!)
     }
     const onContextMenu = (e: MouseEvent) => {
-      if ((e.target as HTMLElement).isContentEditable) return
+      if (viewing() || (e.target as HTMLElement).isContentEditable) return
       e.preventDefault()
       const id = nodeElement(e.target)?.dataset.nodeId ?? 'root'
       store().select(id)
@@ -255,6 +289,7 @@ export function Canvas() {
     }
     const onWindowUp = () => endPointerDrag(false)
     const onDblClick = (e: MouseEvent) => {
+      if (viewing()) return
       const el = nodeElement(e.target)
       if (el) startInlineEdit(doc, el, el.dataset.nodeId!)
     }
@@ -273,7 +308,14 @@ export function Canvas() {
     const onDragLeave = (e: DragEvent) => {
       if (!e.relatedTarget) store().setDrop(null)
     }
-    const onSubmit = (e: Event) => e.preventDefault()
+    const onSubmit = (e: Event) => {
+      // chế độ chỉnh sửa: chặn im lặng; chế độ xem: form đã qua kiểm tra hợp lệ của trình duyệt nhưng không gửi đi
+      if (viewing()) return blockInView(e, 'Form hợp lệ – chế độ xem không gửi dữ liệu thật.')
+      e.preventDefault()
+    }
+    const onChange = (e: Event) => {
+      if (viewing() && (e.target as HTMLElement).matches?.('[data-lang-switch]')) blockInView(e, 'Đổi ngôn ngữ: dùng ô ngôn ngữ trên thanh trên của builder.')
+    }
 
     doc.addEventListener('mousedown', onMouseDown)
     doc.addEventListener('mouseup', onMouseUp)
@@ -289,6 +331,7 @@ export function Canvas() {
     doc.addEventListener('dragleave', onDragLeave)
     doc.addEventListener('keydown', handleShortcut)
     doc.addEventListener('submit', onSubmit, true)
+    doc.addEventListener('change', onChange, true)
     return () => {
       cancelAnimationFrame(raf)
       doc.removeEventListener('mousedown', onMouseDown)
@@ -304,6 +347,7 @@ export function Canvas() {
       doc.removeEventListener('drop', onDrop)
       doc.removeEventListener('dragleave', onDragLeave)
       doc.removeEventListener('keydown', handleShortcut)
+      doc.removeEventListener('change', onChange, true)
       doc.removeEventListener('submit', onSubmit, true)
     }
   }, [doc])
@@ -349,7 +393,7 @@ export function Canvas() {
   const frameH = scale > 0 ? avail.h / scale : avail.h
 
   return (
-    <div className="ed-canvas" ref={canvasRef} onDragOver={(e) => e.preventDefault()}>
+    <div className={`ed-canvas${viewing ? ' is-view' : ''}`} ref={canvasRef} onDragOver={(e) => e.preventDefault()}>
       <div className="ed-sizer" style={{ width: frameW * scale, height: avail.h }}>
         <div
           className={`ed-frame ed-frame--${device}`}
@@ -360,6 +404,16 @@ export function Canvas() {
         </div>
       </div>
       {scale < 1 && <span className="ed-zoom">{Math.round(scale * 100)}%</span>}
+      {viewing && (
+        <div className="ed-view-badge" role="status" data-view-badge="">
+          <span>
+            Chế độ xem – bấm thử như trang thật · <kbd>E</kbd> để sửa
+          </span>
+          <button type="button" onClick={() => useEditor.getState().setPointerMode('edit')}>
+            Quay lại chỉnh sửa
+          </button>
+        </div>
+      )}
       {doc && createPortal(<CanvasContent />, doc.getElementById('bld-mount')!)}
     </div>
   )
