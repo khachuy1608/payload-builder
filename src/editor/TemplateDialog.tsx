@@ -1,10 +1,11 @@
 'use client'
 
-import { LayoutTemplate, Loader2, Save, Trash2, X } from 'lucide-react'
+import { LayoutTemplate, Loader2, Plus, Save, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { collectDataNodes } from '@/builder/data'
 import { getPageTemplates, type PageTemplate } from '@/builder/templates'
 import type { BuilderNode } from '@/builder/types'
-import { createMyBlock, deleteMyBlock } from './api'
+import { createMyBlock, deleteMyBlock, fetchData } from './api'
 import { BlockPreview } from './BlockPreview'
 import { type BlockScope, useEditor } from './store'
 
@@ -21,10 +22,25 @@ export function TemplateDialog() {
   const [name, setName] = useState('')
   const [scope, setScope] = useState<BlockScope>('shared')
   const [busy, setBusy] = useState(false)
-  const builtin = getPageTemplates()
+  // tạo một lần cho cả phiên mở hộp thoại: id node ổn định để preview và dữ liệu xem trước khớp nhau
+  const [builtin] = useState(getPageTemplates)
   const mine = Object.values(blocks)
     .filter((b) => b.kind === 'page' && (b.scope === 'shared' || b.owner === null || b.owner === userId))
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+
+  // nạp dữ liệu thật cho danh sách trong các mẫu để ảnh xem trước không bị trống
+  useEffect(() => {
+    const s = useEditor.getState()
+    const trees = [...builtin.map((t) => t.root), ...mine.map((b) => b.tree)]
+    for (const tree of trees)
+      for (const { id, source } of collectDataNodes(tree)) {
+        if (s.dataCache[id]) continue
+        fetchData(source, s.sources.find((x) => x.slug === source.collection))
+          .then((result) => useEditor.getState().setData(id, result))
+          .catch(() => undefined)
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [builtin, mine.length])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -70,25 +86,51 @@ export function TemplateDialog() {
     }
   }
 
-  const tile = (key: string, label: string, description: string, tree: BuilderNode, onDelete?: () => void) => (
-    <div key={key} className="ed-tpl" data-template={key}>
-      <div className="ed-tpl-preview">{tree.children?.length ? <BlockPreview tree={tree} height={150} /> : <span className="ed-hint">Trống</span>}</div>
-      <div className="ed-tpl-meta">
-        <strong>{label}</strong>
-        <span className="ed-help">{description}</span>
-      </div>
-      <div className="ed-row">
-        <button className="ed-btn ed-btn--primary" onClick={() => apply(tree, label)}>
-          Dùng mẫu này
-        </button>
+  const tile = (key: string, label: string, description: string, tree: BuilderNode, onDelete?: () => void) => {
+    const sections = tree.children?.length ?? 0
+    return (
+      <div key={key} className="ed-tpl" data-template={key}>
+        <div
+          role="button"
+          tabIndex={0}
+          className="ed-tpl-card"
+          aria-label={`Dùng mẫu “${label}”`}
+          onClick={() => apply(tree, label)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return
+            e.preventDefault()
+            apply(tree, label)
+          }}
+        >
+          <div className="ed-tpl-preview">
+            {sections ? (
+              <BlockPreview tree={tree} height={196} fit="width" scrollOnHover />
+            ) : (
+              <span className="ed-tpl-blank" aria-hidden="true">
+                <span className="ed-tpl-blank-box">
+                  <Plus size={22} />
+                </span>
+                Bắt đầu từ trang trống
+              </span>
+            )}
+            <span className="ed-tpl-cta">Dùng mẫu này</span>
+          </div>
+          <span className="ed-tpl-meta">
+            <span className="ed-tpl-title">
+              <strong>{label}</strong>
+              {sections > 0 && <span className="ed-tpl-chip">{sections} phần</span>}
+            </span>
+            <span>{description}</span>
+          </span>
+        </div>
         {onDelete && (
-          <button className="ed-icon-btn" title="Xoá mẫu" onClick={onDelete}>
+          <button type="button" className="ed-icon-btn ed-tpl-del" title="Xoá mẫu" aria-label={`Xoá mẫu ${label}`} onClick={onDelete}>
             <Trash2 size={15} />
           </button>
         )}
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="ed-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>

@@ -225,7 +225,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 ## Trải nghiệm editor (đợt 2)
 
 - **Header / footer toàn site:** chọn một My Block (nên là *Dùng chung*) trong *Cài đặt site* hoặc ngay trong builder (*Cài đặt trang → Bố cục*, hoặc bấm vào header trên canvas). Được chèn tự động vào đầu/cuối mọi trang; từng trang có thể tắt riêng. Trên canvas, header/footer hiện màu tím, không kéo/xoá được, bấm vào để mở bản gốc.
-- **Mẫu trang:** nút *Mẫu trang* trên thanh trên (trang trống tự mở): mẫu có sẵn (landing, giới thiệu + đội ngũ, liên hệ, danh sách có tìm kiếm, bảng giá) và mẫu của bạn. *Lưu trang hiện tại làm mẫu* lưu vào `my-blocks` với `kind = page`.
+- **Mẫu trang:** nút *Mẫu trang* trên thanh trên (trang trống tự mở): mẫu có sẵn (landing, giới thiệu + đội ngũ, liên hệ, danh sách có tìm kiếm, bảng giá) và mẫu của bạn. *Lưu trang hiện tại làm mẫu* lưu vào `my-blocks` với `kind = page`. Mỗi thẻ xem trước đầu trang ở bố cục desktop (iframe 1280px thu nhỏ, có dữ liệu thật cho danh sách), rê chuột thì cuộn dần xuống cuối trang; bấm cả thẻ (hoặc Enter) để dùng mẫu.
 - **Tay cầm kéo trên canvas:** phần tử đang chọn có 4 thanh cam (lề trong trên/phải/dưới/trái) và 2 tay cầm tím (chiều rộng ở mép phải, chiều cao ở mép dưới). Kéo ghi style cho thiết bị đang chọn; giữ Shift để bước 8px.
 - **Nhóm phần tử:** chuột phải → *Bọc trong Div* (Ctrl+G) / *Bỏ bọc* (Ctrl+Shift+G).
 - **Phiên bản:** mũi tên cạnh *Xuất bản* mở menu: ghi chú phiên bản (lưu cùng lần lưu kế tiếp, hiện trong Lịch sử), *Lên lịch* xuất bản / gỡ xuất bản. Lịch sử phiên bản có *So sánh với bản đang sửa* (phần tử thêm/xoá/đổi/dời, bấm “chọn” để nhảy tới).
