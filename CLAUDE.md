@@ -27,7 +27,7 @@ Trả lời người dùng bằng **tiếng Việt**.
 ```bash
 npx tsc --noEmit -p .
 npm test
-PW_CHROMIUM=/opt/pw-browsers/chromium BASE=http://localhost:3000 npm run e2e
+PW_CHROMIUM=/opt/pw-browsers/chromium BASE=http://localhost:3000 npm run e2e:all
 ```
 
 Thay đổi lớn thì chạy thêm `npm run build`. Migration mới: `npm run payload -- migrate:create <tên>` rồi thử `npm run payload -- migrate` trên DB trống. Sau khi push, theo dõi CI (`.github/workflows/ci.yml`) tới khi xanh.

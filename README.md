@@ -379,6 +379,7 @@ Không cần viết UI cho panel: editor tự sinh control từ `contentControls
 
 ## Kiểm thử
 
+- **E2E tính năng** (`npm run e2e:features`, chạy trong CI sau smoke, tự tạo dữ liệu nên chạy được trên DB trống): `e2e/lists.mjs` (danh sách cập nhật tại chỗ, Back/Forward), `e2e/files.mjs` (Xem file: Excel/Word/CSV/PDF/ZIP/PowerPoint, thư viện lọc theo loại), `e2e/editor.mjs` (trạng thái Đóng/Mở, chế độ chuột, bình luận: neo vị trí, avatar, @nhắc tên, tự cập nhật, badge). Tiện ích chung ở `e2e/lib.mjs`; `npm run e2e:all` = smoke + tính năng. Dùng `PW_CHROMIUM=<đường dẫn chromium>` nếu không cài trình duyệt của Playwright.
 ```bash
 npm test          # unit test lõi: cây, CSS, validate, sanitize, My Blocks, theme/token, data binding, presets, SEO, diff, access, rich text, tải thêm
 npm run typecheck

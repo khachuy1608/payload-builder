@@ -15,7 +15,9 @@
     "test": "tsx --test tests/*.test.ts",
     "export": "cross-env NODE_OPTIONS=--no-deprecation tsx --env-file-if-exists=.env scripts/export.ts",
     "import": "cross-env NODE_OPTIONS=--no-deprecation tsx --env-file-if-exists=.env scripts/import.ts",
-    "e2e": "node e2e/smoke.mjs"
+    "e2e": "node e2e/smoke.mjs",
+    "e2e:features": "node e2e/lists.mjs && node e2e/files.mjs && node e2e/editor.mjs",
+    "e2e:all": "npm run e2e && npm run e2e:features"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.93.0",
