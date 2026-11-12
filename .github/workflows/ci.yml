@@ -7,9 +7,8 @@ on:
 
 jobs:
   test:
-    # Ghim 24.04: ubuntu-latest đã lên 26.04, Playwright 1.57 chưa có Chromium cho bản này
-    # ("Playwright does not support chromium on ubuntu26.04-x64") nên bước cài trình duyệt cho e2e luôn fail.
-    runs-on: ubuntu-24.04
+    # Playwright >= 1.65 có Chromium cho Ubuntu 26.04 (ubuntu-latest hiện tại); bản 1.57 trước đây thì không
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
       postgres:
@@ -30,8 +29,8 @@ jobs:
       NEXT_PUBLIC_SERVER_URL: http://localhost:3000
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
