@@ -64,6 +64,9 @@ export interface MediaValue {
   width?: number
   height?: number
   mimeType?: string
+  /** Tên file gốc + dung lượng (byte) – block Xem file */
+  filename?: string
+  filesize?: number
   /** Các cỡ ảnh đã tối ưu (Payload imageSizes) để dựng srcset */
   sizes?: Record<string, { url?: string | null; width?: number | null; height?: number | null }>
 }

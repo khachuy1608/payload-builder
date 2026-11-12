@@ -25,6 +25,7 @@ import { DEFAULT_LOCALE, LOCALES } from './lib/locale'
 import { getSources } from './lib/data'
 import { formExportEndpoint } from './lib/formExport'
 import { linksEndpoint } from './lib/links'
+import { filePreviewEndpoint } from './lib/filePreview'
 import { presenceEndpoints } from './lib/presence'
 import { scheduleEndpoints } from './lib/schedule'
 import { migrations } from './migrations'
@@ -71,6 +72,7 @@ export default buildConfig({
     ...presenceEndpoints,
     formExportEndpoint,
     linksEndpoint,
+    filePreviewEndpoint,
     {
       // Health check cho load balancer / giám sát: kiểm tra kết nối DB
       path: '/health',

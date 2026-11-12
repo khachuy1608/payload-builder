@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Database, ExternalLink, Eye, EyeOff, Globe, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X, ClipboardPaste, Copy } from 'lucide-react'
+import { ChevronDown, ChevronRight, Database, ExternalLink, Eye, EyeOff, FileText, Globe, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X, ClipboardPaste, Copy } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
@@ -16,6 +16,7 @@ import { CLICK_ACTIONS, type ClickAction, type ClickProps, canHaveClick } from '
 import { cssToStyles } from '@/builder/cssImport'
 import { findNode, genId, getAncestors, walk } from '@/builder/tree'
 import { type ViewState, viewStateInfo } from '@/builder/viewState'
+import { FILE_KIND_LABEL, fileKindOf, formatBytes } from '@/builder/files'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
 import { Icon, ICON_LABELS, ICONS } from '@/builder/blocks/helpers'
@@ -254,7 +255,7 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
             <span className="ed-help">Ảnh lấy từ dữ liệu.</span>
           </Field>
         )
-      return <MediaField label={control.label} value={(raw as MediaValue | null) ?? null} onChange={(v) => update(v, false)} picker={<BindPicker node={node} onPick={(t) => update(t, false)} />} />
+      return <MediaField label={control.label} accept={control.accept} value={(raw as MediaValue | null) ?? null} onChange={(v) => update(v, false)} picker={<BindPicker node={node} onPick={(t) => update(t, false)} />} />
     }
     case 'number':
       return (
@@ -896,8 +897,11 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
   )
 }
 
-function MediaField({ label, value, onChange, picker }: { label: string; value: MediaValue | null; onChange: (v: MediaValue | null) => void; picker?: React.ReactNode }) {
+function MediaField({ label, value, onChange, picker, accept = 'image' }: { label: string; value: MediaValue | null; onChange: (v: MediaValue | null) => void; picker?: React.ReactNode; accept?: 'image' | 'file' }) {
   const [open, setOpen] = useState(false)
+  // tài liệu (không phải ảnh) hiện dạng thẻ tên file thay vì <img>
+  const isFile = !!value?.url && !(value.mimeType ?? '').startsWith('image/') && (accept === 'file' || !!value.mimeType)
+  const noun = accept === 'file' ? 'file' : 'ảnh'
   return (
     <div className="ed-field">
       <span className="ed-label ed-label--row">
@@ -905,15 +909,23 @@ function MediaField({ label, value, onChange, picker }: { label: string; value: 
         {picker}
       </span>
       <div className="ed-media-field">
-        {value?.url ? (
+        {value?.url && isFile ? (
+          <div className="ed-media-filecard" data-media-file="">
+            <FileText size={20} />
+            <span>
+              <b title={value.filename ?? value.url}>{value.filename ?? value.url.split('/').pop()}</b>
+              <small>{[FILE_KIND_LABEL[fileKindOf(value.filename ?? value.url, value.mimeType ?? '')], formatBytes(value.filesize)].filter(Boolean).join(' · ')}</small>
+            </span>
+          </div>
+        ) : value?.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={value.url} alt="" />
         ) : (
-          <div className="ed-media-empty">Chưa chọn ảnh</div>
+          <div className="ed-media-empty">Chưa chọn {noun}</div>
         )}
         <div className="ed-row">
           <button className="ed-btn ed-btn--primary" onClick={() => setOpen(true)}>
-            {value ? 'Đổi ảnh' : 'Chọn ảnh'}
+            {value ? `Đổi ${noun}` : `Chọn ${noun}`}
           </button>
           {value && (
             <button className="ed-btn" onClick={() => onChange(null)}>
@@ -924,6 +936,7 @@ function MediaField({ label, value, onChange, picker }: { label: string; value: 
       </div>
       {open && (
         <MediaPicker
+          accept={accept}
           onClose={() => setOpen(false)}
           onPick={(m) => {
             onChange(m)

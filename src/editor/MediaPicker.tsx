@@ -1,11 +1,13 @@
 'use client'
 
-import { Loader2, Upload, X } from 'lucide-react'
+import { FileText, Loader2, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { DOCUMENT_ACCEPT, FILE_KIND_LABEL, fileKindOf, formatBytes } from '@/builder/files'
 import type { MediaValue } from '@/builder/types'
 import { listMedia, type MediaDoc, toMediaValue, uploadMedia } from './api'
 
-export function MediaPicker({ onPick, onClose }: { onPick: (m: MediaValue) => void; onClose: () => void }) {
+/** accept = 'file': tải lên/chọn tài liệu (PDF, Excel, Word…) – file không phải ảnh hiện dạng thẻ */
+export function MediaPicker({ onPick, onClose, accept = 'image' }: { onPick: (m: MediaValue) => void; onClose: () => void; accept?: 'image' | 'file' }) {
   const [docs, setDocs] = useState<MediaDoc[]>([])
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
@@ -57,9 +59,9 @@ export function MediaPicker({ onPick, onClose }: { onPick: (m: MediaValue) => vo
         <header className="ed-modal-head">
           <strong>Thư viện media</strong>
           <button className="ed-btn ed-btn--primary" onClick={() => fileRef.current?.click()} disabled={uploading}>
-            {uploading ? <Loader2 size={15} className="ed-spin" /> : <Upload size={15} />} Tải ảnh lên
+            {uploading ? <Loader2 size={15} className="ed-spin" /> : <Upload size={15} />} {accept === 'file' ? 'Tải file lên' : 'Tải ảnh lên'}
           </button>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => onUpload(e.target.files)} />
+          <input ref={fileRef} type="file" accept={accept === 'file' ? DOCUMENT_ACCEPT : 'image/*'} hidden onChange={(e) => onUpload(e.target.files)} />
           <button className="ed-icon-btn" onClick={onClose} aria-label="Đóng">
             <X size={18} />
           </button>
@@ -75,11 +77,19 @@ export function MediaPicker({ onPick, onClose }: { onPick: (m: MediaValue) => vo
         >
           {docs.map((d) => (
             <button key={d.id} className="ed-media-item" onClick={() => onPick(toMediaValue(d))} title={d.filename}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={d.url} alt={d.alt ?? ''} />
+              {d.mimeType && !d.mimeType.startsWith('image/') ? (
+                <span className="ed-media-file" data-kind={fileKindOf(d.filename ?? '', d.mimeType)}>
+                  <FileText size={22} />
+                  <b>{d.filename}</b>
+                  <span>{[FILE_KIND_LABEL[fileKindOf(d.filename ?? '', d.mimeType)], formatBytes(d.filesize)].filter(Boolean).join(' · ')}</span>
+                </span>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={d.url} alt={d.alt ?? ''} />
+              )}
             </button>
           ))}
-          {!loading && !docs.length && <p className="ed-hint">Chưa có ảnh. Bấm “Tải ảnh lên” hoặc kéo thả file vào đây.</p>}
+          {!loading && !docs.length && <p className="ed-hint">{accept === 'file' ? 'Chưa có file. Bấm “Tải file lên” (PDF, Excel, Word, CSV…) hoặc kéo thả vào đây.' : 'Chưa có ảnh. Bấm “Tải ảnh lên” hoặc kéo thả file vào đây.'}</p>}
         </div>
         <footer className="ed-modal-foot">
           {loading && <Loader2 size={16} className="ed-spin" />}

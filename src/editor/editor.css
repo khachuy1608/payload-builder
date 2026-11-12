@@ -601,3 +601,13 @@ select.ed-token-select:hover { border-color: #7c3aed; background: var(--ed-accen
 /* ---------- Cảnh báo trong panel ---------- */
 .ed-warn { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 10px; border-radius: 6px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12px; line-height: 1.45; }
 [data-ed-theme='dark'] .ed-warn { background: #3b2412; border-color: #7c2d12; color: #fed7aa; }
+
+/* ---------- thẻ file (tài liệu) trong ô chọn media / thư viện ---------- */
+.ed-media-filecard { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ed-line); border-radius: 8px; background: var(--ed-panel-2); color: var(--ed-accent); }
+.ed-media-filecard span { display: flex; flex-direction: column; min-width: 0; color: var(--ed-ink); }
+.ed-media-filecard b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-media-filecard small { font-size: 11.5px; color: var(--ed-ink-3); }
+.ed-media-file { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; height: 100%; padding: 8px; color: var(--ed-accent); background: var(--ed-panel-2); text-align: center; }
+.ed-media-file b { font-size: 11.5px; color: var(--ed-ink); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-media-file span { font-size: 10.5px; color: var(--ed-ink-3); }
+.ed-media-file[data-kind='pdf'] { color: #dc2626; } .ed-media-file[data-kind='sheet'], .ed-media-file[data-kind='csv'] { color: #16a34a; } .ed-media-file[data-kind='doc'] { color: #2563eb; }

@@ -28,6 +28,7 @@ import {
   Youtube,
 } from 'lucide-react'
 import { FEEDBACK_BLOCKS } from './blocks/defs/feedback'
+import { FILE_BLOCKS } from './blocks/defs/files'
 import { FORM_BLOCKS } from './blocks/defs/forms'
 import { LAYOUT_BLOCKS } from './blocks/defs/layout'
 import { bool, Icon, num, parseYouTubeId, safeHref, srcSetOf } from './blocks/helpers'
@@ -632,7 +633,7 @@ export const REF_ERROR_LABELS: Record<RefError, string> = {
   depth: 'Block "%s" lồng quá nhiều cấp – không thể hiển thị',
 }
 
-export const BLOCKS: Record<string, BlockDefinition> = Object.fromEntries([...BLOCK_LIST, ...LAYOUT_BLOCKS, ...FEEDBACK_BLOCKS, ...FORM_BLOCKS].map((b) => [b.type, b]))
+export const BLOCKS: Record<string, BlockDefinition> = Object.fromEntries([...BLOCK_LIST, ...LAYOUT_BLOCKS, ...FEEDBACK_BLOCKS, ...FORM_BLOCKS, ...FILE_BLOCKS].map((b) => [b.type, b]))
 
 export function getBlock(type: string): BlockDefinition | undefined {
   return BLOCKS[type]

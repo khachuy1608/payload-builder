@@ -222,6 +222,16 @@ docker compose -f docker-compose.prod.yml up -d --build
 - **Dữ liệu của riêng tôi:** collection khai báo `custom.builder.ownerField` (ví dụ `bookings.customer`); nguồn dữ liệu bật *Chỉ bản ghi của người đang đăng nhập* → render riêng theo người dùng (ngoài cache). Khách hàng tạo bản ghi qua block Form với `action = /api/bookings` (owner tự gán = chính họ).
 - Khách hàng không bao giờ có quyền CMS: mọi access của builder/admin đều yêu cầu `users` (`isStaffUser`).
 
+## Block Xem file (PDF, Excel, Word…)
+
+- Block **Xem file** (nhóm Media): chọn file trong thư viện (nút *Tải file lên* nhận PDF, Excel, Word, CSV, PowerPoint, ZIP…) hoặc dán URL https.
+  - **PDF**: trình xem PDF của trình duyệt trong khung (phóng to, tìm, in); trình duyệt không có trình xem PDF trong trang (vd. Chrome Android) thì hiện nút *Mở PDF*.
+  - **Excel (.xlsx), CSV/TSV**: hiện thành bảng thật – tab cho từng sheet, cột số thứ tự, dòng tiêu đề dính khi cuộn, tối đa 1.000 dòng × 50 cột mỗi sheet.
+  - **Word (.docx)**: chuyển sang HTML (tiêu đề, danh sách, bảng, ảnh nhỏ) và làm sạch.
+  - **Ảnh, video, âm thanh, .txt** hiển thị trực tiếp; loại khác (PowerPoint, .xls/.doc cũ, .zip…) hiện thẻ file + nút tải xuống.
+  - Thanh trên: icon theo loại, tên, dung lượng, *Mở* (tab mới), *Tải xuống* (tắt được). Tuỳ chọn chiều cao khung, ẩn thanh, dòng đầu là tiêu đề cột; có Gợi ý kiểu.
+- Bảng/Word/văn bản do server đọc: `GET /api/builder/file-preview?src=/api/media/file/<tên>` (`src/lib/filePreview.ts`, thư viện `read-excel-file` và `mammoth`) – **chỉ** file của collection `media` trên đĩa (không tải URL bên ngoài, chặn path traversal), tối đa 15 MB, có cache theo kích thước + thời điểm sửa. Runtime dựng bảng bằng DOM (textContent), HTML Word đã qua `sanitizeContentHtml`.
+
 ## Trải nghiệm editor (đợt 2)
 
 - **Chế độ chuột** (thanh trên, cạnh nút chọn thiết bị; phím `E` / `V`): *Chỉnh sửa* – chọn, kéo thả, sửa chữ; *Xem* – canvas render như trang thật (runtime đầy đủ) để bấm thử nút, mở dialog, chuyển tab, accordion, carousel, dropdown, tooltip. Trong chế độ xem, link sang trang khác, đăng xuất, đổi ngôn ngữ và gửi form bị chặn kèm thông báo (form vẫn chạy kiểm tra hợp lệ nhưng không tạo bài gửi); chọn phần tử (cây Cấu trúc, chèn block) hoặc kéo block vào thì tự về chỉnh sửa.

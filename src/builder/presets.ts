@@ -154,6 +154,12 @@ Object.assign(PRESETS, {
     P('bg', 'Nền tự phát (loop, tắt tiếng)', { autoplay: true, loop: true, muted: true, controls: false }, { desktop: { width: '100%' } }),
     P('portrait', 'Dọc 9:16', { aspect: '9/16' }, { desktop: { width: '100%', maxWidth: '360px', margin: '0 auto', borderRadius: 'var(--radius-lg)', overflow: 'hidden' } }),
   ],
+  fileViewer: [
+    P('card', 'Thẻ bo góc có bóng', { showBar: true, height: '640' }, { desktop: { width: '100%', borderRadius: 'var(--radius-lg)', boxShadow: '0 12px 32px -16px rgba(15,23,42,.35)', overflow: 'hidden' } }),
+    P('tall', 'Khung cao (tài liệu dài)', { showBar: true, height: '900' }, { desktop: { width: '100%' } }),
+    P('compact', 'Gọn: chỉ thanh tải xuống', { showBar: true, height: '360' }, { desktop: { width: '100%', maxWidth: '720px', margin: '0 auto' } }),
+    P('bare', 'Không thanh tiêu đề', { showBar: false, height: '640' }, { desktop: { width: '100%', borderRadius: 'var(--radius-md)', overflow: 'hidden' } }),
+  ],
   languageSwitcher: [
     P('links', 'VI | EN', { variant: 'links', showLabel: false }, { desktop: { display: 'inline-flex', gap: '6px', alignItems: 'center', fontSize: '14px' } }),
     P('names', 'Tên đầy đủ', { variant: 'links', showLabel: true }, { desktop: { display: 'inline-flex', gap: '8px', alignItems: 'center' } }),

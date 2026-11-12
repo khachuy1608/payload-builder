@@ -33,6 +33,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   embed: { isContainer: false },
   htmlEmbed: { isContainer: false },
   video: { isContainer: false },
+  fileViewer: { isContainer: false },
   loadMore: { isContainer: false },
   /** My Block dạng liên kết: triển khai thành cây thật lúc render (xem ./refs.ts). Không hiện ở panel Phần tử. */
   blockRef: { isContainer: false, hidden: true },

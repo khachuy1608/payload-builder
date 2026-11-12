@@ -163,8 +163,141 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
       win.cancelAnimationFrame(raf)
     })
 
+    // ---------- Xem file: bảng tính (xlsx/csv), Word (docx), văn bản – server đọc, runtime dựng ----------
+    const buildTable = (rows: string[][], header: boolean) => {
+      const table = doc.createElement('table')
+      table.className = 'b-file-table'
+      const width = rows.reduce((w, r) => Math.max(w, r.length), 0)
+      const addRow = (parent: HTMLElement, cells: string[], tag: 'th' | 'td', num: string) => {
+        const tr = doc.createElement('tr')
+        const n = doc.createElement(tag === 'th' ? 'th' : 'td')
+        n.className = 'b-file-rownum'
+        n.textContent = num
+        tr.appendChild(n)
+        for (let i = 0; i < width; i++) {
+          const c = doc.createElement(tag)
+          c.textContent = cells[i] ?? ''
+          if (tag === 'td' && /^-?[\d.,]+%?$/.test(cells[i] ?? '')) c.className = 'is-num'
+          tr.appendChild(c)
+        }
+        parent.appendChild(tr)
+      }
+      const body = doc.createElement('tbody')
+      if (header && rows.length) {
+        const head = doc.createElement('thead')
+        addRow(head, rows[0], 'th', '')
+        table.appendChild(head)
+      }
+      ;(header ? rows.slice(1) : rows).forEach((r, i) => addRow(body, r, 'td', String(i + 1)))
+      table.appendChild(body)
+      return table
+    }
+    type Preview =
+      | { kind: 'table'; sheets: { name: string; rows: string[][]; truncated: boolean }[] }
+      | { kind: 'html'; html: string }
+      | { kind: 'text'; text: string; truncated: boolean }
+    const renderPreview = (mount: HTMLElement, data: Preview, header: boolean) => {
+      mount.textContent = ''
+      if (data.kind === 'table') {
+        const scroll = doc.createElement('div')
+        scroll.className = 'b-file-scroll'
+        const note = doc.createElement('p')
+        note.className = 'b-file-note'
+        const show = (i: number) => {
+          const sheet = data.sheets[i]
+          scroll.textContent = ''
+          if (!sheet?.rows.length) {
+            const empty = doc.createElement('p')
+            empty.className = 'b-file-empty'
+            empty.textContent = 'Sheet trống.'
+            scroll.appendChild(empty)
+          } else scroll.appendChild(buildTable(sheet.rows, header))
+          note.hidden = !sheet?.truncated
+          note.textContent = 'Chỉ hiện 1.000 dòng đầu – tải file để xem đầy đủ.'
+          tabs?.querySelectorAll('button').forEach((b, j) => {
+            b.setAttribute('aria-selected', String(j === i))
+            b.classList.toggle('is-active', j === i)
+          })
+        }
+        let tabs: HTMLElement | null = null
+        if (data.sheets.length > 1) {
+          tabs = doc.createElement('div')
+          tabs.className = 'b-file-sheets'
+          tabs.setAttribute('role', 'tablist')
+          data.sheets.forEach((s, i) => {
+            const b = doc.createElement('button')
+            b.type = 'button'
+            b.setAttribute('role', 'tab')
+            b.textContent = s.name
+            b.addEventListener('click', () => show(i))
+            tabs!.appendChild(b)
+          })
+        }
+        mount.appendChild(scroll)
+        if (tabs) mount.appendChild(tabs)
+        mount.appendChild(note)
+        show(0)
+      } else if (data.kind === 'html') {
+        const div = doc.createElement('div')
+        div.className = 'b-file-doc b-rich'
+        div.innerHTML = data.html // đã làm sạch trên server (sanitizeContentHtml)
+        mount.appendChild(div)
+      } else {
+        const pre = doc.createElement('pre')
+        pre.className = 'b-file-text'
+        pre.textContent = data.text + (data.truncated ? '\n…' : '')
+        mount.appendChild(pre)
+      }
+      mount.dataset.fileState = 'ready'
+    }
+    // trình duyệt không có trình xem PDF trong trang (Chrome Android, webview…): thay khung trống bằng thẻ mở / tải xuống
+    const pdfInline = (win.navigator as Navigator & { pdfViewerEnabled?: boolean }).pdfViewerEnabled !== false
+    const loadFileViewers = () => {
+      if (!pdfInline)
+        root.querySelectorAll<HTMLIFrameElement>('[data-file-viewer] iframe.b-file-frame:not([data-pdf-fallback])').forEach((frame) => {
+          frame.dataset.pdfFallback = ''
+          frame.hidden = true
+          const src = (frame.getAttribute('src') ?? '').split('#')[0]
+          const card = doc.createElement('div')
+          card.className = 'b-file-card b-file-card--pdf'
+          const p = doc.createElement('p')
+          p.textContent = 'Trình duyệt này không hiển thị PDF ngay trong trang.'
+          const open = doc.createElement('a')
+          open.className = 'b-button'
+          open.href = src
+          open.target = '_blank'
+          open.rel = 'noopener noreferrer'
+          open.textContent = 'Mở PDF'
+          card.append(p, open)
+          frame.after(card)
+        })
+      root.querySelectorAll<HTMLElement>('[data-file-mount]:not([data-file-state])').forEach((mount) => {
+        const host = mount.closest<HTMLElement>('[data-file-viewer]')
+        const src = host?.dataset.src
+        if (!src) return
+        mount.dataset.fileState = 'loading'
+        win
+          .fetch(`/api/builder/file-preview?src=${encodeURIComponent(src)}`, { credentials: 'same-origin' })
+          .then(async (res) => {
+            const body = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error((body as { error?: string }).error || 'Không đọc được file.')
+            if (mount.isConnected) renderPreview(mount, body as Preview, mount.dataset.header !== '0')
+          })
+          .catch((err: Error) => {
+            if (!mount.isConnected) return
+            mount.dataset.fileState = 'error'
+            mount.textContent = ''
+            const p = doc.createElement('p')
+            p.className = 'b-file-empty'
+            p.textContent = `${err.message} `
+            mount.appendChild(p)
+          })
+      })
+    }
+
     // ---------- quét phần tử (lần đầu + khi DOM đổi) ----------
     const scan = () => {
+      loadFileViewers()
       root.querySelectorAll('[data-fx-reveal]').forEach((el) => io.observe(el))
       root.querySelectorAll('[data-fx-text]').forEach((el) => {
         if ((el as HTMLElement).dataset.fxText === 'shimmer') return

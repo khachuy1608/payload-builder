@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { canEdit } from '../lib/access'
 import { revalidatePages } from '../lib/revalidate'
+import { DOCUMENT_MIME_TYPES } from '../builder/files'
 
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -14,7 +15,8 @@ export const Media: CollectionConfig = {
   },
   upload: {
     staticDir: 'media',
-    mimeTypes: ['image/*', 'video/mp4', 'video/webm'],
+    // ảnh, video và tài liệu (PDF, Excel, Word, CSV…) cho block Xem file
+    mimeTypes: ['image/*', 'video/mp4', 'video/webm', ...DOCUMENT_MIME_TYPES],
     // Ảnh tối ưu: sinh sẵn 3 cỡ WebP, block Image/Card/Avatar dùng srcset
     imageSizes: [
       { name: 'thumbnail', width: 400, formatOptions: { format: 'webp', options: { quality: 80 } } },

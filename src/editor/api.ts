@@ -76,11 +76,12 @@ export interface MediaDoc {
   width?: number
   height?: number
   mimeType?: string
+  filesize?: number
   sizes?: MediaValue['sizes']
 }
 
 export function toMediaValue(doc: MediaDoc): MediaValue {
-  return { id: doc.id, url: doc.url, alt: doc.alt ?? '', width: doc.width, height: doc.height, mimeType: doc.mimeType, ...(doc.sizes ? { sizes: doc.sizes } : {}) }
+  return { id: doc.id, url: doc.url, alt: doc.alt ?? '', width: doc.width, height: doc.height, mimeType: doc.mimeType, ...(doc.filename ? { filename: doc.filename } : {}), ...(doc.filesize ? { filesize: doc.filesize } : {}), ...(doc.sizes ? { sizes: doc.sizes } : {}) }
 }
 
 export async function listMedia(page = 1): Promise<{ docs: MediaDoc[]; hasNextPage: boolean }> {
