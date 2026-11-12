@@ -18,6 +18,8 @@ export const DOCUMENT_MIME_TYPES = [
   'application/vnd.oasis.opendocument.text',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'application/vnd.ms-powerpoint',
+  // .xls / .doc / .ppt đời cũ (định dạng Compound File) được nhận diện chung là x-cfb
+  'application/x-cfb',
   'application/zip',
 ]
 
@@ -98,6 +100,17 @@ export function canPreviewOnServer(name: string, mime = ''): boolean {
   if (kind === 'sheet') return ext === 'xlsx' || ext === 'xlsm' || (!ext && mime.includes('openxmlformats'))
   if (kind === 'doc') return ext === 'docx' || (!ext && mime.includes('wordprocessingml'))
   return kind === 'csv' || kind === 'text'
+}
+
+/**
+ * Xem được dưới dạng PDF nếu máy chủ có LibreOffice: PowerPoint, Excel/Word đời cũ và định dạng OpenDocument.
+ * (.xlsx/.docx đã có bản xem trước dạng bảng/HTML nên không cần chuyển.)
+ */
+export function canConvertToPdf(name: string, mime = ''): boolean {
+  const kind = fileKindOf(name, mime)
+  if (kind === 'slides') return true
+  if ((kind === 'sheet' || kind === 'doc') && !canPreviewOnServer(name, mime)) return true
+  return false
 }
 
 export const FILE_KIND_LABEL: Record<FileKind, string> = {

@@ -69,15 +69,25 @@ function trimRows(rows: string[][]): string[][] {
 
 const cache = new Map<string, FilePreview>()
 
-export async function previewMediaFile(payload: Payload, src: string): Promise<FilePreview> {
+export interface MediaFileInfo {
+  filename: string
+  mime: string
+  /** Đường dẫn tuyệt đối trên đĩa (đã kiểm tra nằm trong thư mục media) */
+  file: string
+  size: number
+  mtimeMs: number
+}
+
+/**
+ * Tìm file của thư viện Media từ src (/api/media/file/<tên>): chỉ file có bản ghi trong collection media,
+ * nằm trong thư mục media trên đĩa (chặn path traversal), tối đa 15 MB.
+ */
+export async function resolveMediaFile(payload: Payload, src: string): Promise<MediaFileInfo> {
   const filename = mediaFilenameFromSrc(src)
   if (!filename) throw new PreviewError('Chỉ xem trước được file trong thư viện Media.')
   const found = await payload.find({ collection: 'media', where: { filename: { equals: filename } }, limit: 1, depth: 0 })
   const doc = found.docs[0] as { filename?: string; mimeType?: string; updatedAt?: string } | undefined
   if (!doc?.filename) throw new PreviewError('Không tìm thấy file.', 404)
-  const mime = doc.mimeType ?? ''
-  if (!canPreviewOnServer(filename, mime)) throw new PreviewError('Loại file này không xem trước dạng bảng/văn bản được – hãy tải xuống.', 415)
-
   const media = payload.collections.media?.config.upload
   // turbopackIgnore: đường dẫn chỉ biết lúc chạy – không để bundler đi quét cả dự án khi build
   const dir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), (typeof media === 'object' && media.staticDir) || 'media')
@@ -86,6 +96,13 @@ export async function previewMediaFile(payload: Payload, src: string): Promise<F
   const info = await stat(file).catch(() => null)
   if (!info?.isFile()) throw new PreviewError('File không còn trên máy chủ.', 404)
   if (info.size > MAX_PREVIEW_BYTES) throw new PreviewError('File quá lớn để xem trước (tối đa 15 MB) – hãy tải xuống.', 413)
+  return { filename, mime: doc.mimeType ?? '', file, size: info.size, mtimeMs: info.mtimeMs }
+}
+
+export async function previewMediaFile(payload: Payload, src: string): Promise<FilePreview> {
+  const { filename, mime, file, size, mtimeMs } = await resolveMediaFile(payload, src)
+  if (!canPreviewOnServer(filename, mime)) throw new PreviewError('Loại file này không xem trước dạng bảng/văn bản được – hãy tải xuống.', 415)
+  const info = { size, mtimeMs }
 
   const key = `${filename}|${info.size}|${info.mtimeMs}`
   const hit = cache.get(key)

@@ -22,6 +22,13 @@ FROM base AS runner
 ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
+# Tuỳ chọn: LibreOffice để block "Xem file" hiện PowerPoint, .xls/.doc đời cũ, OpenDocument dưới dạng PDF
+# (image nặng thêm ~600 MB). Bật: docker build --build-arg WITH_LIBREOFFICE=true .
+ARG WITH_LIBREOFFICE=false
+RUN if [ "$WITH_LIBREOFFICE" = "true" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends libreoffice-impress libreoffice-writer libreoffice-calc fonts-dejavu fonts-noto-core \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
 RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs \
     && mkdir -p /app/media && chown nextjs:nodejs /app/media
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

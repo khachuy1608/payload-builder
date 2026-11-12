@@ -26,6 +26,7 @@ import { getSources } from './lib/data'
 import { formExportEndpoint } from './lib/formExport'
 import { linksEndpoint } from './lib/links'
 import { filePreviewEndpoint } from './lib/filePreview'
+import { filePdfEndpoint } from './lib/officeConvert'
 import { presenceEndpoints } from './lib/presence'
 import { scheduleEndpoints } from './lib/schedule'
 import { migrations } from './migrations'
@@ -73,6 +74,7 @@ export default buildConfig({
     formExportEndpoint,
     linksEndpoint,
     filePreviewEndpoint,
+    filePdfEndpoint,
     {
       // Health check cho load balancer / giám sát: kiểm tra kết nối DB
       path: '/health',

@@ -4,7 +4,9 @@ import { test } from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Payload } from 'payload'
-import { canPreviewOnServer, fileKindOf, formatBytes, mediaMatches, mediaWhereQuery, parseCsv } from '../src/builder/files'
+import { canConvertToPdf, canPreviewOnServer, fileKindOf, formatBytes, mediaMatches, mediaWhereQuery, parseCsv } from '../src/builder/files'
+import { convertToPdf, hasSoffice } from '../src/lib/officeConvert'
+import { readFileSync } from 'node:fs'
 import { RenderNode } from '../src/builder/Renderer'
 import { mediaFilenameFromSrc, previewMediaFile } from '../src/lib/filePreview'
 
@@ -100,4 +102,17 @@ test('mediaMatches / mediaWhereQuery: ô chọn tài liệu chỉ nhận tài li
   assert.match(mediaWhereQuery('file'), /^where\[mimeType\]\[in\]=application%2Fpdf,/)
   assert.doesNotMatch(decodeURIComponent(mediaWhereQuery('file')), /image\/|video\//)
   assert.equal(mediaWhereQuery('image'), 'where[mimeType][like]=image/')
+})
+
+test('canConvertToPdf: PowerPoint, Excel/Word đời cũ, OpenDocument', () => {
+  for (const n of ['a.pptx', 'a.ppt', 'a.odp', 'a.xls', 'a.ods', 'a.doc', 'a.odt', 'a.rtf']) assert.equal(canConvertToPdf(n), true, n)
+  for (const n of ['a.xlsx', 'a.docx', 'a.pdf', 'a.csv', 'a.png', 'a.zip']) assert.equal(canConvertToPdf(n), false, n)
+  // .xls/.doc/.ppt đời cũ được nhận diện là x-cfb – vẫn là tài liệu hợp lệ
+  assert.equal(mediaMatches('file', 'application/x-cfb'), true)
+})
+
+test('convertToPdf: PowerPoint -> PDF bằng LibreOffice (bỏ qua nếu máy không có soffice)', async (t) => {
+  if (!(await hasSoffice())) return t.skip('không có LibreOffice')
+  const pdf = await convertToPdf(path.resolve('tests/fixtures/gioi-thieu.pptx'), 'test|gioi-thieu|' + Date.now())
+  assert.equal(readFileSync(pdf).subarray(0, 5).toString(), '%PDF-')
 })

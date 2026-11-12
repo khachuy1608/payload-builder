@@ -228,7 +228,8 @@ docker compose -f docker-compose.prod.yml up -d --build
   - **PDF**: trình xem PDF của trình duyệt trong khung (phóng to, tìm, in); trình duyệt không có trình xem PDF trong trang (vd. Chrome Android) thì hiện nút *Mở PDF*.
   - **Excel (.xlsx), CSV/TSV**: hiện thành bảng thật – tab cho từng sheet, cột số thứ tự, dòng tiêu đề dính khi cuộn, tối đa 1.000 dòng × 50 cột mỗi sheet.
   - **Word (.docx)**: chuyển sang HTML (tiêu đề, danh sách, bảng, ảnh nhỏ) và làm sạch.
-  - **Ảnh, video, âm thanh, .txt** hiển thị trực tiếp; loại khác (PowerPoint, .xls/.doc cũ, .zip…) hiện thẻ file + nút tải xuống.
+  - **Ảnh, video, âm thanh, .txt** hiển thị trực tiếp; loại khác (.zip…) hiện thẻ file + nút tải xuống.
+  - **PowerPoint (.pptx/.ppt), .xls/.doc đời cũ, OpenDocument (.odp/.ods/.odt), .rtf**: nếu máy chủ có LibreOffice thì xem dưới dạng PDF (`GET /api/builder/file-pdf?src=…`, `src/lib/officeConvert.ts`: `soffice --headless --convert-to pdf`, không qua shell, giới hạn 90 giây, mỗi lúc 1 file, cache theo tên + cỡ + thời điểm sửa trong thư mục tạm); không có thì giữ thẻ tải xuống. Docker: `docker build --build-arg WITH_LIBREOFFICE=true .` (mặc định tắt, image nặng thêm ~600 MB); `SOFFICE_PATH` để chỉ đường dẫn khác, `DISABLE_OFFICE_PREVIEW=1` để tắt.
   - Thanh trên: icon theo loại, tên, dung lượng, *Mở* (tab mới), *Tải xuống* (tắt được). Tuỳ chọn chiều cao khung, ẩn thanh, dòng đầu là tiêu đề cột; có Gợi ý kiểu.
 - Bảng/Word/văn bản do server đọc: `GET /api/builder/file-preview?src=/api/media/file/<tên>` (`src/lib/filePreview.ts`, thư viện `read-excel-file` và `mammoth`) – **chỉ** file của collection `media` trên đĩa (không tải URL bên ngoài, chặn path traversal), tối đa 15 MB, có cache theo kích thước + thời điểm sửa. Runtime dựng bảng bằng DOM (textContent), HTML Word đã qua `sanitizeContentHtml`.
 

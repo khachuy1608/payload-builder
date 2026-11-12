@@ -252,7 +252,55 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
     }
     // trình duyệt không có trình xem PDF trong trang (Chrome Android, webview…): thay khung trống bằng thẻ mở / tải xuống
     const pdfInline = (win.navigator as Navigator & { pdfViewerEnabled?: boolean }).pdfViewerEnabled !== false
+    // PowerPoint / .xls / .doc cũ: hỏi máy chủ có LibreOffice không (1 lần), có thì thay thẻ tải xuống bằng bản PDF
+    let officeCheck: Promise<boolean> | null = null
+    const officeAvailable = () =>
+      (officeCheck ??= win
+        .fetch('/api/builder/file-pdf?check=1', { credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.json() : { available: false }))
+        .then((d: { available?: boolean }) => !!d.available)
+        .catch(() => false))
+    const upgradeOffice = () => {
+      root.querySelectorAll<HTMLElement>('[data-file-convert]:not([data-convert-state])').forEach((host) => {
+        host.dataset.convertState = 'checking'
+        void officeAvailable().then((ok) => {
+          const card = host.querySelector<HTMLElement>('.b-file-card')
+          const body = host.querySelector<HTMLElement>('.b-file-body')
+          const src = host.dataset.src
+          if (!card || !body || !src || !host.isConnected) return
+          const pdfUrl = `/api/builder/file-pdf?src=${encodeURIComponent(src)}`
+          const note = card.querySelector('p')
+          if (!ok) {
+            host.dataset.convertState = 'off'
+            if (note) note.textContent = 'Trình duyệt không xem trực tiếp được loại file này; tải xuống để mở.'
+            return
+          }
+          host.dataset.convertState = 'pdf'
+          if (!pdfInline) {
+            // không có trình xem PDF trong trang: thêm nút mở bản PDF
+            if (note) note.textContent = 'Có bản PDF để xem nhanh.'
+            const a = doc.createElement('a')
+            a.className = 'b-button'
+            a.href = pdfUrl
+            a.target = '_blank'
+            a.rel = 'noopener noreferrer'
+            a.textContent = 'Mở bản PDF'
+            card.appendChild(a)
+            return
+          }
+          const frame = doc.createElement('iframe')
+          frame.className = 'b-file-frame'
+          frame.title = host.querySelector('.b-file-meta b')?.textContent || 'Xem trước'
+          frame.loading = 'lazy'
+          frame.src = `${pdfUrl}#view=FitH`
+          body.classList.remove('b-file-body--card')
+          body.style.height = `${Number(host.dataset.fileHeight) || 640}px`
+          card.replaceWith(frame)
+        })
+      })
+    }
     const loadFileViewers = () => {
+      upgradeOffice()
       if (!pdfInline)
         root.querySelectorAll<HTMLIFrameElement>('[data-file-viewer] iframe.b-file-frame:not([data-pdf-fallback])').forEach((frame) => {
           frame.dataset.pdfFallback = ''
@@ -272,6 +320,7 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
           frame.after(card)
         })
       root.querySelectorAll<HTMLElement>('[data-file-mount]:not([data-file-state])').forEach((mount) => {
+        if (mount.closest('[data-file-convert]')) return
         const host = mount.closest<HTMLElement>('[data-file-viewer]')
         const src = host?.dataset.src
         if (!src) return
