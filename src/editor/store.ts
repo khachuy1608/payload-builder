@@ -26,7 +26,7 @@ import {
   moveNode,
   removeNode,
 } from '@/builder/tree'
-import type { BuilderNode, Device, DropTarget, MediaValue, StyleBucket, StyleState } from '@/builder/types'
+import type { BuilderNode, Device, DropTarget, MediaValue, NodeStyles, StyleBucket, StyleState } from '@/builder/types'
 
 export type DragPayload =
   | { kind: 'new'; blockType: string }
@@ -169,6 +169,7 @@ export interface EditorState {
   /** Giao diện editor sáng/tối */
   uiTheme: 'light' | 'dark'
   shortcutsDialog: boolean
+  pasteHtmlDialog: boolean
   /** Bước tour hướng dẫn đang hiện (null = tắt) */
   tour: number | null
   /** Người khác đang mở cùng tài liệu */
@@ -303,6 +304,9 @@ export interface EditorActions {
   paste(): void
   updateProps(id: string, patch: Record<string, unknown>, historyKey?: string): void
   setStyle(id: string, key: string, value: string, bucket?: StyleBucket): void
+  /** Gộp nhiều style (theo bucket) vào node trong một bước hoàn tác – dùng cho “Dán CSS” */
+  mergeStyles(id: string, styles: NodeStyles, replace?: boolean): void
+  openPasteHtml(open: boolean): void
   undo(): void
   redo(): void
 
@@ -416,6 +420,7 @@ export const useEditor = create<Store>()(
       locale: 'vi',
       uiTheme: 'light',
       shortcutsDialog: false,
+      pasteHtmlDialog: false,
       tour: null,
       presence: [],
       comments: [],
@@ -943,6 +948,20 @@ export const useEditor = create<Store>()(
           if (node) Object.assign(node.props, patch)
         }, historyKey),
 
+      mergeStyles: (id, styles, replace) =>
+        commit((root) => {
+          const node = findNode(root, id)
+          if (!node) return
+          node.styles ??= {}
+          for (const [bucket, map] of Object.entries(styles) as [StyleBucket, Record<string, string>][]) {
+            if (!map || !Object.keys(map).length) continue
+            node.styles[bucket] = replace ? { ...map } : { ...(node.styles[bucket] ?? {}), ...map }
+          }
+        }),
+      openPasteHtml: (open) =>
+        set((s) => {
+          s.pasteHtmlDialog = open
+        }),
       setStyle: (id, key, value, bucketOverride) => {
         const { device, styleState } = get()
         const bucket: StyleBucket = bucketOverride ?? (styleState === 'hover' ? 'hover' : device)

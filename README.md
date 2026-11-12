@@ -158,6 +158,13 @@ npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redir
 npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
 ```
 
+## Dán CSS / HTML, liên kết nội bộ, ô chọn mới
+
+- **Dán CSS vào phần tử:** tab *Kiểu* → *Dán CSS*. Khai báo thuần (`padding: 24px; border-radius: 16px`) áp cho thiết bị/trạng thái đang sửa; dán cả luật thì `:hover` vào Hover, `@media (max-width: …)` vào Tablet/Mobile. Có tuỳ chọn thay hẳn thay vì gộp; một lần dán là một bước Ctrl+Z. *Sao chép CSS* xuất style hiện có của phần tử.
+- **Dán HTML / CSS tạo block:** tab *Phần tử* → *Dán HTML / CSS tạo block* (có *Dùng ví dụ*). Đoạn HTML (kèm `<style>` hoặc ô CSS riêng) được đổi sang block thật có xem trước: tiêu đề → Heading, đoạn văn/danh sách → Paragraph (giữ đậm, nghiêng, link), ảnh → Image, link class `btn`/`button` → Button, link bọc khối → Div có *Khi bấm*, video/iframe → Video/YouTube/Nhúng, còn lại → Div. CSS gán theo selector (`element.matches`), thuộc tính `style=""` ghi đè cuối. Script, form và biến CSS bị bỏ. Sau khi chèn có thể *Lưu thành My Block*.
+- **Liên kết nội bộ:** nút 🔗 cạnh mọi ô liên kết (Button, Card, menu Header, breadcrumbs…, *Khi bấm*) tìm trang và bản ghi của mọi collection có *trang mẫu động* (bài viết, sự kiện, sản phẩm, đội ngũ…), điền đường dẫn theo ngôn ngữ đang sửa (`/en/...`). API: `GET /api/builder/links?q=&locale=` (nhân sự CMS). Lưu ý: liên kết lưu dạng đường dẫn; đổi slug trang có redirect tự động, đổi slug bản ghi thì cần chọn lại.
+- **Ô chọn:** viền bo, mũi tên riêng, hover/focus; trên Chrome/Edge 135+ danh sách thả xuống cũng được tuỳ biến (bo góc, bóng, dấu ✓ mục đang chọn, theo chế độ tối) bằng `appearance: base-select`; trình duyệt khác dùng danh sách gốc. Vẫn là `<select>` thật nên bàn phím và trình đọc màn hình hoạt động như cũ.
+
 ## Khi bấm, nền xen kẽ, thẻ đều nhau
 
 - **Khi bấm** (tab *Nâng cao* của Div, Flexbox, Card, phần tử mẫu trong Danh sách dữ liệu, Image, Heading…): *Mở liên kết* (gắn được `{{trường}}`, ví dụ `/thanh-vien/{{id}}`, tuỳ chọn tab mới), *Cuộn tới phần tử* (theo CSS ID), *Mở hộp thoại* / *Hiện thông báo* (chọn block Dialog / Toast trên trang, CSS ID tự đặt). Cả phần tử thành vùng bấm: con trỏ tay, Tab tới được, Enter mở (Space với nút), Ctrl/chuột giữa mở tab mới, có mô tả cho trình đọc màn hình. Nút/link nằm bên trong vẫn chạy riêng. Trên canvas bấm chỉ để chọn; thử bằng *Xem trước*.

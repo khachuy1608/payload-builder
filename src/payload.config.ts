@@ -22,6 +22,7 @@ import { isStaffUser } from './lib/access'
 import { DEFAULT_LOCALE, LOCALES } from './lib/locale'
 import { getSources } from './lib/data'
 import { formExportEndpoint } from './lib/formExport'
+import { linksEndpoint } from './lib/links'
 import { presenceEndpoints } from './lib/presence'
 import { scheduleEndpoints } from './lib/schedule'
 import { migrations } from './migrations'
@@ -52,6 +53,7 @@ export default buildConfig({
     ...scheduleEndpoints,
     ...presenceEndpoints,
     formExportEndpoint,
+    linksEndpoint,
     {
       // Health check cho load balancer / giám sát: kiểm tra kết nối DB
       path: '/health',

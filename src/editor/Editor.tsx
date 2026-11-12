@@ -15,6 +15,7 @@ import { RightPanel } from './RightPanel'
 import { SaveBlockDialog } from './SaveBlockDialog'
 import { TemplateDialog } from './TemplateDialog'
 import { ShortcutsDialog, TourOverlay } from './HelpDialogs'
+import { PasteHtmlDialog } from './PasteHtmlDialog'
 import { ThemeDialog } from './ThemeDialog'
 import { LockBanner, useDocumentLock } from './LockBanner'
 import { handleShortcut } from './shortcuts'
@@ -88,6 +89,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
   const historyDialog = useEditor((s) => s.historyDialog)
   const templateDialog = useEditor((s) => s.templateDialog)
   const shortcutsDialog = useEditor((s) => s.shortcutsDialog)
+  const pasteHtmlDialog = useEditor((s) => s.pasteHtmlDialog)
   // giao diện sáng/tối đã lưu + tour lần đầu
   useEffect(() => {
     const s = useEditor.getState()
@@ -119,6 +121,7 @@ export function Editor({ initial }: { initial: EditorInitial }) {
       {historyDialog && <HistoryDialog />}
       {templateDialog && <TemplateDialog />}
       {shortcutsDialog && <ShortcutsDialog />}
+      {pasteHtmlDialog && <PasteHtmlDialog />}
       <TourOverlay />
       <ContextMenu />
       <Toasts />

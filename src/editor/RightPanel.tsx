@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Database, ExternalLink, EyeOff, Globe, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Database, ExternalLink, EyeOff, Globe, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X, ClipboardPaste, Copy } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
@@ -13,11 +13,13 @@ import { BLOCKS, getBlock } from '@/builder/registry'
 import { COLOR_TOKEN_LABELS, tokenOptionsFor } from '@/builder/theme'
 import { SITE_PART_LABELS, type SitePart, sitePartOf } from '@/builder/siteParts'
 import { CLICK_ACTIONS, type ClickAction, type ClickProps, canHaveClick } from '@/builder/click'
+import { cssToStyles } from '@/builder/cssImport'
 import { findNode, genId, getAncestors, walk } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
 import { Icon, ICON_LABELS, ICONS } from '@/builder/blocks/helpers'
 import { nodeLabel } from './labels'
+import { LinkPicker } from './LinkPicker'
 import { MediaPicker } from './MediaPicker'
 import { PresetGallery } from './PresetGallery'
 import { RichToolbar } from './RichToolbar'
@@ -120,7 +122,16 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
     case 'text':
     case 'url':
       return (
-        <Field label={control.label} help={control.help} picker={<BindPicker node={node} onPick={(t) => update(control.type === 'url' ? String(node.props[control.prop] ?? '') + t : appendTemplate(String(node.props[control.prop] ?? ''), t), false)} />}>
+        <Field
+          label={control.label}
+          help={control.help}
+          picker={
+            <span className="ed-pickers">
+              {control.type === 'url' && <LinkPicker onPick={(href) => update(href, false)} />}
+              <BindPicker node={node} onPick={(t) => update(control.type === 'url' ? String(node.props[control.prop] ?? '') + t : appendTemplate(String(node.props[control.prop] ?? ''), t), false)} />
+            </span>
+          }
+        >
           <input
             className="ed-input"
             value={String(node.props[control.prop] ?? '')}
@@ -310,6 +321,16 @@ function ListFieldControl({ field, value, onChange }: { field: ListField; value:
         <label className="ed-field">
           <span className="ed-help">{field.label}</span>
           <textarea className="ed-input ed-textarea" rows={2} value={String(value ?? '')} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />
+        </label>
+      )
+    case 'url':
+      return (
+        <label className="ed-field">
+          <span className="ed-help ed-label--row">
+            {field.label}
+            <LinkPicker onPick={(href) => onChange(href)} />
+          </span>
+          <input className="ed-input" value={String(value ?? '')} placeholder={field.placeholder ?? '/duong-dan hoặc https://…'} onChange={(e) => onChange(e.target.value)} />
         </label>
       )
     default:
@@ -1260,6 +1281,7 @@ function StyleTab({ node }: { node: BuilderNode }) {
         Đang sửa: <b>{styleState === 'hover' ? 'Hover (mọi thiết bị)' : DEVICE_META.find((d) => d.id === device)?.label}</b>
         {device !== 'desktop' && styleState === 'normal' && ' – ô trống sẽ kế thừa từ màn hình lớn hơn'}
       </p>
+      <PasteCss node={node} />
       {(def?.styleGroups ?? []).map((gid) => {
         const group = STYLE_GROUPS[gid]
         if (!group) return null
@@ -1582,6 +1604,74 @@ function ColorInput({ value, placeholder, onChange }: { value: string; placehold
   )
 }
 
+// ======================= Dán CSS =======================
+
+/** Dán CSS vào phần tử đang chọn: khai báo thuần -> thiết bị/trạng thái đang sửa; luật có :hover / @media -> đúng bucket */
+function PasteCss({ node }: { node: BuilderNode }) {
+  const device = useEditor((s) => s.device)
+  const styleState = useEditor((s) => s.styleState)
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [replace, setReplace] = useState(false)
+  const fallback = styleState === 'hover' ? 'hover' : device
+  const parsed = useMemo(() => (text.trim() ? cssToStyles(text, fallback) : {}), [text, fallback])
+  const count = Object.values(parsed).reduce((n, m) => n + Object.keys(m ?? {}).length, 0)
+  const apply = () => {
+    if (!count) return
+    useEditor.getState().mergeStyles(node.id, parsed, replace)
+    useEditor.getState().toast('success', `Đã áp ${count} thuộc tính CSS (Ctrl+Z để hoàn tác).`)
+    setText('')
+    setOpen(false)
+  }
+  const copy = async () => {
+    const lines: string[] = []
+    const decl = (m: Record<string, string> | undefined) => Object.entries(m ?? {}).map(([k, v]) => `  ${k.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())}: ${v};`).join('\n')
+    const st = node.styles ?? {}
+    if (st.desktop) lines.push(`.phan-tu {\n${decl(st.desktop)}\n}`)
+    if (st.hover) lines.push(`.phan-tu:hover {\n${decl(st.hover)}\n}`)
+    if (st.tablet) lines.push(`@media (max-width: 1024px) {\n.phan-tu {\n${decl(st.tablet)}\n}\n}`)
+    if (st.mobile) lines.push(`@media (max-width: 767px) {\n.phan-tu {\n${decl(st.mobile)}\n}\n}`)
+    await navigator.clipboard?.writeText(lines.join('\n\n')).catch(() => undefined)
+    useEditor.getState().toast('info', lines.length ? 'Đã sao chép CSS của phần tử.' : 'Phần tử chưa có style riêng.')
+  }
+  return (
+    <div className="ed-paste-css">
+      <div className="ed-row">
+        <button className="ed-btn ed-btn--sm" onClick={() => setOpen((o) => !o)} data-action="paste-css">
+          <ClipboardPaste size={13} /> Dán CSS
+        </button>
+        <button className="ed-btn ed-btn--sm" onClick={() => void copy()}>
+          <Copy size={13} /> Sao chép CSS
+        </button>
+      </div>
+      {open && (
+        <div className="ed-fields" style={{ marginTop: 8 }}>
+          <textarea
+            className="ed-input ed-textarea ed-code"
+            rows={6}
+            spellCheck={false}
+            data-field="pasteCssText"
+            placeholder={'padding: 24px;\nborder-radius: 16px;\nbox-shadow: 0 10px 30px rgba(0,0,0,.08);\n\nhoặc cả luật: .x { … } .x:hover { … } @media (max-width: 767px) { … }'}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <label className="ed-toggle">
+            <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
+            <span className="ed-toggle-ui" />
+            <span>Thay toàn bộ style của thiết bị/trạng thái tương ứng (không gộp)</span>
+          </label>
+          <span className="ed-help">
+            {count ? `Nhận ${count} thuộc tính: ${Object.entries(parsed).map(([b, m]) => `${b === 'hover' ? 'Hover' : b === 'desktop' ? 'Desktop' : b === 'tablet' ? 'Tablet' : 'Mobile'} (${Object.keys(m ?? {}).length})`).join(', ')}.` : 'Khai báo không có selector được áp cho thiết bị/trạng thái đang sửa.'}
+          </span>
+          <button className="ed-btn ed-btn--primary" disabled={!count} onClick={apply}>
+            Áp dụng
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ======================= Khi bấm =======================
 
 /** Hành động khi bấm vào cả phần tử: mở liên kết (gắn được {{trường}}), cuộn tới, mở Dialog, hiện Toast */
@@ -1633,7 +1723,16 @@ function ClickPanel({ node }: { node: BuilderNode }) {
         </select>
         {action === 'link' && (
           <>
-            <Field label="Liên kết" help="Ví dụ /lien-he, #bang-gia, https://… Trong Danh sách dữ liệu bấm ⚡ để ghép trường, ví dụ /thanh-vien/{{id}}." picker={<BindPicker node={node} onPick={(t) => set({ href: (click?.href ?? '') + t }, undefined)} />}>
+            <Field
+              label="Liên kết"
+              help="Bấm 🔗 để chọn trang/bài viết/sự kiện trong web, hoặc gõ /lien-he, #bang-gia, https://… Trong Danh sách dữ liệu bấm ⚡ để ghép trường, ví dụ /thanh-vien/{{id}}."
+              picker={
+                <span className="ed-pickers">
+                  <LinkPicker onPick={(href) => set({ href })} />
+                  <BindPicker node={node} onPick={(t) => set({ href: (click?.href ?? '') + t }, undefined)} />
+                </span>
+              }
+            >
               <input className="ed-input" data-field="clickHref" value={click?.href ?? ''} placeholder="/duong-dan hoặc https://…" onChange={(e) => set({ href: e.target.value }, `click:${node.id}:href`)} />
             </Field>
             <label className="ed-toggle">

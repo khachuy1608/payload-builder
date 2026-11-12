@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Globe, Layers, LayoutGrid, LayoutTemplate, MessageSquare, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, ClipboardPaste, Globe, Layers, LayoutGrid, LayoutTemplate, MessageSquare, Search } from 'lucide-react'
 import { CommentsPanel } from './CommentsPanel'
 import { useState } from 'react'
 import { BLOCK_CATEGORIES, BLOCKS, getBlock } from '@/builder/registry'
@@ -55,6 +55,9 @@ function ElementsPanel() {
         <Search size={14} />
         <input placeholder="Tìm phần tử..." value={query} onChange={(e) => setQuery(e.target.value)} />
       </label>
+      <button className="ed-btn ed-paste-btn" onClick={() => useEditor.getState().openPasteHtml(true)} title="Dán đoạn HTML + CSS (từ Figma, CodePen, mẫu có sẵn…) để tạo block">
+        <ClipboardPaste size={14} /> Dán HTML / CSS tạo block
+      </button>
       {BLOCK_CATEGORIES.map((cat) => {
         const items = blocks.filter((b) => b.category === cat.id)
         if (!items.length) return null
