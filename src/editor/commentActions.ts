@@ -3,10 +3,10 @@
 import { createComment, deleteComment, updateComment } from './api'
 import { useEditor } from './store'
 
-export async function addComment(nodeId: string, text: string): Promise<boolean> {
+export async function addComment(nodeId: string, text: string, anchor?: { x: number; y: number } | null): Promise<boolean> {
   const s = useEditor.getState()
   try {
-    const c = await createComment({ pageId: s.pageId, nodeId, text: text.trim() })
+    const c = await createComment({ pageId: s.pageId, nodeId, text: text.trim(), anchor })
     useEditor.getState().setComments([c, ...useEditor.getState().comments])
     return true
   } catch (err) {

@@ -95,6 +95,13 @@ export interface DropIndicator extends DropTarget {
 export type SaveStatus = 'draft' | 'published'
 
 export type PointerMode = 'edit' | 'view' | 'comment'
+/** Khung bình luận: phần tử, toạ độ cửa sổ để đặt khung, vị trí bấm trong phần tử (tỉ lệ 0–1) để neo huy hiệu */
+export interface CommentPop {
+  nodeId: string
+  x: number
+  y: number
+  anchor?: { x: number; y: number } | null
+}
 
 export interface Toast {
   id: number
@@ -183,7 +190,7 @@ export interface EditorState {
   /** Chế độ chuột trên canvas: 'edit' = chọn/kéo/sửa; 'view' = tương tác như trang thật (bấm nút, mở dialog, tab…); 'comment' = bấm phần tử để bình luận */
   pointerMode: PointerMode
   /** Khung bình luận đang mở trên canvas (chế độ Bình luận): phần tử + toạ độ cửa sổ để đặt khung */
-  commentPop: { nodeId: string; x: number; y: number } | null
+  commentPop: CommentPop | null
 
   selectedId: string | null
   hoveredId: string | null
@@ -286,7 +293,7 @@ export interface EditorActions {
   /** Ghim trạng thái xem Đóng/Mở cho block (null = tự động: mở khi đang chọn, còn lại như trang thật) */
   setViewState(id: string, state: ViewState | null): void
   setPointerMode(mode: PointerMode): void
-  openCommentPop(pop: { nodeId: string; x: number; y: number } | null): void
+  openCommentPop(pop: CommentPop | null): void
   setData(nodeId: string, records: DataMap[string]): void
   openContextMenu(menu: EditorState['contextMenu']): void
   openHistory(open: boolean): void

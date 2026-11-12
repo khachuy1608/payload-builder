@@ -42,9 +42,10 @@ export function CommentPopover() {
     const h = boxRef.current?.offsetHeight ?? 320
     const vw = window.innerWidth
     const vh = window.innerHeight
-    let left = pop.x + 14
-    if (left + W > vw - 8) left = Math.max(8, pop.x - W - 14)
-    let top = pop.y - 20
+    // đặt bên phải huy hiệu (huy hiệu rộng ~90px tính từ điểm bấm) để không che nó; thiếu chỗ thì sang trái
+    let left = pop.x + 96
+    if (left + W > vw - 8) left = Math.max(8, pop.x - W - 16)
+    let top = pop.y - 40
     if (top + h > vh - 8) top = Math.max(8, vh - h - 8)
     setPos({ left, top })
   }, [pop, comments.length, showResolved])
@@ -78,11 +79,14 @@ export function CommentPopover() {
   const open = thread.filter((c) => !c.resolved)
   const resolved = thread.filter((c) => c.resolved)
   const shown = showResolved ? thread : open
+  // vị trí của luồng = bình luận cũ nhất (đang mở) có vị trí
+  const threadAnchor = (open.find((c) => c.anchor) ?? thread.find((c) => c.anchor))?.anchor ?? null
 
   const send = async () => {
     if (!text.trim() || busy) return
     setBusy(true)
-    if (await addComment(pop.nodeId, text)) setText('')
+    // bình luận đầu tiên neo tại chỗ bấm; trả lời trong luồng đang mở giữ vị trí của luồng
+    if (await addComment(pop.nodeId, text, open.length ? (threadAnchor ?? pop.anchor) : (pop.anchor ?? threadAnchor))) setText('')
     setBusy(false)
     inputRef.current?.focus()
   }

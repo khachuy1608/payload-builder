@@ -282,8 +282,12 @@ export function Canvas() {
         // chế độ bình luận: bấm phần tử -> mở khung bình luận tại chỗ bấm (không chọn, không điều hướng)
         e.preventDefault()
         e.stopPropagation()
-        const id = nodeElement(e.target as HTMLElement)?.dataset.nodeId ?? 'root'
-        store().openCommentPop({ nodeId: id, ...toWindow(e.clientX, e.clientY) })
+        const el = nodeElement(e.target as HTMLElement)
+        const id = el?.dataset.nodeId ?? 'root'
+        // vị trí bấm theo tỉ lệ trong khung phần tử -> huy hiệu neo đúng chỗ dù đổi thiết bị / co giãn
+        const r = (el ?? doc.querySelector('[data-node-id="root"]'))?.getBoundingClientRect()
+        const anchor = r && r.width > 0 && r.height > 0 ? { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) } : null
+        store().openCommentPop({ nodeId: id, ...toWindow(e.clientX, e.clientY), anchor })
         return
       }
       const t = e.target as HTMLElement

@@ -22,6 +22,9 @@ export const Comments: CollectionConfig = {
     { name: 'text', label: 'Nội dung', type: 'textarea', required: true, maxLength: 2000 },
     { name: 'author', label: 'Tác giả', type: 'relationship', relationTo: 'users', admin: { position: 'sidebar', readOnly: true } },
     { name: 'resolved', label: 'Đã giải quyết', type: 'checkbox', defaultValue: false, admin: { position: 'sidebar' } },
+    // vị trí bấm khi tạo bình luận, theo tỉ lệ 0–1 trong khung phần tử: huy hiệu neo đúng chỗ này trên canvas
+    { name: 'anchorX', label: 'Vị trí ngang (0–1)', type: 'number', min: 0, max: 1, admin: { position: 'sidebar', readOnly: true } },
+    { name: 'anchorY', label: 'Vị trí dọc (0–1)', type: 'number', min: 0, max: 1, admin: { position: 'sidebar', readOnly: true } },
   ],
   hooks: {
     beforeChange: [

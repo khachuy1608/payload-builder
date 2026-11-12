@@ -4,7 +4,7 @@
  * Lớp phủ vẽ phía trên iframe: viền hover, viền chọn + thanh công cụ, vạch chỉ vị trí thả.
  * Toạ độ đọc bằng getBoundingClientRect trong iframe mỗi frame (rAF) nên luôn đúng khi cuộn/đổi layout.
  */
-import { ArrowUp, BookmarkPlus, Copy, Database, Eye, EyeOff, ExternalLink, GripVertical, MessageSquare, Trash2, Unlink } from 'lucide-react'
+import { ArrowUp, BookmarkPlus, Copy, Database, Eye, EyeOff, ExternalLink, GripVertical, MessageSquare, Plus, Trash2, Unlink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getBlock } from '@/builder/registry'
 import { canSaveAsBlock } from '@/builder/schema'
@@ -171,21 +171,22 @@ export function Overlay({ doc }: { doc: Document }) {
       )}
       {commenting &&
         pins.map((p) => {
-          const authors = commentAuthors(comments.filter((c) => !c.resolved && c.nodeId === p.id))
+          const open = comments.filter((c) => !c.resolved && c.nodeId === p.id)
+          const authors = commentAuthors(open)
           const shown = authors.slice(0, 3)
-          // neo mép phải huy hiệu vào góc trên-phải phần tử (dịch -100% theo bề rộng thật), luôn nằm trong khung canvas;
-          // phóng ngược theo zoom để huy hiệu không bị thu nhỏ cùng canvas
-          const right = Math.min(p.rect.x + p.rect.w + 6 / zoom, doc.documentElement.clientWidth - 4 / zoom)
+          // neo tại chỗ đã bấm khi tạo luồng (bình luận cũ nhất có vị trí); bình luận cũ chưa có vị trí -> góc trên-phải
+          const anchor = [...open].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)).find((c) => c.anchor)?.anchor ?? null
+          const at = anchor ? { x: p.rect.x + anchor.x * p.rect.w, y: p.rect.y + anchor.y * p.rect.h } : { x: p.rect.x + p.rect.w - 4 / zoom, y: p.rect.y + 4 / zoom }
           return (
             <button
               key={p.id}
               type="button"
-              className={`ed-cpin${commentPop?.nodeId === p.id ? ' is-active' : ''}`}
+              className={`ed-cpin ${pinPlace(at, zoom, doc.documentElement.clientWidth, !anchor)}${commentPop?.nodeId === p.id ? ' is-active' : ''}`}
               data-comment-pin={p.id}
               title={`${authors.map((a) => a.name || 'Ẩn danh').join(', ')} · ${p.count} bình luận – bấm để xem`}
               aria-label={`${p.count} bình luận của ${authors.map((a) => a.name || 'Ẩn danh').join(', ')}`}
-              style={{ transform: `translate(${right}px, ${Math.max(2, p.rect.y - 14 / zoom)}px) scale(${1 / zoom}) translateX(-100%)` }}
-              onClick={(e) => s.openCommentPop({ nodeId: p.id, x: e.clientX, y: e.clientY })}
+              style={{ transform: pinTransform(at, zoom, doc.documentElement.clientWidth, !anchor) }}
+              onClick={(e) => s.openCommentPop({ nodeId: p.id, x: e.clientX, y: e.clientY, anchor })}
             >
               <span className="ed-cpin-avatars">
                 {shown.map((a, i) => (
@@ -203,6 +204,17 @@ export function Overlay({ doc }: { doc: Document }) {
             </button>
           )
         })}
+      {/* ghim nháp tại chỗ vừa bấm khi phần tử chưa có bình luận đang mở */}
+      {commenting && commentPop?.anchor && popBox && !pins.some((p) => p.id === commentPop.nodeId) && (
+        <span
+          className={`ed-cpin ed-cpin--draft ${pinPlace({ x: popBox.x + commentPop.anchor.x * popBox.w, y: popBox.y + commentPop.anchor.y * popBox.h }, zoom, doc.documentElement.clientWidth, false)}`}
+          data-comment-draft=""
+          aria-hidden
+          style={{ transform: pinTransform({ x: popBox.x + commentPop.anchor.x * popBox.w, y: popBox.y + commentPop.anchor.y * popBox.h }, zoom, doc.documentElement.clientWidth, false) }}
+        >
+          <Plus size={14} />
+        </span>
+      )}
 
       {boxes.selected && selectedNode && (
         <div
@@ -285,6 +297,25 @@ export function Overlay({ doc }: { doc: Document }) {
       {drag && drop && <div className={`ed-drop ed-drop--${drop.variant}`} style={rectStyle(drop.rect)} />}
     </div>
   )
+}
+
+/** Bề rộng ước lượng của huy hiệu (px màn hình) để quyết định lật sang trái khi sát mép phải */
+const PIN_W = 110
+const PIN_H = 34
+
+/**
+ * Huy hiệu bình luận: đuôi nhọn (góc dưới-trái) chỉ đúng điểm neo; sát mép phải thì lật (đuôi dưới-phải),
+ * sát mép trên thì đặt bên dưới điểm neo (đuôi trên-trái). Phóng ngược theo zoom để không bị thu nhỏ cùng canvas.
+ */
+function pinPlace(at: { x: number; y: number }, zoom: number, width: number, corner: boolean): string {
+  const flipX = corner || at.x + PIN_W / zoom > width
+  const below = at.y - PIN_H / zoom < 0
+  return `${flipX ? 'is-flip' : ''}${below ? ' is-below' : ''}`.trim()
+}
+function pinTransform(at: { x: number; y: number }, zoom: number, width: number, corner: boolean): string {
+  const flipX = corner || at.x + PIN_W / zoom > width
+  const below = at.y - PIN_H / zoom < 0
+  return `translate(${at.x}px, ${at.y}px) scale(${1 / zoom}) translate(${flipX ? '-100%' : '0'}, ${below ? '0' : '-100%'})`
 }
 
 function rectStyle(r: Rect) {

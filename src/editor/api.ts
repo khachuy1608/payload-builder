@@ -447,17 +447,19 @@ export interface CommentDoc {
   /** Tác giả: tên + ảnh đại diện (ảnh nhỏ nếu có) */
   author: { id: string; name: string; avatar: string | null } | null
   createdAt: string
+  /** Vị trí bấm khi tạo (tỉ lệ 0–1 trong khung phần tử) – huy hiệu neo tại đây; null = bình luận cũ, neo góc trên-phải */
+  anchor: { x: number; y: number } | null
 }
 
 type RawAvatar = { url?: string | null; sizes?: { thumbnail?: { url?: string | null } } } | string | number | null
-type RawComment = { id: string | number; nodeId: string; text: string; resolved?: boolean; createdAt: string; author?: { id: string | number; name?: string | null; email?: string; avatar?: RawAvatar } | string | number | null }
+type RawComment = { id: string | number; nodeId: string; text: string; resolved?: boolean; createdAt: string; anchorX?: number | null; anchorY?: number | null; author?: { id: string | number; name?: string | null; email?: string; avatar?: RawAvatar } | string | number | null }
 const avatarUrl = (a: RawAvatar | undefined): string | null => (a && typeof a === 'object' ? a.sizes?.thumbnail?.url || a.url || null : null)
 /**
  * Chỉ lấy các trường cần cho bình luận + tên/ảnh đại diện tác giả (không kéo kèm nội dung trang như depth=1 trước đây)
  */
 const COMMENT_QUERY = [
   'depth=2',
-  ...['nodeId', 'text', 'resolved', 'createdAt', 'author'].map((f) => `select[${f}]=true`),
+  ...['nodeId', 'text', 'resolved', 'createdAt', 'author', 'anchorX', 'anchorY'].map((f) => `select[${f}]=true`),
   ...['name', 'email', 'avatar'].map((f) => `populate[users][${f}]=true`),
   // url của media được tính từ filename -> phải lấy kèm filename
   'populate[media][url]=true',
@@ -471,7 +473,9 @@ const toComment = (c: RawComment): CommentDoc => ({
   resolved: !!c.resolved,
   author: c.author && typeof c.author === 'object' ? { id: String(c.author.id), name: c.author.name || c.author.email || '', avatar: avatarUrl(c.author.avatar) } : c.author != null ? { id: String(c.author), name: '', avatar: null } : null,
   createdAt: c.createdAt,
+  anchor: typeof c.anchorX === 'number' && typeof c.anchorY === 'number' ? { x: clamp01(c.anchorX), y: clamp01(c.anchorY) } : null,
 })
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 
 export async function listComments(pageId: string): Promise<CommentDoc[]> {
   const q = new URLSearchParams({ 'where[page][equals]': pageId, sort: '-createdAt', limit: '200' })
@@ -480,8 +484,9 @@ export async function listComments(pageId: string): Promise<CommentDoc[]> {
   return ((await res.json()) as { docs: RawComment[] }).docs.map(toComment)
 }
 
-export async function createComment(data: { pageId: string; nodeId: string; text: string }): Promise<CommentDoc> {
-  const res = await fetch(`/api/comments?${COMMENT_QUERY}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page: relValue(data.pageId), nodeId: data.nodeId, text: data.text }) })
+export async function createComment(data: { pageId: string; nodeId: string; text: string; anchor?: { x: number; y: number } | null }): Promise<CommentDoc> {
+  const anchor = data.anchor ? { anchorX: Math.round(clamp01(data.anchor.x) * 1e4) / 1e4, anchorY: Math.round(clamp01(data.anchor.y) * 1e4) / 1e4 } : {}
+  const res = await fetch(`/api/comments?${COMMENT_QUERY}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page: relValue(data.pageId), nodeId: data.nodeId, text: data.text, ...anchor }) })
   if (!res.ok) throw new Error(await readError(res))
   return toComment(((await res.json()) as { doc: RawComment }).doc)
 }

@@ -625,6 +625,12 @@ select.ed-token-select:hover { border-color: #7c3aed; background: var(--ed-accen
   height: 30px; padding: 0 9px 0 4px; border: 1px solid rgba(15, 23, 42, .08); border-radius: 15px 15px 15px 4px; background: #fff; color: var(--ed-ink, #0f172a);
   font: 700 12px/1 var(--ed-font, system-ui); cursor: pointer; box-shadow: 0 6px 18px -4px rgba(15, 23, 42, .3), 0 0 0 2px #f59e0b;
 }
+/* đuôi nhọn chỉ vào điểm neo: mặc định góc dưới-trái; lật khi sát mép */
+.ed-cpin.is-flip { border-radius: 15px 15px 4px 15px; }
+.ed-cpin.is-below { border-radius: 4px 15px 15px 15px; }
+.ed-cpin.is-flip.is-below { border-radius: 15px 4px 15px 15px; }
+.ed-cpin--draft { width: 30px; justify-content: center; padding: 0; background: #f59e0b; color: #fff; pointer-events: none; animation: ed-pin-pop .18s ease-out; }
+@keyframes ed-pin-pop { from { opacity: 0; } to { opacity: 1; } }
 .ed-cpin:hover, .ed-cpin.is-active { box-shadow: 0 8px 22px -4px rgba(15, 23, 42, .35), 0 0 0 2px #d97706; }
 .ed-cpin:focus-visible { outline: 2px solid var(--ed-accent); outline-offset: 3px; }
 .ed-cpin-avatars { display: inline-flex; align-items: center; }

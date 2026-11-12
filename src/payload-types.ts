@@ -529,6 +529,8 @@ export interface Comment {
   text: string;
   author?: (number | null) | User;
   resolved?: boolean | null;
+  anchorX?: number | null;
+  anchorY?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1285,6 +1287,8 @@ export interface CommentsSelect<T extends boolean = true> {
   text?: T;
   author?: T;
   resolved?: T;
+  anchorX?: T;
+  anchorY?: T;
   updatedAt?: T;
   createdAt?: T;
 }
