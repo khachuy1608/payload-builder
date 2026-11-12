@@ -9,6 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { findNode } from '@/builder/tree'
 import { CommentAvatar } from './CommentAvatar'
+import { MentionInput, type MentionInputHandle, MentionText } from './MentionInput'
 import { addComment, formatCommentTime, removeComment, setCommentResolved } from './commentActions'
 import { nodeLabel } from './labels'
 import { useEditor } from './store'
@@ -26,7 +27,7 @@ export function CommentPopover() {
   const [showResolved, setShowResolved] = useState(false)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<MentionInputHandle>(null)
 
   const nodeId = pop?.nodeId
   // đổi phần tử: xoá chữ đang gõ dở, thu gọn mục đã giải quyết, focus ô nhập
@@ -86,7 +87,7 @@ export function CommentPopover() {
     if (!text.trim() || busy) return
     setBusy(true)
     // bình luận đầu tiên neo tại chỗ bấm; trả lời trong luồng đang mở giữ vị trí của luồng
-    if (await addComment(pop.nodeId, text, open.length ? (threadAnchor ?? pop.anchor) : (pop.anchor ?? threadAnchor))) setText('')
+    if (await addComment(pop.nodeId, text, open.length ? (threadAnchor ?? pop.anchor) : (pop.anchor ?? threadAnchor), inputRef.current?.mentionIds(text))) setText('')
     setBusy(false)
     inputRef.current?.focus()
   }
@@ -124,7 +125,9 @@ export function CommentPopover() {
                   <span>{formatCommentTime(c.createdAt)}</span>
                   {c.resolved && <em>Đã giải quyết</em>}
                 </div>
-                <p>{c.text}</p>
+                <p>
+                  <MentionText text={c.text} mentions={c.mentions} />
+                </p>
                 <div className="ed-cpop-actions">
                   <button type="button" className="ed-linkbtn" onClick={() => void setCommentResolved(c.id, !c.resolved)}>
                     {c.resolved ? <RotateCcw size={12} /> : <Check size={12} />} {c.resolved ? 'Mở lại' : 'Đã xong'}
@@ -147,21 +150,7 @@ export function CommentPopover() {
         )}
       </div>
       <div className="ed-cpop-compose">
-        <textarea
-          ref={inputRef}
-          className="ed-input"
-          rows={2}
-          placeholder="Viết bình luận… (Ctrl+Enter để gửi)"
-          value={text}
-          disabled={busy}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault()
-              void send()
-            }
-          }}
-        />
+        <MentionInput ref={inputRef} rows={2} placeholder="Viết bình luận… @ để nhắc tên, Ctrl+Enter để gửi" value={text} disabled={busy} onChange={setText} onSubmit={() => void send()} />
         <button type="button" className="ed-btn ed-btn--primary" disabled={!text.trim() || busy} onClick={() => void send()} aria-label="Gửi bình luận">
           {busy ? <Loader2 size={14} className="ed-spin" /> : <Send size={14} />}
         </button>

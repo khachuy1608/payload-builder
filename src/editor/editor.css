@@ -665,3 +665,24 @@ select.ed-token-select:hover { border-color: #7c3aed; background: var(--ed-accen
 .ed-cpop-compose { display: flex; align-items: flex-end; gap: 8px; padding: 10px 14px 12px; border-top: 1px solid var(--ed-line); background: var(--ed-panel-2); }
 .ed-cpop-compose textarea { flex: 1; resize: vertical; min-height: 38px; max-height: 160px; }
 .ed-cpop-compose .ed-btn { height: 36px; }
+
+/* ---------- @nhắc tên trong bình luận + badge số bình luận ---------- */
+.ed-mention { position: relative; flex: 1; display: flex; flex-direction: column; }
+.ed-mention textarea { width: 100%; }
+.ed-mention-list {
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 5; display: flex; flex-direction: column; padding: 4px;
+  background: var(--ed-panel); border: 1px solid var(--ed-line); border-radius: 10px; box-shadow: 0 12px 30px -10px rgba(15, 23, 42, .35);
+}
+.ed-mention-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 7px; background: none; text-align: left; font: inherit; color: var(--ed-ink); cursor: pointer; }
+.ed-mention-item span { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.ed-mention-item b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-mention-item small { font-size: 11px; color: var(--ed-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-mention-item.is-active, .ed-mention-item:hover { background: var(--ed-accent-soft); }
+.ed-mention-tag { color: #b45309; font-weight: 600; background: rgba(245, 158, 11, .14); border-radius: 4px; padding: 0 2px; }
+.ed-comments .ed-mention-list { bottom: auto; top: calc(100% + 6px); }
+.ed-pointer-mode button { position: relative; }
+.ed-mode-badge {
+  position: absolute; top: -5px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; border: 2px solid var(--ed-panel);
+  background: #f59e0b; color: #fff; font: 700 10px/12px var(--ed-font, system-ui); text-align: center; box-sizing: content-box;
+}
+.ed-mode-badge.is-unread { background: #ef4444; }

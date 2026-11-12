@@ -531,6 +531,7 @@ export interface Comment {
   resolved?: boolean | null;
   anchorX?: number | null;
   anchorY?: number | null;
+  mentions?: (number | User)[] | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1289,6 +1290,7 @@ export interface CommentsSelect<T extends boolean = true> {
   resolved?: T;
   anchorX?: T;
   anchorY?: T;
+  mentions?: T;
   updatedAt?: T;
   createdAt?: T;
 }

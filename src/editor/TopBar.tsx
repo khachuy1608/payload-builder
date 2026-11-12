@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowLeft, ChevronDown, ExternalLink, History, Keyboard, LayoutTemplate, Loader2, Monitor, Moon, MessageSquare, MousePointer2, Pointer, Redo2, Smartphone, Sun, Tablet, Undo2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { PublishMenu } from './PublishMenu'
 import type { Device } from '@/builder/types'
 import { LOCALES } from '@/lib/locale'
@@ -190,8 +191,41 @@ function Presence({ list }: { list: { id: string; name: string }[] }) {
 }
 
 /** Chế độ chuột: Chỉnh sửa (chọn, kéo thả, sửa chữ) / Xem (bấm nút, mở dialog, tab… như khách truy cập) */
+/**
+ * Bình luận chưa xem: bình luận của người khác tạo sau lần cuối mình xem bình luận (vào chế độ Bình luận hoặc tab Bình luận).
+ * Mốc "đã xem" lưu theo trang trong localStorage.
+ */
+function useCommentBadge(): { open: number; unread: boolean } {
+  const comments = useEditor((s) => s.comments)
+  const userId = useEditor((s) => s.userId)
+  const pageId = useEditor((s) => s.pageId)
+  const viewing = useEditor((s) => s.pointerMode === 'comment' || s.leftTab === 'comments')
+  const key = `ed-comments-seen:${pageId}`
+  const [seen, setSeen] = useState<string>(() => {
+    try {
+      return localStorage.getItem(key) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  const latest = comments.reduce((m, c) => (c.createdAt > m ? c.createdAt : m), '')
+  useEffect(() => {
+    if (!viewing || !latest || latest <= seen) return
+    setSeen(latest)
+    try {
+      localStorage.setItem(key, latest)
+    } catch {
+      /* chế độ riêng tư */
+    }
+  }, [viewing, latest, seen, key])
+  const open = comments.filter((c) => !c.resolved).length
+  const unread = !viewing && comments.some((c) => !c.resolved && c.author?.id !== userId && c.createdAt > (seen || ''))
+  return { open, unread }
+}
+
 function PointerModeSwitch() {
   const mode = useEditor((s) => s.pointerMode)
+  const badge = useCommentBadge()
   const items = [
     { id: 'edit' as const, label: 'Chế độ chỉnh sửa – chọn, kéo thả, sửa chữ (E)', icon: MousePointer2 },
     { id: 'view' as const, label: 'Chế độ xem – bấm nút, mở dialog, chuyển tab… như trang thật (V)', icon: Pointer },
@@ -202,6 +236,11 @@ function PointerModeSwitch() {
       {items.map((m) => (
         <button key={m.id} type="button" title={m.label} aria-label={m.label} aria-pressed={mode === m.id} data-pointer-mode={m.id} className={mode === m.id ? 'is-active' : ''} onClick={() => useEditor.getState().setPointerMode(m.id)}>
           <m.icon size={16} />
+          {m.id === 'comment' && badge.open > 0 && (
+            <span className={`ed-mode-badge${badge.unread ? ' is-unread' : ''}`} data-comment-badge-count={badge.open} title={badge.unread ? 'Có bình luận mới chưa xem' : `${badge.open} bình luận đang mở`}>
+              {badge.open > 99 ? '99+' : badge.open}
+            </span>
+          )}
         </button>
       ))}
     </div>
