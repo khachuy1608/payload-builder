@@ -60,7 +60,7 @@ function buildAttrs(node: BuilderNode, mode: RenderMode): NodeAttrs {
     attrs['data-node-id'] = node.id
     attrs['data-node-type'] = node.linked === 'root' ? 'blockRef' : node.type
     if (node.linked === 'root') attrs['data-linked'] = 'root'
-    else if (getSchema(node.type)?.isContainer && !node.children?.length) attrs['data-empty'] = ''
+    else if (getSchema(node.type)?.isContainer && getSchema(node.type)?.emptyHint !== false && !node.children?.length) attrs['data-empty'] = ''
   }
   return attrs
 }

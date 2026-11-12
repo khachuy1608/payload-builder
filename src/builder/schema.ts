@@ -12,6 +12,11 @@ export interface BlockSchema {
   allowedParents?: string[]
   /** Không hiện trong panel Elements (root, tab) */
   hidden?: boolean
+  /**
+   * Vùng thả "Kéo phần tử vào đây" phủ cả block khi chưa có con (mặc định: có).
+   * false = block tự vẽ gợi ý ở đúng chỗ chứa con (vd. Popover: trong ô nội dung) hoặc không dùng con (Dropdown, Tooltip).
+   */
+  emptyHint?: boolean
 }
 
 export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
@@ -79,7 +84,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   alert: { isContainer: false },
   // ---- Lớp phủ & phản hồi ----
   dialog: { isContainer: true },
-  popover: { isContainer: true },
+  popover: { isContainer: true, emptyHint: false },
   toast: { isContainer: false },
   lightbox: { isContainer: false },
   // ---- Form ----

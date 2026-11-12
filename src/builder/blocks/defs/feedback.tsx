@@ -701,6 +701,8 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
         ) : (
           <div className={`b-pop-panel b-pop-card${variant === 'hovercard' ? ' b-hovercard' : ''}`} role="dialog">
             {children}
+            {/* editor: gợi ý nằm trong ô nội dung, không phủ lên nút kích hoạt */}
+            {mode === 'editor' && !node.children?.length && <span className="bld-ph bld-ph--inline">Kéo phần tử vào đây</span>}
           </div>
         )
       return (

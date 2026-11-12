@@ -30,6 +30,7 @@ body{user-select:none;-webkit-user-select:none}
 [data-empty]{min-height:72px;outline:1px dashed #c7d2fe;outline-offset:-1px;position:relative}
 [data-empty]::after{content:'Kéo phần tử vào đây';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#818cf8;font:13px/1.4 system-ui,sans-serif;pointer-events:none}
 .bld-root[data-empty]{outline:none}
+.bld-ph--inline{min-height:64px;min-width:200px;font-size:12px}
 .bld-root[data-empty]::after{content:'Kéo phần tử từ panel bên trái vào đây, hoặc bấm vào một phần tử để thêm';}
 body.bld-commenting,body.bld-commenting *{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M4 3h20a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H11l-6 5v-5H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z' fill='%234f46e5' stroke='white' stroke-width='1.5'/%3E%3Cpath d='M14 7v8M10 11h8' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 5 26,crosshair!important}
 .bld-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;background:#f1f5f9;color:#64748b;font:13px/1.4 system-ui,sans-serif;border:1px dashed #cbd5e1;border-radius:6px;text-align:center;padding:12px}
