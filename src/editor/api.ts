@@ -444,35 +444,50 @@ export interface CommentDoc {
   nodeId: string
   text: string
   resolved: boolean
-  author: { id: string; name: string } | null
+  /** Tác giả: tên + ảnh đại diện (ảnh nhỏ nếu có) */
+  author: { id: string; name: string; avatar: string | null } | null
   createdAt: string
 }
 
-type RawComment = { id: string | number; nodeId: string; text: string; resolved?: boolean; createdAt: string; author?: { id: string | number; name?: string | null; email?: string } | string | number | null }
+type RawAvatar = { url?: string | null; sizes?: { thumbnail?: { url?: string | null } } } | string | number | null
+type RawComment = { id: string | number; nodeId: string; text: string; resolved?: boolean; createdAt: string; author?: { id: string | number; name?: string | null; email?: string; avatar?: RawAvatar } | string | number | null }
+const avatarUrl = (a: RawAvatar | undefined): string | null => (a && typeof a === 'object' ? a.sizes?.thumbnail?.url || a.url || null : null)
+/**
+ * Chỉ lấy các trường cần cho bình luận + tên/ảnh đại diện tác giả (không kéo kèm nội dung trang như depth=1 trước đây)
+ */
+const COMMENT_QUERY = [
+  'depth=2',
+  ...['nodeId', 'text', 'resolved', 'createdAt', 'author'].map((f) => `select[${f}]=true`),
+  ...['name', 'email', 'avatar'].map((f) => `populate[users][${f}]=true`),
+  // url của media được tính từ filename -> phải lấy kèm filename
+  'populate[media][url]=true',
+  'populate[media][filename]=true',
+  'populate[media][sizes]=true',
+].join('&')
 const toComment = (c: RawComment): CommentDoc => ({
   id: String(c.id),
   nodeId: c.nodeId,
   text: c.text,
   resolved: !!c.resolved,
-  author: c.author && typeof c.author === 'object' ? { id: String(c.author.id), name: c.author.name || c.author.email || '' } : c.author != null ? { id: String(c.author), name: '' } : null,
+  author: c.author && typeof c.author === 'object' ? { id: String(c.author.id), name: c.author.name || c.author.email || '', avatar: avatarUrl(c.author.avatar) } : c.author != null ? { id: String(c.author), name: '', avatar: null } : null,
   createdAt: c.createdAt,
 })
 
 export async function listComments(pageId: string): Promise<CommentDoc[]> {
-  const q = new URLSearchParams({ 'where[page][equals]': pageId, sort: '-createdAt', limit: '200', depth: '1' })
-  const res = await fetch(`/api/comments?${q}`, { credentials: 'include' })
+  const q = new URLSearchParams({ 'where[page][equals]': pageId, sort: '-createdAt', limit: '200' })
+  const res = await fetch(`/api/comments?${q}&${COMMENT_QUERY}`, { credentials: 'include' })
   if (!res.ok) throw new Error(await readError(res))
   return ((await res.json()) as { docs: RawComment[] }).docs.map(toComment)
 }
 
 export async function createComment(data: { pageId: string; nodeId: string; text: string }): Promise<CommentDoc> {
-  const res = await fetch('/api/comments?depth=1', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page: relValue(data.pageId), nodeId: data.nodeId, text: data.text }) })
+  const res = await fetch(`/api/comments?${COMMENT_QUERY}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page: relValue(data.pageId), nodeId: data.nodeId, text: data.text }) })
   if (!res.ok) throw new Error(await readError(res))
   return toComment(((await res.json()) as { doc: RawComment }).doc)
 }
 
 export async function updateComment(id: string, patch: { resolved?: boolean; text?: string }): Promise<CommentDoc> {
-  const res = await fetch(`/api/comments/${encodeURIComponent(id)}?depth=1`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
+  const res = await fetch(`/api/comments/${encodeURIComponent(id)}?${COMMENT_QUERY}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
   if (!res.ok) throw new Error(await readError(res))
   return toComment(((await res.json()) as { doc: RawComment }).doc)
 }

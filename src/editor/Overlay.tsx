@@ -11,6 +11,7 @@ import { canSaveAsBlock } from '@/builder/schema'
 import { SITE_PART_LABELS, sitePartNode, sitePartOf } from '@/builder/siteParts'
 import { findNode, findParent } from '@/builder/tree'
 import { type ViewStateInfo, viewStateInfo } from '@/builder/viewState'
+import { CommentAvatar, commentAuthors } from './CommentAvatar'
 import { nodeLabel } from './labels'
 import { RichToolbar } from './RichToolbar'
 import { type Rect, useEditor } from './store'
@@ -115,6 +116,8 @@ export function Overlay({ doc }: { doc: Document }) {
   const pinKey = pinIds.join(',')
   const [pins, setPins] = useState<{ id: string; rect: Rect; count: number }[]>([])
   const [popBox, setPopBox] = useState<Rect | null>(null)
+  /** tỉ lệ thu nhỏ của khung canvas – huy hiệu được phóng ngược lại để luôn đọc được */
+  const [zoom, setZoom] = useState(1)
 
   useEffect(() => {
     let raf = 0
@@ -131,6 +134,9 @@ export function Overlay({ doc }: { doc: Document }) {
         setPins((prev) => (prev.length === nextPins.length && prev.every((p, i) => p.id === nextPins[i].id && p.count === nextPins[i].count && same(p.rect, nextPins[i].rect)) ? prev : nextPins))
         const pb = commentPop ? measure(doc, commentPop.nodeId) : null
         setPopBox((prev) => (same(prev, pb) ? prev : pb))
+        const frame = doc.defaultView?.frameElement as HTMLElement | null
+        const z = frame ? frame.getBoundingClientRect().width / (doc.documentElement.clientWidth || 1) : 1
+        setZoom((prev) => (Math.abs(prev - z) < 0.001 ? prev : z))
       }
       raf = requestAnimationFrame(tick)
     }
@@ -164,20 +170,39 @@ export function Overlay({ doc }: { doc: Document }) {
         </div>
       )}
       {commenting &&
-        pins.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={`ed-cpin${commentPop?.nodeId === p.id ? ' is-active' : ''}`}
-            data-comment-pin={p.id}
-            title={`${p.count} bình luận – bấm để xem`}
-            style={{ transform: `translate(${Math.max(2, Math.min(doc.documentElement.clientWidth - 52, p.rect.x + p.rect.w - 16))}px, ${Math.max(2, p.rect.y - 12)}px)` }}
-            onClick={(e) => s.openCommentPop({ nodeId: p.id, x: e.clientX, y: e.clientY })}
-          >
-            <MessageSquare size={12} />
-            {p.count}
-          </button>
-        ))}
+        pins.map((p) => {
+          const authors = commentAuthors(comments.filter((c) => !c.resolved && c.nodeId === p.id))
+          const shown = authors.slice(0, 3)
+          // neo mép phải huy hiệu vào góc trên-phải phần tử (dịch -100% theo bề rộng thật), luôn nằm trong khung canvas;
+          // phóng ngược theo zoom để huy hiệu không bị thu nhỏ cùng canvas
+          const right = Math.min(p.rect.x + p.rect.w + 6 / zoom, doc.documentElement.clientWidth - 4 / zoom)
+          return (
+            <button
+              key={p.id}
+              type="button"
+              className={`ed-cpin${commentPop?.nodeId === p.id ? ' is-active' : ''}`}
+              data-comment-pin={p.id}
+              title={`${authors.map((a) => a.name || 'Ẩn danh').join(', ')} · ${p.count} bình luận – bấm để xem`}
+              aria-label={`${p.count} bình luận của ${authors.map((a) => a.name || 'Ẩn danh').join(', ')}`}
+              style={{ transform: `translate(${right}px, ${Math.max(2, p.rect.y - 14 / zoom)}px) scale(${1 / zoom}) translateX(-100%)` }}
+              onClick={(e) => s.openCommentPop({ nodeId: p.id, x: e.clientX, y: e.clientY })}
+            >
+              <span className="ed-cpin-avatars">
+                {shown.map((a, i) => (
+                  // người bình luận mới nhất nằm trên cùng
+                  <span key={a.id} className="ed-cpin-av" style={{ zIndex: shown.length - i }}>
+                    <CommentAvatar author={a} size={20} />
+                  </span>
+                ))}
+                {authors.length > shown.length && <span className="ed-cav ed-cav--more">+{authors.length - shown.length}</span>}
+              </span>
+              <span className="ed-cpin-count">
+                <MessageSquare size={11} />
+                {p.count}
+              </span>
+            </button>
+          )
+        })}
 
       {boxes.selected && selectedNode && (
         <div

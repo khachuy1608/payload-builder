@@ -8,16 +8,12 @@ import { Check, ChevronDown, Loader2, MessageSquare, RotateCcw, Send, Trash2, X 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { findNode } from '@/builder/tree'
+import { CommentAvatar } from './CommentAvatar'
 import { addComment, formatCommentTime, removeComment, setCommentResolved } from './commentActions'
 import { nodeLabel } from './labels'
 import { useEditor } from './store'
 
 const W = 340
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  return ((parts[0]?.[0] ?? '?') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase()
-}
 
 export function CommentPopover() {
   const pop = useEditor((s) => s.commentPop)
@@ -117,9 +113,7 @@ export function CommentPopover() {
           const name = c.author?.name || 'Ẩn danh'
           return (
             <div key={c.id} className={`ed-cpop-item${c.resolved ? ' is-resolved' : ''}`} data-comment={c.id}>
-              <span className="ed-cpop-avatar" aria-hidden>
-                {initials(name)}
-              </span>
+              <CommentAvatar author={c.author} size={28} />
               <div className="ed-cpop-body">
                 <div className="ed-cpop-meta">
                   <b>{name}</b>
