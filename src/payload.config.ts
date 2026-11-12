@@ -46,6 +46,9 @@ export default buildConfig({
       // menu admin: thương hiệu + lối tắt ở đầu, thẻ người dùng ở cuối
       beforeNavLinks: ['/components/admin/Nav#NavHeader'],
       afterNavLinks: ['/components/admin/Nav#NavUser'],
+      // theme toàn admin: font (provider) + lời chào/số liệu ở Tổng quan; CSS ở app/(payload)/admin-theme.css
+      providers: ['/components/admin/Fonts#AdminFonts'],
+      beforeDashboard: ['/components/admin/Dashboard#DashboardWelcome'],
     },
   },
   // admin tiếng Việt (vẫn chọn được tiếng Anh trong Tài khoản)

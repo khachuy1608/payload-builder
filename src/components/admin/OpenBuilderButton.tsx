@@ -17,21 +17,7 @@ export function OpenBuilderButton() {
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <a
-        href={isBlock ? `/builder/block/${id}` : `/builder/${id}`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          padding: '10px 16px',
-          borderRadius: 6,
-          background: '#4f46e5',
-          color: '#fff',
-          fontWeight: 600,
-          textDecoration: 'none',
-        }}
-      >
+      <a href={isBlock ? `/builder/block/${id}` : `/builder/${id}`} className="pb-open-builder">
         ✦ Mở Visual Builder
       </a>
     </div>
