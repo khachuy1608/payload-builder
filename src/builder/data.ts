@@ -37,6 +37,8 @@ export interface DataSource {
   ownerOnly?: boolean
   /** Mã tham số URL khi trang có nhiều danh sách: 'b' -> ?b_page, ?b_q, ?b_take, ?b_<trường> (trống = page, q, take) */
   paramKey?: string
+  /** Tắt cập nhật tại chỗ: phân trang / xem thêm / tìm kiếm tải lại cả trang (mặc định cập nhật tại chỗ, không reload) */
+  reload?: boolean
 }
 
 /** Bản ghi đã lọc trường công khai */
@@ -91,6 +93,24 @@ export function scopedParams(params: UrlParams | undefined, key: string | undefi
   const out: UrlParams = {}
   for (const [k, v] of Object.entries(params)) if (k.startsWith(pre) && k.length > pre.length) out[k.slice(pre.length)] = v
   return out
+}
+
+/**
+ * Chữ ký tham số URL của một danh sách (đã sắp xếp): runtime chỉ thay danh sách có chữ ký đổi khi cập nhật tại chỗ.
+ * Danh sách không có mã chỉ tính tham số không thuộc mã của danh sách khác (`otherKeys`).
+ */
+export function listSignature(params: UrlParams | undefined, key: string | undefined, otherKeys: string[] = []): string {
+  const own = key ? scopedParams(params, key) : Object.fromEntries(Object.entries(params ?? {}).filter(([k]) => !otherKeys.some((o) => k.startsWith(o + '_'))))
+  return Object.keys(own)
+    .sort()
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(own[k])}`)
+    .join('&')
+    .slice(0, 500)
+}
+
+/** Danh sách có cập nhật tại chỗ (bật tham số URL và không chọn tải lại cả trang) */
+export function isPartialList(list: { source: DataSource } | undefined): boolean {
+  return !!list?.source.urlParams && !list.source.reload
 }
 
 /** Link giữ nguyên tham số hiện tại (bỏ tham số trang của danh sách – mặc định ?page), thay/bỏ một tham số */
@@ -285,6 +305,7 @@ export function normalizeDataSource(input: unknown): DataSource | undefined {
   }
   if (src.ownerOnly === true) out.ownerOnly = true
   if (typeof src.paramKey === 'string' && PARAM_KEY_PATTERN.test(src.paramKey)) out.paramKey = src.paramKey
+  if (src.reload === true) out.reload = true
   return out
 }
 
@@ -448,6 +469,10 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
   const keepHidden = !!ctx.keepHidden
   const base = { user }
   const targets = listTargets(root)
+  const keys = targets.lists.map((l) => l.source.paramKey).filter((k): k is string => !!k)
+  const anyPartial = targets.lists.some(isPartialList)
+  /** Đánh dấu cho runtime cập nhật tại chỗ (chỉ là props lúc render, không lưu vào nội dung) */
+  const pnCtl = (nav?: 'page' | 'more') => (nav ? { pn: 'ctl', pnNav: nav } : anyPartial ? { pn: 'ctl' } : {})
   /** Danh sách mà block điều khiển gắn vào + kết quả + tham số URL riêng của nó */
   const controlCtx = (n: BuilderNode) => {
     const list = targets.targetOf(n.id, n.props.target)
@@ -469,7 +494,8 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
           const extra = { index: i + 1, count: records.length, ...pageExtra }
           for (const child of applyShow(template, rec, extra, keepHidden)) children.push(bindSubtree(child, rec, extra, i === 0 ? '' : `_${i}`, i > 0, keepHidden))
         })
-        return { ...node, children: children.map(visit) }
+        const pn = isPartialList({ source }) && !/_\d+$/.test(node.id) ? { pn: 'list', pnSig: listSignature(params, source.paramKey, keys.filter((k) => k !== source.paramKey)) } : {}
+        return { ...node, props: { ...node.props, ...pn }, children: children.map(visit) }
       }
       const rec = records[0]
       if (!rec) return visitChildren(node)
@@ -481,21 +507,21 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
     // block điều khiển theo URL
     if (node.type === 'pagination' && node.props.auto === true) {
       const { list, key, result, scoped } = controlCtx(node)
-      return { ...node, props: { ...node.props, pages: String(result?.totalPages ?? 1), current: String(result?.page ?? pageFromParams(scoped)), hrefPattern: pageHrefPattern(params, key), unlinked: !list?.source.urlParams } }
+      return { ...node, props: { ...node.props, pages: String(result?.totalPages ?? 1), current: String(result?.page ?? pageFromParams(scoped)), hrefPattern: pageHrefPattern(params, key), unlinked: !list?.source.urlParams, ...pnCtl(isPartialList(list) ? 'page' : undefined) } }
     }
     if (node.type === 'searchBox') {
       const { list, key, result, scoped } = controlCtx(node)
       const qName = paramName(key, 'q')
       // giữ tham số của danh sách khác khi gửi form tìm kiếm; bỏ q/trang/take của chính danh sách này
       const keep = Object.entries(params).filter(([k]) => k !== qName && k !== paramName(key, 'page') && k !== paramName(key, 'take'))
-      return { ...node, props: { ...node.props, value: scoped.q ?? '', total: result ? String(result.total) : '', paramName: qName, keep, unlinked: !list?.source.urlParams } }
+      return { ...node, props: { ...node.props, value: scoped.q ?? '', total: result ? String(result.total) : '', paramName: qName, keep, unlinked: !list?.source.urlParams, ...pnCtl(isPartialList(list) ? 'page' : undefined) } }
     }
     if (node.type === 'languageSwitcher') {
       const cur = ctx.locale ?? DEFAULT_LOCALE
       const path = ctx.path ?? '/'
       const query = Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : ''
       const options = LOCALES.map((l) => ({ code: l.code, label: l.label, href: switchLocalePath(path + query, l.code), current: l.code === cur }))
-      return { ...node, props: { ...node.props, options, current: cur } }
+      return { ...node, props: { ...node.props, options, current: cur, ...pnCtl() } }
     }
     // form hồ sơ: luôn nhận người đang đăng nhập từ ngữ cảnh (không phụ thuộc props có {{user.*}} hay không)
     if (node.type === 'accountForm') {
@@ -508,11 +534,11 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
       const loaded = result?.records.length ?? 0
       const total = result?.total ?? 0
       const step = Math.max(1, Math.min(100, Number(node.props.step) || 8))
-      return { ...node, props: { ...node.props, loaded: String(loaded), total: String(total), href: takeHref(params, Math.min(100, loaded + step), key), done: result ? loaded >= total : false, unlinked: !list?.source.urlParams } }
+      return { ...node, props: { ...node.props, loaded: String(loaded), total: String(total), href: takeHref(params, Math.min(100, loaded + step), key), done: result ? loaded >= total : false, unlinked: !list?.source.urlParams, ...pnCtl(isPartialList(list) ? 'more' : undefined) } }
     }
     if (node.type === 'toggleGroup' && typeof node.props.param === 'string' && node.props.param) {
       const key = node.props.param
-      return { ...node, props: { ...node.props, currentValue: params[key] ?? '', baseQuery: withParam(params, key, null) } }
+      return { ...node, props: { ...node.props, currentValue: params[key] ?? '', baseQuery: withParam(params, key, null), ...pnCtl(anyPartial ? 'page' : undefined) } }
     }
     return visitChildren(node)
   }

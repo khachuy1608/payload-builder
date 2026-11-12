@@ -792,6 +792,12 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
                     })}
                   </div>
                   <span className="ed-help">Thêm Pagination, Xem thêm hoặc Ô tìm kiếm để điều khiển (mỗi block chọn danh sách ở mục “Điều khiển danh sách”). Canvas luôn hiện trang 1.</span>
+                  <label className="ed-toggle">
+                    <input type="checkbox" data-field="partial" checked={!source.reload} onChange={(e) => set({ reload: e.target.checked ? undefined : true })} />
+                    <span className="ed-toggle-ui" />
+                    Cập nhật tại chỗ (không tải lại trang)
+                  </label>
+                  <span className="ed-help">Bật: bấm trang, Xem thêm hay tìm kiếm chỉ thay danh sách này và các nút điều khiển của nó; URL vẫn đổi để chia sẻ và nút Back hoạt động. Tắt: tải lại cả trang như link thường.</span>
                 </>
               )}
             </div>

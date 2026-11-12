@@ -10,6 +10,11 @@ export interface NodeAttrs {
   'data-node-id'?: string
   'data-node-type'?: string
   'data-empty'?: ''
+  /** cập nhật tại chỗ: 'list' = danh sách, 'ctl' = block điều khiển (phân trang, xem thêm, tìm kiếm…) */
+  'data-pn'?: 'list' | 'ctl'
+  'data-pn-id'?: string
+  'data-pn-sig'?: string
+  'data-pn-nav'?: 'page' | 'more'
   /** Phần tử thuộc một My Block liên kết (chỉ trong editor): 'root' = gốc của block, '' = bên trong */
   'data-linked'?: 'root' | ''
   'data-fx-reveal'?: string

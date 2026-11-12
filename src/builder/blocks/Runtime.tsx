@@ -827,6 +827,153 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
     }
     cleanups.push(endTour)
 
+    // ---------- Cập nhật danh sách tại chỗ (không tải lại trang) ----------
+    // Phân trang, Xem thêm, Ô tìm kiếm, Toggle Group lọc: tải ngầm URL mới rồi chỉ thay danh sách có tham số đổi
+    // ([data-pn=list], so chữ ký data-pn-sig) và các block điều khiển ([data-pn=ctl]). Link/form vẫn là thật nên
+    // không có JS (hoặc lỗi mạng) thì trình duyệt điều hướng bình thường.
+    if (!editor && typeof win.fetch === 'function' && typeof win.DOMParser === 'function') {
+      let inflight: AbortController | null = null
+      let lastUrl = win.location.pathname + win.location.search
+      const byId = (d: Document, id: string) => d.querySelector<HTMLElement>(`[data-pn-id="${win.CSS?.escape ? win.CSS.escape(id) : id}"]`)
+      const setBusy = (els: Element[], on: boolean) =>
+        els.forEach((el) => {
+          el.classList.toggle('is-pn-loading', on)
+          if (on) el.setAttribute('aria-busy', 'true')
+          else el.removeAttribute('aria-busy')
+        })
+      const sameDoc = (url: URL) => url.origin === win.location.origin && url.pathname === win.location.pathname
+
+      const navigate = async (href: string, how: 'push' | 'replace' | 'pop', origin: HTMLElement | null, kind: 'page' | 'more' | 'pop') => {
+        const url = new URL(href, win.location.href)
+        if (!sameDoc(url)) {
+          win.location.assign(url.href)
+          return
+        }
+        inflight?.abort()
+        const ac = new AbortController()
+        inflight = ac
+        const lists = [...doc.querySelectorAll<HTMLElement>('[data-pn="list"]')]
+        const busy = origin ? [origin, ...lists] : lists
+        setBusy(busy, true)
+        try {
+          const res = await win.fetch(url.href, { signal: ac.signal, credentials: 'same-origin', headers: { Accept: 'text/html' } })
+          const finalUrl = new URL(res.url || url.href)
+          if (!res.ok || !sameDoc(finalUrl)) throw new Error('pn: ' + res.status)
+          const next = new win.DOMParser().parseFromString(await res.text(), 'text/html')
+          if (ac.signal.aborted) return
+          // state = null: pushState/replaceState đã được Next vá sẽ tự chép trạng thái router và cập nhật URL cho useSearchParams
+          if (how === 'push') win.history.pushState(null, '', url.href)
+          else if (how === 'replace') win.history.replaceState(null, '', url.href)
+          lastUrl = url.pathname + url.search
+          // ô tìm kiếm khác đang gõ dở: giữ chữ đã gõ sau khi thay
+          const typed = new Map<string, string>()
+          doc.querySelectorAll<HTMLElement>('[data-pn="ctl"]').forEach((el) => {
+            if (el === origin) return
+            el.querySelectorAll<HTMLInputElement>('input[type="search"]').forEach((i) => {
+              if (i.value !== i.defaultValue) typed.set(`${el.dataset.pnId}|${i.name}`, i.value)
+            })
+          })
+          const focused = doc.activeElement as HTMLInputElement | null
+          const focusKey = focused && origin?.contains(focused) && focused.name ? focused.name : ''
+          let changedList: HTMLElement | null = null
+          for (const el of lists) {
+            const id = el.dataset.pnId
+            const fresh = id ? byId(next, id) : null
+            if (!fresh || fresh.getAttribute('data-pn-sig') === (el.dataset.pnSig ?? '')) continue
+            const before = el.children.length
+            const node = doc.importNode(fresh, true) as HTMLElement
+            // Xem thêm: làm nổi các mục mới
+            if (kind === 'more') Array.from(node.children).forEach((c, i) => i >= before && c.classList.add('b-pn-new'))
+            el.replaceWith(node)
+            changedList = changedList ?? node
+          }
+          doc.querySelectorAll<HTMLElement>('[data-pn="ctl"]').forEach((el) => {
+            const id = el.dataset.pnId
+            const fresh = id ? byId(next, id) : null
+            if (!fresh) return
+            const node = doc.importNode(fresh, true) as HTMLElement
+            node.querySelectorAll<HTMLInputElement>('input[type="search"]').forEach((i) => {
+              const v = typed.get(`${id}|${i.name}`)
+              if (v != null) i.value = v
+            })
+            el.replaceWith(node)
+            if (el === origin && focusKey) {
+              const input = node.querySelector<HTMLInputElement>(`input[name="${focusKey}"]`)
+              if (input) {
+                input.focus({ preventScroll: true })
+                const end = input.value.length
+                try {
+                  input.setSelectionRange(end, end)
+                } catch {
+                  /* input type không hỗ trợ chọn */
+                }
+              }
+            }
+          })
+          // sang trang mới: đưa đầu danh sách vào khung nhìn nếu đã cuộn qua
+          if (changedList && kind === 'page' && !(origin && origin.tagName === 'FORM')) {
+            const top = changedList.getBoundingClientRect().top
+            if (top < 0 || top > win.innerHeight * 0.8) changedList.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+          }
+          doc.dispatchEvent(new CustomEvent('bld:pn-updated', { detail: { url: url.href } }))
+        } catch (err) {
+          if ((err as Error)?.name === 'AbortError') return
+          // lỗi mạng/máy chủ: điều hướng thường
+          if (how !== 'pop') win.location.assign(url.href)
+          else win.location.reload()
+        } finally {
+          if (inflight === ac) {
+            inflight = null
+            setBusy(busy.filter((el) => el.isConnected), false)
+          }
+        }
+      }
+
+      const onPnClick = (e: MouseEvent) => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+        const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+        const ctl = a?.closest<HTMLElement>('[data-pn-nav]')
+        if (!a || !ctl || (a.target && a.target !== '_self') || a.hasAttribute('download')) return
+        if (a.getAttribute('aria-disabled') === 'true' || a.getAttribute('aria-current') === 'page') {
+          e.preventDefault()
+          return
+        }
+        const url = new URL(a.href, win.location.href)
+        if (!sameDoc(url)) return
+        e.preventDefault()
+        const more = ctl.dataset.pnNav === 'more'
+        void navigate(url.href, more ? 'replace' : 'push', ctl, more ? 'more' : 'page')
+      }
+      const onPnSubmit = (e: SubmitEvent) => {
+        const form = e.target as HTMLFormElement
+        if (e.defaultPrevented || !form.matches?.('form[data-pn-nav]') || (form.method && form.method.toLowerCase() !== 'get')) return
+        const action = new URL(form.getAttribute('action') || win.location.pathname, win.location.href)
+        if (!sameDoc(action)) return
+        e.preventDefault()
+        const q = new URLSearchParams()
+        new FormData(form).forEach((v, k) => {
+          if (typeof v === 'string' && v !== '') q.set(k, v)
+        })
+        const qs = q.toString()
+        void navigate(action.pathname + (qs ? '?' + qs : ''), 'push', form, 'page')
+      }
+      const onPnPop = () => {
+        const now = win.location.pathname + win.location.search
+        if (now === lastUrl) return // chỉ đổi #hash
+        lastUrl = now
+        if (doc.querySelector('[data-pn="list"]')) void navigate(win.location.href, 'pop', null, 'pop')
+      }
+      doc.addEventListener('click', onPnClick)
+      doc.addEventListener('submit', onPnSubmit as EventListener)
+      win.addEventListener('popstate', onPnPop)
+      cleanups.push(() => {
+        inflight?.abort()
+        doc.removeEventListener('click', onPnClick)
+        doc.removeEventListener('submit', onPnSubmit as EventListener)
+        win.removeEventListener('popstate', onPnPop)
+      })
+    }
+
     // editor: cho phép "Xem thử" bằng sự kiện tuỳ biến
     const replay = (e: Event) => {
       const el = (e as CustomEvent<string>).detail ? doc.querySelector<HTMLElement>(`[data-node-id="${(e as CustomEvent<string>).detail}"]`) : null

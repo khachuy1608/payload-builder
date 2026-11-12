@@ -43,6 +43,13 @@ function buildAttrs(node: BuilderNode, mode: RenderMode): NodeAttrs {
   }
   const click = clickAttrs((node.props as { click?: unknown }).click)
   if (click) Object.assign(attrs, click)
+  // cập nhật tại chỗ (phân trang / xem thêm / tìm kiếm không tải lại trang) – đánh dấu do resolveData gắn, runtime xử lý
+  if (mode !== 'editor' && (node.props.pn === 'list' || node.props.pn === 'ctl')) {
+    attrs['data-pn'] = node.props.pn
+    attrs['data-pn-id'] = node.id
+    if (node.props.pn === 'list') attrs['data-pn-sig'] = typeof node.props.pnSig === 'string' ? node.props.pnSig.slice(0, 500) : ''
+    else if (node.props.pnNav === 'page' || node.props.pnNav === 'more') attrs['data-pn-nav'] = node.props.pnNav
+  }
   if (mode === 'editor') {
     if (node.props.condHidden === true) attrs['data-cond-hidden'] = ''
     if (node.linked === 'inner') {
