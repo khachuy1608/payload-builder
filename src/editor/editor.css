@@ -536,3 +536,14 @@ select.ed-input + .ed-reset { right: 26px; }
 .ed-link-text { display: flex; flex-direction: column; min-width: 0; }
 .ed-link-text b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ed-link-text small { color: var(--ed-ink-3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Popup nổi (portal) ---------- */
+.ed-floating { position: fixed; right: auto; z-index: 400; overflow-y: auto; font: 13px/1.45 var(--ed-font); color: var(--ed-ink); }
+.ed-floating .ed-token { width: 100%; }
+.ed-bind-pop .ed-token { justify-content: space-between; gap: 10px; }
+.ed-bind-pop .ed-token > :first-child, .ed-bind-pop .ed-token { white-space: nowrap; }
+.ed-bind-pop .ed-token code { flex: none; }
+/* nút chọn (🔗 ⚡) đặt ngoài <label> để bấm nhãn/ô không mở nhầm popup */
+.ed-field-wrap { position: relative; }
+.ed-field-wrap > .ed-field-pickers { position: absolute; top: -1px; right: 0; display: inline-flex; gap: 4px; z-index: 1; }
+.ed-field-wrap > .ed-field > .ed-label { padding-right: 52px; }

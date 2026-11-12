@@ -19,6 +19,7 @@ import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@
 import { slugify } from '@/lib/slug'
 import { Icon, ICON_LABELS, ICONS } from '@/builder/blocks/helpers'
 import { nodeLabel } from './labels'
+import { Floating } from './Floating'
 import { LinkPicker } from './LinkPicker'
 import { MediaPicker } from './MediaPicker'
 import { PresetGallery } from './PresetGallery'
@@ -325,13 +326,15 @@ function ListFieldControl({ field, value, onChange }: { field: ListField; value:
       )
     case 'url':
       return (
-        <label className="ed-field">
-          <span className="ed-help ed-label--row">
-            {field.label}
+        <div className="ed-field-wrap">
+          <span className="ed-field-pickers">
             <LinkPicker onPick={(href) => onChange(href)} />
           </span>
-          <input className="ed-input" value={String(value ?? '')} placeholder={field.placeholder ?? '/duong-dan hoặc https://…'} onChange={(e) => onChange(e.target.value)} />
-        </label>
+          <label className="ed-field">
+            <span className="ed-help">{field.label}</span>
+            <input className="ed-input" value={String(value ?? '')} placeholder={field.placeholder ?? '/duong-dan hoặc https://…'} onChange={(e) => onChange(e.target.value)} />
+          </label>
+        </div>
       )
     default:
       return (
@@ -392,15 +395,20 @@ function RichTextField({ value, onChange }: { value: string; onChange: (html: st
 }
 
 function Field({ label, help, picker, children }: { label: string; help?: string; picker?: React.ReactNode; children: React.ReactNode }) {
-  return (
+  const body = (
     <label className="ed-field">
-      <span className="ed-label ed-label--row">
-        {label}
-        {picker}
-      </span>
+      <span className="ed-label ed-label--row">{label}</span>
       {children}
       {help && <span className="ed-help">{help}</span>}
     </label>
+  )
+  if (!picker) return body
+  // nút chọn (🔗 ⚡) nằm ngoài <label>: bấm nhãn/ô nhập không kích hoạt nhầm nút đầu tiên trong label
+  return (
+    <div className="ed-field-wrap">
+      <span className="ed-field-pickers">{picker}</span>
+      {body}
+    </div>
   )
 }
 
@@ -426,16 +434,18 @@ function BindPicker({ node, onPick }: { node: BuilderNode; onPick: (template: st
   const ctx = useDataContext(node)
   const usersInfo = useEditor((s) => s.sources.find((x) => x.slug === 'users'))
   const [open, setOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
   if (!ctx && !usersInfo) return null
   const paths = ctx?.info ? fieldPaths(ctx.info) : []
   const userPaths = usersInfo ? fieldPaths(usersInfo) : []
   return (
     <span className="ed-bind">
-      <button type="button" className="ed-bind-btn" title={ctx ? `Lấy từ dữ liệu: ${ctx.info?.label ?? ctx.source.collection}` : 'Lấy từ người đang đăng nhập'} onClick={(e) => (e.preventDefault(), setOpen((o) => !o))}>
+      <button ref={btnRef} type="button" className="ed-bind-btn" aria-expanded={open} data-action="bind-picker" title={ctx ? `Lấy từ dữ liệu: ${ctx.info?.label ?? ctx.source.collection}` : 'Lấy từ người đang đăng nhập'} onClick={(e) => (e.preventDefault(), setOpen((o) => !o))}>
         <Zap size={12} />
       </button>
       {open && (
-        <span className="ed-popover ed-bind-pop" onMouseDown={(e) => e.preventDefault()}>
+        <Floating anchor={btnRef} onClose={() => setOpen(false)} width={290} className="ed-bind-pop">
+        <span className="ed-bind-list" onMouseDown={(e) => e.preventDefault()}>
           {ctx && (
             <>
               <span className="ed-label">Trường của {ctx.info?.label ?? ctx.source.collection}</span>
@@ -460,6 +470,7 @@ function BindPicker({ node, onPick }: { node: BuilderNode; onPick: (template: st
             </>
           )}
         </span>
+        </Floating>
       )}
     </span>
   )
@@ -573,15 +584,16 @@ function IconPicker({ value, onChange }: { value: string; onChange: (v: string) 
   const all = Object.keys(ICONS)
   const needle = q.trim().toLowerCase()
   const list = needle ? all.filter((k) => k.toLowerCase().includes(needle) || (ICON_LABELS[k] ?? '').toLowerCase().includes(needle)) : all
+  const btnRef = useRef<HTMLButtonElement>(null)
   return (
     <div className="ed-iconpicker">
-      <button type="button" className="ed-input ed-iconpicker-current" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <button ref={btnRef} type="button" className="ed-input ed-iconpicker-current" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         {value ? <Icon name={value} size={16} /> : null}
         <span>{value ? (ICON_LABELS[value] ?? value) : 'Không có icon'}</span>
         <ChevronDown size={14} />
       </button>
       {open && (
-        <div className="ed-iconpicker-pop">
+        <Floating anchor={btnRef} onClose={() => setOpen(false)} width={Math.max(260, btnRef.current?.offsetWidth ?? 0)} align="start" className="ed-iconpicker-pop">
           <input className="ed-input" placeholder="Tìm icon… (ví dụ: mũi tên, giỏ, facebook)" value={q} autoFocus onChange={(e) => setQ(e.target.value)} />
           <div className="ed-icon-grid">
             <button type="button" className={`ed-icon-cell${!value ? ' is-active' : ''}`} title="Không có icon" onClick={() => (onChange(''), setOpen(false))}>
@@ -594,7 +606,7 @@ function IconPicker({ value, onChange }: { value: string; onChange: (v: string) 
             ))}
           </div>
           <span className="ed-help">{list.length} / {all.length} icon</span>
-        </div>
+        </Floating>
       )}
     </div>
   )
@@ -1555,10 +1567,11 @@ function ColorInput({ value, placeholder, onChange }: { value: string; placehold
   const tokenMatch = shown.match(/^var\(--color-([a-z]+)\)$/)
   const preview = tokenMatch ? theme.colors[tokenMatch[1]] : shown
   const hex = /^#[0-9a-f]{6}$/i.test(preview) ? preview : '#000000'
+  const wrapRef = useRef<HTMLDivElement>(null)
   return (
     <div className="ed-color">
-      <div className="ed-input-wrap">
-        <button className="ed-swatch" style={{ background: preview || 'transparent' }} onClick={() => setOpen((o) => !o)} aria-label="Chọn màu" />
+      <div className="ed-input-wrap" ref={wrapRef}>
+        <button className="ed-swatch" style={{ background: preview || 'transparent' }} onClick={() => setOpen((o) => !o)} aria-label="Chọn màu" aria-expanded={open} />
         <input
           className="ed-input"
           value={tokenMatch && value ? `● ${COLOR_TOKEN_LABELS[tokenMatch[1]] ?? tokenMatch[1]}` : value}
@@ -1573,7 +1586,7 @@ function ColorInput({ value, placeholder, onChange }: { value: string; placehold
         )}
       </div>
       {open && (
-        <div className="ed-popover">
+        <Floating anchor={wrapRef} onClose={() => setOpen(false)} width={260} align="start" className="ed-color-pop">
           <span className="ed-label">Màu toàn cục (theme)</span>
           <div className="ed-tokens">
             {Object.entries(theme.colors).map(([k, v]) => (
@@ -1598,7 +1611,7 @@ function ColorInput({ value, placeholder, onChange }: { value: string; placehold
               Trong suốt
             </button>
           </div>
-        </div>
+        </Floating>
       )}
     </div>
   )

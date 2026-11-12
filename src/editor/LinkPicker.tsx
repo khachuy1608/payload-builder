@@ -2,6 +2,7 @@
 
 import { FileText, Link2, Loader2, Search } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { Floating } from './Floating'
 import { useEditor } from './store'
 
 interface LinkItem {
@@ -25,7 +26,7 @@ export function LinkPicker({ onPick }: { onPick: (href: string) => void }) {
   const [groups, setGroups] = useState<LinkGroup[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const locale = useEditor((s) => s.locale)
-  const ref = useRef<HTMLSpanElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -39,24 +40,16 @@ export function LinkPicker({ onPick }: { onPick: (href: string) => void }) {
     return () => clearTimeout(timer)
   }, [open, q, locale])
 
-  // bấm ra ngoài thì đóng
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
-    window.addEventListener('mousedown', onDown)
-    return () => window.removeEventListener('mousedown', onDown)
-  }, [open])
-
   return (
-    <span className="ed-bind" ref={ref}>
-      <button type="button" className="ed-bind-btn ed-link-btn" title="Chọn liên kết nội bộ (trang, bài viết, sự kiện…)" aria-label="Chọn liên kết nội bộ" data-action="link-picker" onClick={(e) => (e.preventDefault(), setOpen((o) => !o))}>
+    <span className="ed-bind">
+      <button ref={btnRef} type="button" aria-expanded={open} className="ed-bind-btn ed-link-btn" title="Chọn liên kết nội bộ (trang, bài viết, sự kiện…)" aria-label="Chọn liên kết nội bộ" data-action="link-picker" onClick={(e) => (e.preventDefault(), setOpen((o) => !o))}>
         <Link2 size={12} />
       </button>
       {open && (
-        <span className="ed-popover ed-link-pop" onClick={(e) => e.preventDefault()}>
+        <Floating anchor={btnRef} onClose={() => setOpen(false)} width={320} className="ed-link-pop">
           <span className="ed-search" style={{ margin: 0 }}>
             <Search size={13} />
-            <input autoFocus placeholder="Tìm trang, bài viết, sự kiện…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && (e.stopPropagation(), setOpen(false))} />
+            <input autoFocus placeholder="Tìm trang, bài viết, sự kiện…" value={q} onChange={(e) => setQ(e.target.value)} />
           </span>
           {!groups && !error && <Loader2 size={14} className="ed-spin" />}
           {error && <span className="ed-error">{error}</span>}
@@ -84,7 +77,7 @@ export function LinkPicker({ onPick }: { onPick: (href: string) => void }) {
               ))}
             </span>
           ))}
-        </span>
+        </Floating>
       )}
     </span>
   )
