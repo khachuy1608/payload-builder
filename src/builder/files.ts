@@ -21,8 +21,27 @@ export const DOCUMENT_MIME_TYPES = [
   'application/zip',
 ]
 
-/** Thuộc tính accept của ô chọn file khi tải tài liệu */
-export const DOCUMENT_ACCEPT = '.pdf,.csv,.tsv,.txt,.xlsx,.xls,.ods,.docx,.doc,.odt,.pptx,.ppt,.zip,image/*,video/*'
+/** Thuộc tính accept của ô chọn file khi tải tài liệu (không gồm ảnh/video) */
+export const DOCUMENT_ACCEPT = '.pdf,.csv,.tsv,.txt,.xlsx,.xls,.ods,.docx,.doc,.odt,.pptx,.ppt,.zip'
+
+/** Loại media mà một ô chọn nhận: thư viện chỉ liệt kê và chỉ cho tải lên đúng loại này */
+export type MediaAccept = 'image' | 'video' | 'file'
+
+export const MEDIA_ACCEPT_INPUT: Record<MediaAccept, string> = { image: 'image/*', video: 'video/mp4,video/webm', file: DOCUMENT_ACCEPT }
+
+/** File (theo MIME) có đúng loại ô chọn cần không */
+export function mediaMatches(accept: MediaAccept, mime: string | undefined): boolean {
+  const m = (mime ?? '').toLowerCase()
+  if (accept === 'image') return m.startsWith('image/')
+  if (accept === 'video') return m.startsWith('video/')
+  return DOCUMENT_MIME_TYPES.includes(m)
+}
+
+/** Điều kiện where (query string Payload) để thư viện chỉ trả về đúng loại */
+export function mediaWhereQuery(accept: MediaAccept): string {
+  if (accept === 'file') return `where[mimeType][in]=${DOCUMENT_MIME_TYPES.map(encodeURIComponent).join(',')}`
+  return `where[mimeType][like]=${accept}/`
+}
 
 const EXT_KIND: Record<string, FileKind> = {
   pdf: 'pdf',

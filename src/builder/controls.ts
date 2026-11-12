@@ -21,7 +21,7 @@ export type ContentControl =
   | { type: 'text' | 'textarea' | 'url' | 'code' | 'richtext'; prop: string; label: string; placeholder?: string; help?: string }
   | { type: 'select'; prop: string; label: string; options: Option[]; help?: string }
   | { type: 'toggle'; prop: string; label: string; help?: string }
-  | { type: 'media'; prop: string; label: string; /** 'file' = tài liệu (PDF, Excel…) thay vì ảnh */ accept?: 'image' | 'file' }
+  | { type: 'media'; prop: string; label: string; /** loại file nhận (mặc định ảnh): 'video' hoặc 'file' = tài liệu (PDF, Excel, Word…) */ accept?: 'image' | 'video' | 'file' }
   | { type: 'number'; prop: string; label: string; min?: number; max?: number; step?: number; help?: string }
   | { type: 'color'; prop: string; label: string }
   /** Bộ chọn icon có tìm kiếm (toàn bộ ICONS) */

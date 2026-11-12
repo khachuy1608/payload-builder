@@ -1,6 +1,7 @@
 'use client'
 
 import type { BuilderNode, PageContent } from '@/builder/types'
+import { type MediaAccept, mediaWhereQuery } from '@/builder/files'
 import type { MediaValue } from '@/builder/types'
 import { normalizeTheme, type ThemeTokens } from '@/builder/theme'
 import { genId } from '@/builder/tree'
@@ -84,8 +85,10 @@ export function toMediaValue(doc: MediaDoc): MediaValue {
   return { id: doc.id, url: doc.url, alt: doc.alt ?? '', width: doc.width, height: doc.height, mimeType: doc.mimeType, ...(doc.filename ? { filename: doc.filename } : {}), ...(doc.filesize ? { filesize: doc.filesize } : {}), ...(doc.sizes ? { sizes: doc.sizes } : {}) }
 }
 
-export async function listMedia(page = 1): Promise<{ docs: MediaDoc[]; hasNextPage: boolean }> {
-  const res = await fetch(`/api/media?limit=40&page=${page}&sort=-createdAt&depth=0`, { credentials: 'include' })
+/** Thư viện media theo trang; `accept` lọc đúng loại (ảnh / video / tài liệu) ngay từ server */
+export async function listMedia(page = 1, accept?: MediaAccept): Promise<{ docs: MediaDoc[]; hasNextPage: boolean }> {
+  const filter = accept ? `&${mediaWhereQuery(accept)}` : ''
+  const res = await fetch(`/api/media?limit=40&page=${page}&sort=-createdAt&depth=0${filter}`, { credentials: 'include' })
   if (!res.ok) throw new Error(await readError(res))
   return res.json()
 }

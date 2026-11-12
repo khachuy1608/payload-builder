@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Payload } from 'payload'
-import { canPreviewOnServer, fileKindOf, formatBytes, parseCsv } from '../src/builder/files'
+import { canPreviewOnServer, fileKindOf, formatBytes, mediaMatches, mediaWhereQuery, parseCsv } from '../src/builder/files'
 import { RenderNode } from '../src/builder/Renderer'
 import { mediaFilenameFromSrc, previewMediaFile } from '../src/lib/filePreview'
 
@@ -86,4 +86,18 @@ test('fileViewer render: PDF iframe, bảng qua server, thẻ tải xuống', ()
   assert.equal(renderToStaticMarkup(createElement(RenderNode, { node: n({ url: 'javascript:alert(1)' }), mode: 'live' })), '')
   // editor: lớp chắn để chọn được block PDF
   assert.match(renderToStaticMarkup(createElement(RenderNode, { node: n({ url: 'https://cdn.vn/a.pdf' }), mode: 'editor' })), /b-file-shield/)
+})
+
+test('mediaMatches / mediaWhereQuery: ô chọn tài liệu chỉ nhận tài liệu, ô ảnh chỉ nhận ảnh', () => {
+  assert.equal(mediaMatches('file', 'application/pdf'), true)
+  assert.equal(mediaMatches('file', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'), true)
+  assert.equal(mediaMatches('file', 'image/png'), false)
+  assert.equal(mediaMatches('file', 'video/mp4'), false)
+  assert.equal(mediaMatches('image', 'image/webp'), true)
+  assert.equal(mediaMatches('image', 'application/pdf'), false)
+  assert.equal(mediaMatches('video', 'video/webm'), true)
+  assert.equal(mediaMatches('video', 'image/png'), false)
+  assert.match(mediaWhereQuery('file'), /^where\[mimeType\]\[in\]=application%2Fpdf,/)
+  assert.doesNotMatch(decodeURIComponent(mediaWhereQuery('file')), /image\/|video\//)
+  assert.equal(mediaWhereQuery('image'), 'where[mimeType][like]=image/')
 })

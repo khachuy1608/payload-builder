@@ -897,11 +897,11 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
   )
 }
 
-function MediaField({ label, value, onChange, picker, accept = 'image' }: { label: string; value: MediaValue | null; onChange: (v: MediaValue | null) => void; picker?: React.ReactNode; accept?: 'image' | 'file' }) {
+function MediaField({ label, value, onChange, picker, accept = 'image' }: { label: string; value: MediaValue | null; onChange: (v: MediaValue | null) => void; picker?: React.ReactNode; accept?: 'image' | 'video' | 'file' }) {
   const [open, setOpen] = useState(false)
   // tài liệu (không phải ảnh) hiện dạng thẻ tên file thay vì <img>
   const isFile = !!value?.url && !(value.mimeType ?? '').startsWith('image/') && (accept === 'file' || !!value.mimeType)
-  const noun = accept === 'file' ? 'file' : 'ảnh'
+  const noun = accept === 'file' ? 'file' : accept === 'video' ? 'video' : 'ảnh'
   return (
     <div className="ed-field">
       <span className="ed-label ed-label--row">

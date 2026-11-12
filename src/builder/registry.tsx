@@ -542,7 +542,7 @@ const BLOCK_LIST: BlockDefinition[] = [
     icon: Film,
     defaults: () => ({ props: { media: null, url: '', poster: null, controls: true, autoplay: false, loop: false, muted: false, aspect: '16/9' }, styles: { desktop: { width: '100%', borderRadius: 'var(--radius-md)', overflow: 'hidden' } } }),
     contentControls: [
-      { type: 'media', prop: 'media', label: 'Video từ thư viện (mp4/webm)' },
+      { type: 'media', prop: 'media', label: 'Video từ thư viện (mp4/webm)', accept: 'video' },
       { type: 'url', prop: 'url', label: 'Hoặc URL video (https)', placeholder: 'https://…/video.mp4' },
       { type: 'media', prop: 'poster', label: 'Ảnh bìa (poster)' },
       { type: 'select', prop: 'aspect', label: 'Tỉ lệ', options: [{ value: '16/9', label: '16:9' }, { value: '4/3', label: '4:3' }, { value: '1/1', label: '1:1' }, { value: '9/16', label: '9:16 (dọc)' }, { value: 'auto', label: 'Theo video' }] },
