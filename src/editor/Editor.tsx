@@ -227,21 +227,50 @@ function usePresence() {
   }, [])
 }
 
-/** Bình luận của trang: nạp khi mở, nạp lại khi quay về tab */
+/** Bình luận của trang: nạp khi mở, nạp lại định kỳ (khi tab đang hiển thị) và khi quay về tab */
+export const COMMENTS_POLL_MS = 15_000
 function useComments() {
   useEffect(() => {
     const s = useEditor.getState()
     if (s.kind !== 'page') return
-    const load = () => listComments(s.pageId).then((list) => useEditor.getState().setComments(list)).catch(() => undefined)
+    let first = true
+    const load = () =>
+      listComments(s.pageId)
+        .then((list) => {
+          const st = useEditor.getState()
+          const prev = st.comments
+          const key = (l: typeof list) => l.map((c) => `${c.id}:${c.resolved ? 1 : 0}:${c.text.length}`).join(',')
+          if (key(prev) === key(list)) return // không đổi -> không vẽ lại
+          // bình luận mới của người khác (không phải lần nạp đầu): báo nhẹ
+          if (!first) {
+            const known = new Set(prev.map((c) => c.id))
+            const fresh = list.filter((c) => !known.has(c.id) && c.author?.id !== st.userId)
+            if (fresh.length) st.toast('info', fresh.length === 1 ? `💬 ${fresh[0].author?.name || 'Ai đó'} vừa bình luận` : `💬 ${fresh.length} bình luận mới`)
+          }
+          st.setComments(list)
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          first = false
+        })
     void load()
     let last = Date.now()
-    const onFocus = () => {
+    const refresh = () => {
       if (Date.now() - last < 3000) return
       last = Date.now()
       void load()
     }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') refresh()
+    }, COMMENTS_POLL_MS)
+    const onVisible = () => document.visibilityState === 'visible' && refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 }
 
