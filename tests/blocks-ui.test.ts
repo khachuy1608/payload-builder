@@ -66,7 +66,7 @@ test('block tương tác: HTML có đủ móc data-* cho Runtime và trang thậ
   for (const hook of ['data-dialog-open', 'data-dialog=""', 'data-menu-toggle', 'data-toast-open', 'data-cmdk-open', 'data-accordion-toggle', 'data-carousel-next', 'data-drawer-toggle', 'data-form=', 'name="website"']) assert.ok(live.includes(hook), 'thiếu ' + hook)
   assert.ok(!live.includes('bld-editor-only'), 'trang thật không được chứa khung chỉ-editor')
   const editor = renderToStaticMarkup(createElement(PageRenderer, { content: { version: 1, root }, mode: 'editor' }))
-  assert.ok(editor.includes('bld-editor-only'), 'editor hiện nội dung ẩn để sửa')
+  assert.ok(editor.includes('b-dialog-preview') && editor.includes('b-cmdk-preview'), 'editor (chưa gắn trạng thái = mở) hiện lớp phủ xem trước để sửa')
   assert.ok(!editor.includes('<dialog'), 'editor không render <dialog> thật')
 })
 

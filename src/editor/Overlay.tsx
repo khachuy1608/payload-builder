@@ -4,12 +4,13 @@
  * Lớp phủ vẽ phía trên iframe: viền hover, viền chọn + thanh công cụ, vạch chỉ vị trí thả.
  * Toạ độ đọc bằng getBoundingClientRect trong iframe mỗi frame (rAF) nên luôn đúng khi cuộn/đổi layout.
  */
-import { ArrowUp, BookmarkPlus, Copy, Database, EyeOff, ExternalLink, GripVertical, Trash2, Unlink } from 'lucide-react'
+import { ArrowUp, BookmarkPlus, Copy, Database, Eye, EyeOff, ExternalLink, GripVertical, Trash2, Unlink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getBlock } from '@/builder/registry'
 import { canSaveAsBlock } from '@/builder/schema'
 import { SITE_PART_LABELS, sitePartNode, sitePartOf } from '@/builder/siteParts'
 import { findNode, findParent } from '@/builder/tree'
+import { type ViewStateInfo, viewStateInfo } from '@/builder/viewState'
 import { nodeLabel } from './labels'
 import { RichToolbar } from './RichToolbar'
 import { type Rect, useEditor } from './store'
@@ -184,6 +185,9 @@ export function Overlay({ doc }: { doc: Document }) {
                 {nodeLabel(selectedNode)}
                 {commentCount(selectedNode.id) > 0 && ` · 💬 ${commentCount(selectedNode.id)}`}
               </span>
+              {viewStateInfo(selectedNode) && (
+                <ViewStateToggle id={selectedNode.id} info={viewStateInfo(selectedNode)!} />
+              )}
               {findParent(root, selectedNode.id)?.parent.id !== 'root' && (
                 <button className="ed-tool" title="Chọn phần tử cha" onClick={() => s.select(findParent(root, selectedNode.id)!.parent.id)}>
                   <ArrowUp size={14} />
@@ -222,4 +226,22 @@ export function Overlay({ doc }: { doc: Document }) {
 
 function rectStyle(r: Rect) {
   return { transform: `translate(${r.x}px, ${r.y}px)`, width: r.w, height: r.h }
+}
+
+/** Nút trên thanh công cụ: đổi nhanh trạng thái xem Đóng / Mở của block tương tác (ghim trên canvas) */
+function ViewStateToggle({ id, info }: { id: string; info: ViewStateInfo }) {
+  const pinned = useEditor((s) => s.viewStates[id])
+  const current = pinned ?? 'open'
+  const next = current === 'open' ? 'closed' : 'open'
+  return (
+    <button
+      className={`ed-tool ed-tool--view${current === 'open' ? ' is-active' : ''}`}
+      data-view-toggle={current}
+      title={`Đang xem: ${info[current]} – bấm để xem “${info[next]}”`}
+      aria-label={`Xem trạng thái ${info[next]}`}
+      onClick={() => useEditor.getState().setViewState(id, next)}
+    >
+      {current === 'open' ? <Eye size={14} /> : <EyeOff size={14} />}
+    </button>
+  )
 }

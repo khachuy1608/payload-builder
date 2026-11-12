@@ -28,6 +28,7 @@ import { genId } from '../../tree'
 import type { BuilderNode, MediaValue } from '../../types'
 import { withParam } from '../../data'
 import { bool, ContainerRender, EditorOnly, Icon, items, num, safeHref, safeId, srcSetOf, text } from '../helpers'
+import { isViewOpen } from '../../viewState'
 import type { BlockDefinition } from '../types'
 
 const node = (type: string, props: Record<string, unknown>, styles: BuilderNode['styles'] = {}, children?: BuilderNode[]): BuilderNode => ({
@@ -286,10 +287,12 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     ],
     styleGroups: ['typography', 'spacing', 'background', 'border'],
     inlineEdit: { prop: 'title' },
-    Render: ({ node, attrs, children }) => {
+    Render: ({ node, attrs, children, mode }) => {
       const idx = 0
+      // editor: theo trạng thái xem (Thu gọn / Mở rộng); trang thật: theo “Mở sẵn”
+      const open = mode === 'editor' && node.props.__view ? node.props.__view === 'open' : bool(node.props.open)
       return (
-        <details {...attrs} className={attrs.className + ' b-acc-item'} open={bool(node.props.open) || undefined}>
+        <details {...attrs} className={attrs.className + ' b-acc-item'} open={open || undefined}>
           <summary className="b-acc-summary" data-tab-index={idx} data-accordion-toggle="">
             <span>{text(node.props.title)}</span>
             <Icon name="chevronDown" className="b-acc-chevron" />
@@ -335,12 +338,12 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
       { type: 'select', prop: 'drawerSide', label: 'Ngăn kéo (mobile) mở từ', options: [{ value: 'right', label: 'Phải' }, { value: 'left', label: 'Trái' }] },
     ],
     styleGroups: ['typography', 'size', 'spacing', 'background', 'border', 'effects', 'position'],
-    Render: ({ node, attrs }) => {
+    Render: ({ node, attrs, mode }) => {
       const links = items<Link>(node.props.links)
       const logo = node.props.logo as MediaValue | null
       const id = `nav-${node.id}`
       return (
-        <header {...attrs} className={`${attrs.className} b-header${bool(node.props.sticky, true) ? ' b-header--sticky' : ''}`} data-drawer-side={text(node.props.drawerSide, 'right')}>
+        <header {...attrs} className={`${attrs.className} b-header${bool(node.props.sticky, true) ? ' b-header--sticky' : ''}${mode === 'editor' && node.props.__view === 'open' ? ' is-open' : ''}`} data-drawer-side={text(node.props.drawerSide, 'right')}>
           <div className="b-header-inner">
             <a className="b-header-brand" href={safeHref(node.props.brandHref) ?? '/'}>
               {logo?.url && (
@@ -743,8 +746,8 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     Render: ({ node, attrs, mode }) => {
       const apps = items<{ label?: string; href?: string; color?: string }>(node.props.apps)
       return (
-        <div {...attrs} className={`${attrs.className} b-waffle${mode === 'editor' ? ' is-open' : ''}`} data-menu="">
-          <button type="button" className="b-waffle-btn" data-menu-toggle="" aria-expanded={mode === 'editor'} aria-label="Mở ứng dụng">
+        <div {...attrs} className={`${attrs.className} b-waffle${isViewOpen(node, mode) ? ' is-open' : ''}`} data-menu="">
+          <button type="button" className="b-waffle-btn" data-menu-toggle="" aria-expanded={isViewOpen(node, mode)} aria-label="Mở ứng dụng">
             <Icon name="grid" size={22} />
           </button>
           <div className="b-menu-panel b-waffle-panel">
@@ -812,8 +815,8 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
         </a>
       )
       return (
-        <div {...attrs} className={`${attrs.className} b-cascade b-cascade--${variant}${mode === 'editor' ? ' is-open' : ''}`} data-menu="" data-cascade={variant}>
-          <button type="button" className="b-button b-menu-trigger" data-menu-toggle="" aria-expanded={mode === 'editor'}>
+        <div {...attrs} className={`${attrs.className} b-cascade b-cascade--${variant}${isViewOpen(node, mode) ? ' is-open' : ''}`} data-menu="" data-cascade={variant}>
+          <button type="button" className="b-button b-menu-trigger" data-menu-toggle="" aria-expanded={isViewOpen(node, mode)}>
             {text(node.props.buttonText, 'Menu')} <Icon name="chevronDown" size={14} />
           </button>
           <div className="b-menu-panel b-cascade-panel">
@@ -866,8 +869,8 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     Render: ({ node, attrs, mode }) => {
       const list = items<Link & { danger?: boolean }>(node.props.items)
       return (
-        <div {...attrs} className={`${attrs.className} b-overflow${mode === 'editor' ? ' is-open' : ''}`} data-menu="">
-          <button type="button" className="b-overflow-btn" data-menu-toggle="" aria-expanded={mode === 'editor'} aria-label="Thêm hành động">
+        <div {...attrs} className={`${attrs.className} b-overflow${isViewOpen(node, mode) ? ' is-open' : ''}`} data-menu="">
+          <button type="button" className="b-overflow-btn" data-menu-toggle="" aria-expanded={isViewOpen(node, mode)} aria-label="Thêm hành động">
             <Icon name={text(node.props.variant) === 'meatballs' ? 'dots' : 'dotsV'} size={20} />
           </button>
           <div className="b-menu-panel" role="menu">
@@ -948,7 +951,7 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
             <kbd>Ctrl K</kbd>
           </button>
           {mode === 'editor' ? (
-            <EditorOnly label="Command palette – mở bằng nút hoặc Ctrl+K trên trang thật">{panel}</EditorOnly>
+            isViewOpen(node, mode) && <div className="b-cmdk-dialog b-cmdk-preview">{panel}</div>
           ) : (
             <dialog className="b-cmdk-dialog" data-cmdk-dialog="">
               {panel}

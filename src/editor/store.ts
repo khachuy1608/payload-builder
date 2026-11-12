@@ -12,6 +12,7 @@ import type { Role } from '@/lib/access'
 import type { CommentDoc, PresenceUser } from './api'
 import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
+import type { ViewState } from '@/builder/viewState'
 import { freeParamKey, LIST_CONTROL_TYPES, listTargets } from '@/builder/data'
 import { canContain, getSchema } from '@/builder/schema'
 import { autoBind, type DataMap, type DataRecord, type SourceInfo } from '@/builder/data'
@@ -175,6 +176,8 @@ export interface EditorState {
   currentUser: DataRecord | null
   /** Xem thử canvas như khách (chưa đăng nhập) */
   previewAsGuest: boolean
+  /** Trạng thái xem Đóng/Mở đã ghim của block tương tác (chỉ trong editor, không lưu); chưa ghim = tự động */
+  viewStates: Record<string, ViewState>
 
   selectedId: string | null
   hoveredId: string | null
@@ -274,6 +277,8 @@ export interface EditorActions {
   setSources(sources: SourceInfo[]): void
   setCurrentUser(user: DataRecord | null): void
   setPreviewAsGuest(on: boolean): void
+  /** Ghim trạng thái xem Đóng/Mở cho block (null = tự động: mở khi đang chọn, còn lại như trang thật) */
+  setViewState(id: string, state: ViewState | null): void
   setData(nodeId: string, records: DataMap[string]): void
   openContextMenu(menu: EditorState['contextMenu']): void
   openHistory(open: boolean): void
@@ -404,6 +409,7 @@ export const useEditor = create<Store>()(
       dataCache: {},
       currentUser: null,
       previewAsGuest: false,
+      viewStates: {},
       template: null,
       seo: { metaTitle: '', metaDescription: '', ogImage: null, noIndex: false, canonical: '' },
       siteParts: { header: null, footer: null },
@@ -750,6 +756,11 @@ export const useEditor = create<Store>()(
       setPreviewAsGuest: (on) =>
         set((s) => {
           s.previewAsGuest = on
+        }),
+      setViewState: (id, state) =>
+        set((s) => {
+          if (state) s.viewStates[id] = state
+          else delete s.viewStates[id]
         }),
       setSources: (sources) =>
         set((s) => {

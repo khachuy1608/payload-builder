@@ -17,6 +17,7 @@ import { RenderNode } from '@/builder/Renderer'
 import { BASE_CSS, themeToCss } from '@/builder/theme'
 import { sitePartOf, withSiteParts } from '@/builder/siteParts'
 import { findNode, getAncestors } from '@/builder/tree'
+import { applyViewStates, viewStateInfo } from '@/builder/viewState'
 import { computeDrop } from './dnd'
 import { Overlay } from './Overlay'
 import { handleShortcut } from './shortcuts'
@@ -125,9 +126,25 @@ function CanvasContent() {
   const display = useMemo(() => (kind === 'page' ? withSiteParts(root, siteParts, layout) : root), [root, siteParts, layout, kind])
   // triển khai My Block liên kết rồi gắn dữ liệu thật (và người đang đăng nhập) trước khi biên dịch CSS và render;
   // phần tử bị điều kiện ẩn vẫn giữ lại để chọn/sửa (đánh dấu data-cond-hidden)
+  // trạng thái xem Đóng/Mở của block tương tác: ghim trong store, còn lại mở khi đang chọn nó/phần tử bên trong.
+  // pathKey chỉ đổi khi tập block tương tác trên đường chọn đổi -> chọn phần tử thường không biên dịch lại CSS
+  const selectedId = useEditor((s) => s.selectedId)
+  const viewStates = useEditor((s) => s.viewStates)
+  const pathKey = useMemo(() => {
+    if (!selectedId) return ''
+    const self = findNode(display, selectedId)
+    return [...getAncestors(display, selectedId), ...(self ? [self] : [])]
+      .filter((n) => viewStateInfo(n))
+      .map((n) => n.id)
+      .join(',')
+  }, [display, selectedId])
   const resolved = useMemo(
-    () => resolveData(resolveRefs(display, blockLookup(blocks)), (id) => dataCache[id], { user: previewAsGuest ? null : currentUser, keepHidden: true }),
-    [display, blocks, dataCache, currentUser, previewAsGuest],
+    () =>
+      resolveData(applyViewStates(resolveRefs(display, blockLookup(blocks)), viewStates, new Set(pathKey ? pathKey.split(',') : [])), (id) => dataCache[id], {
+        user: previewAsGuest ? null : currentUser,
+        keepHidden: true,
+      }),
+    [display, blocks, dataCache, currentUser, previewAsGuest, viewStates, pathKey],
   )
   const css = useMemo(() => compileTreeCss(resolved), [resolved])
   const theme = useEditor(effectiveTheme)

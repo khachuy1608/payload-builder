@@ -23,7 +23,8 @@ import {
 } from 'lucide-react'
 import { genId } from '../../tree'
 import type { BuilderNode, MediaValue } from '../../types'
-import { bool, EditorOnly, Icon, items, num, safeColor, safeHref, srcSetOf, text } from '../helpers'
+import { bool, Icon, items, num, safeColor, safeHref, srcSetOf, text } from '../helpers'
+import { isViewOpen } from '../../viewState'
 import type { BlockDefinition } from '../types'
 
 const node = (type: string, props: Record<string, unknown>, styles: BuilderNode['styles'] = {}, children?: BuilderNode[]): BuilderNode => ({ id: genId(), type, props, styles, ...(children ? { children } : {}) })
@@ -562,7 +563,7 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
     styleGroups: ['typography', 'effects'],
     Render: ({ node, attrs, mode }) => {
       const toast = (
-        <div className={`b-toast-el b-toast--${text(node.props.severity, 'neutral')} b-toast--${text(node.props.position, 'bottom-center')}${mode === 'editor' ? ' is-static' : ''}`} role="status" data-toast-el="">
+        <div className={`b-toast-el b-toast--${text(node.props.severity, 'neutral')} b-toast--${text(node.props.position, 'bottom-center')}${isViewOpen(node, mode) ? ' is-visible' : ''}`} role="status" data-toast-el="">
           <span>{text(node.props.message)}</span>
           {text(node.props.actionText) && (
             <button type="button" className="b-toast-action" data-dismiss="">
@@ -581,7 +582,8 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
               {text(node.props.buttonText, 'Hiện toast')}
             </button>
           )}
-          {mode === 'editor' ? <EditorOnly label="Toast – xem thử (trên trang thật chỉ hiện khi kích hoạt)">{toast}</EditorOnly> : toast}
+          {mode === 'editor' && text(node.props.trigger, 'button') !== 'button' && !isViewOpen(node, mode) && <span className="bld-state-tag">Toast · hiện sau khi vào trang</span>}
+          {toast}
         </div>
       )
     },
@@ -636,7 +638,12 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
             {text(node.props.triggerText, 'Mở')}
           </button>
           {mode === 'editor' ? (
-            <EditorOnly label={`${variant === 'modal' ? 'Modal' : variant === 'drawer' ? 'Drawer' : 'Sheet'} – nội dung (trên trang thật chỉ hiện khi mở)`}>{body}</EditorOnly>
+            // editor: trạng thái Mở vẽ đúng như trang thật (phủ màn hình); Đóng chỉ còn nút mở
+            isViewOpen(node, mode) && (
+              <div className={`b-dialog-el b-dialog--${variant} b-dialog-preview b-dialog-preview--${variant}`} role="dialog" aria-label={text(node.props.title) || 'Hộp thoại'}>
+                {body}
+              </div>
+            )
           ) : (
             <dialog className={`b-dialog-el b-dialog--${variant}`} data-dialog="" aria-label={text(node.props.title) || 'Hộp thoại'}>
               {body}
@@ -697,8 +704,8 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
           </div>
         )
       return (
-        <span {...attrs} className={`${attrs.className} b-pop b-pop--${variant} b-pop--${text(node.props.placement, 'bottom')}${mode === 'editor' ? ' is-open' : ''}`} data-menu={hover ? undefined : ''} data-hover={hover ? '' : undefined}>
-          <button type="button" className={variant === 'tooltip' || variant === 'hovercard' ? 'b-pop-trigger-text' : 'b-button b-button--ghost b-pop-trigger'} data-menu-toggle={hover ? undefined : ''} aria-expanded={hover ? undefined : mode === 'editor'}>
+        <span {...attrs} className={`${attrs.className} b-pop b-pop--${variant} b-pop--${text(node.props.placement, 'bottom')}${isViewOpen(node, mode) ? ' is-open' : ''}`} data-menu={hover ? undefined : ''} data-hover={hover ? '' : undefined}>
+          <button type="button" className={variant === 'tooltip' || variant === 'hovercard' ? 'b-pop-trigger-text' : 'b-button b-button--ghost b-pop-trigger'} data-menu-toggle={hover ? undefined : ''} aria-expanded={hover ? undefined : isViewOpen(node, mode)}>
             {text(node.props.triggerText)}
             {variant === 'dropdown' && <Icon name="chevronDown" size={14} />}
           </button>
@@ -736,6 +743,25 @@ export const FEEDBACK_BLOCKS: BlockDefinition[] = [
               <img src={it.media!.url} alt={text(it.caption) || it.media!.alt || ''} loading="lazy" />
             </button>
           ))}
+          {mode === 'editor' && isViewOpen(node, mode) && (
+            // editor – trạng thái Mở: xem trước lightbox với ảnh đầu tiên
+            <div className="b-lightbox-dlg b-lightbox-preview" role="dialog" aria-label="Lightbox">
+              <span className="b-lightbox-close" aria-hidden>
+                <Icon name="close" size={22} />
+              </span>
+              <span className="b-lightbox-nav b-lightbox-prev" aria-hidden>
+                <Icon name="chevronLeft" size={26} />
+              </span>
+              <figure>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={images[0].media!.url} alt="" />
+                {text(images[0].caption) && <figcaption>{text(images[0].caption)}</figcaption>}
+              </figure>
+              <span className="b-lightbox-nav b-lightbox-next" aria-hidden>
+                <Icon name="chevronRight" size={26} />
+              </span>
+            </div>
+          )}
           {mode === 'live' && (
             <dialog className="b-lightbox-dlg" data-lightbox-dialog="">
               <button type="button" className="b-lightbox-close" data-lightbox-close="" aria-label="Đóng">

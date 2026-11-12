@@ -271,6 +271,19 @@ export const BLOCKS_CSS = `
 .b-dialog-body{padding:20px;overflow-y:auto}
 .b-dialog-foot{padding:12px 20px;border-top:1px solid var(--color-border);display:flex;justify-content:flex-end;gap:8px}
 .bld-editor-only .b-dialog-box{box-shadow:0 4px 16px rgba(0,0,0,.1);width:auto;height:auto;max-height:none}
+/* editor – trạng thái xem "Mở" của lớp phủ: vẽ như trang thật trong khung canvas (không phải <dialog> gốc) */
+.b-dialog-preview,.b-cmdk-preview,.b-lightbox-preview{position:fixed;inset:0;z-index:80;margin:0!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;display:flex;overflow:auto}
+.b-dialog-preview,.b-cmdk-preview{background:rgba(15,23,42,.5)}
+.b-dialog-preview--modal{align-items:center;justify-content:center;padding:24px}
+.b-dialog-preview--drawer{align-items:stretch;justify-content:flex-end}.b-dialog-preview--drawer:has(.b-dialog-box--left){justify-content:flex-start}
+.b-dialog-preview--sheet{align-items:flex-end;justify-content:center}
+.b-cmdk-preview{align-items:flex-start;justify-content:center;padding:12vh 16px 0}.b-cmdk-preview>.b-cmdk-panel{width:min(560px,92vw)}
+.b-lightbox-preview{background:rgba(0,0,0,.9)}
+.b-select-wrap{position:relative}
+.b-select-preview{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;display:flex;flex-direction:column;gap:2px;padding:4px;background:var(--color-background);border:1px solid var(--color-border);border-radius:var(--radius-md);box-shadow:0 12px 32px rgba(15,23,42,.14);max-height:240px;overflow:auto}
+.b-select-opt{padding:8px 10px;border-radius:var(--radius-sm);font-size:14px;color:var(--color-text)}
+.b-select-opt.is-active{background:color-mix(in srgb,var(--color-primary) 12%,transparent);color:var(--color-primary);font-weight:600}
+.bld-state-tag{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;font:600 11px/1.6 system-ui,sans-serif;color:#4338ca;background:#eef2ff;vertical-align:middle}
 .b-pop{position:relative;display:inline-block}
 .b-pop-trigger{display:inline-flex;align-items:center;gap:6px}
 .b-pop-trigger-text{border:0;background:none;font:inherit;color:var(--color-primary);text-decoration:underline dotted;cursor:help;padding:0}

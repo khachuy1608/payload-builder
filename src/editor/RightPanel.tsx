@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Database, ExternalLink, EyeOff, Globe, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X, ClipboardPaste, Copy } from 'lucide-react'
+import { ChevronDown, ChevronRight, Database, ExternalLink, Eye, EyeOff, Globe, Monitor, Palette, Play, Sparkles, Zap, MousePointer2, Plus, Smartphone, Tablet, Trash2, ArrowUp, ArrowDown, Unlink, X, ClipboardPaste, Copy } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
@@ -15,6 +15,7 @@ import { SITE_PART_LABELS, type SitePart, sitePartOf } from '@/builder/siteParts
 import { CLICK_ACTIONS, type ClickAction, type ClickProps, canHaveClick } from '@/builder/click'
 import { cssToStyles } from '@/builder/cssImport'
 import { findNode, genId, getAncestors, walk } from '@/builder/tree'
+import { type ViewState, viewStateInfo } from '@/builder/viewState'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
 import { Icon, ICON_LABELS, ICONS } from '@/builder/blocks/helpers'
@@ -75,6 +76,7 @@ export function RightPanel() {
           {def && <def.icon size={18} />}
           <strong>{node.type === 'blockRef' ? nodeLabel(node) : node.type === 'root' && kind === 'block' ? 'Cài đặt block' : (def?.label ?? node.type)}</strong>
         </div>
+        <ViewStateBar node={node} ancestors={ancestors} />
       </header>
       <div className="ed-tabs ed-tabs--small">
         {(['content', 'style', 'advanced', ...(node.type !== 'root' && node.type !== 'blockRef' ? (['presets'] as Tab[]) : [])] as Tab[]).map((t) => (
@@ -90,6 +92,55 @@ export function RightPanel() {
         {tab === 'presets' && <PresetGallery node={node} />}
       </div>
     </aside>
+  )
+}
+
+// ======================= Trạng thái xem Đóng / Mở =======================
+
+/**
+ * Block tương tác (dialog, popover, dropdown, toast, accordion, menu, select…) hoặc phần tử nằm trong nó:
+ * chọn xem canvas ở trạng thái Đóng hay Mở để chỉnh giao diện từng trạng thái. Không ghim = tự động
+ * (mở khi đang chọn, bỏ chọn thì về trạng thái ban đầu như trang thật).
+ */
+function ViewStateBar({ node, ancestors }: { node: BuilderNode; ancestors: BuilderNode[] }) {
+  const target = viewStateInfo(node) ? node : [...ancestors].reverse().find((a) => viewStateInfo(a))
+  const pinned = useEditor((s) => (target ? s.viewStates[target.id] : undefined))
+  if (!target) return null
+  const info = viewStateInfo(target)!
+  const current = pinned ?? 'open'
+  const set = (v: ViewState | null) => {
+    const st = useEditor.getState()
+    st.setViewState(target.id, v)
+    // đóng block cha khi đang chọn phần tử bên trong: chuyển chọn lên block để vẫn thấy khung chọn
+    if (v === 'closed' && target !== node) st.select(target.id)
+  }
+  return (
+    <div className="ed-viewstate" data-viewstate={current}>
+      <div className="ed-viewstate-row">
+        <span className="ed-viewstate-label">{target === node ? 'Trạng thái xem' : `Xem ${getBlock(target.type)?.label ?? target.type}`}</span>
+        <div className="ed-seg" role="group" aria-label="Trạng thái xem trên canvas">
+          {(['closed', 'open'] as const).map((v) => (
+            <button key={v} type="button" data-view={v} className={current === v ? 'is-active' : ''} aria-pressed={current === v} onClick={() => set(v)}>
+              {v === 'closed' ? <EyeOff size={13} /> : <Eye size={13} />}
+              {info[v]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <span className="ed-help">
+        {pinned ? (
+          <>
+            Đang ghim “{info[pinned]}” trên canvas.{' '}
+            <button type="button" className="ed-linkbtn" data-view="auto" onClick={() => set(null)}>
+              Về tự động
+            </button>
+          </>
+        ) : (
+          'Tự động: mở khi đang chọn, bỏ chọn thì về trạng thái ban đầu như trang thật.'
+        )}
+        {info.hint ? ` ${info.hint}` : ''}
+      </span>
+    </div>
   )
 }
 

@@ -93,7 +93,7 @@ export const FORM_BLOCKS: BlockDefinition[] = [
     ],
     styleGroups: ['typography', 'size', 'spacing', 'effects', 'child'],
     inlineEdit: { prop: 'label' },
-    Render: ({ node, attrs }) => {
+    Render: ({ node, attrs, mode }) => {
       const type = text(node.props.type, 'text')
       const name = slug(node.props.name) || slug(node.props.label) || 'field'
       const id = `f-${node.id}`
@@ -224,13 +224,31 @@ export const FORM_BLOCKS: BlockDefinition[] = [
           </div>
         )
       else control = <input {...common} type={type === 'datetime' ? 'datetime-local' : type} className="b-input" />
+      // editor – trạng thái Mở: danh sách lựa chọn như khi bấm vào (select gốc của trình duyệt không mở được bằng code)
+      const listPreview =
+        (type === 'select' || type === 'combobox') && mode === 'editor' && node.props.__view === 'open' ? (
+          <div className="b-select-preview" role="listbox" aria-label={label || 'Lựa chọn'}>
+            {(opts.length ? opts : ['Lựa chọn 1', 'Lựa chọn 2']).map((o, i) => (
+              <span key={o + i} role="option" aria-selected={i === 0} className={`b-select-opt${i === 0 ? ' is-active' : ''}`}>
+                {o}
+              </span>
+            ))}
+          </div>
+        ) : null
       return (
         <div {...attrs} className={`${attrs.className} b-field b-field--${type}${showError ? ' is-error' : ''}`} data-field="" data-required={required || undefined}>
           <label className="b-field-label" htmlFor={id}>
             {label}
             {star}
           </label>
-          {control}
+          {listPreview ? (
+            <div className="b-select-wrap is-open">
+              {control}
+              {listPreview}
+            </div>
+          ) : (
+            control
+          )}
           {foot}
         </div>
       )
