@@ -11,7 +11,7 @@ const siteUrl = () => process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:30
 export const Customers: CollectionConfig = {
   slug: 'customers',
   labels: { singular: 'Khách hàng', plural: 'Khách hàng' },
-  admin: { useAsTitle: 'email', defaultColumns: ['email', 'name', 'phone', 'createdAt'], group: 'Khách hàng' },
+  admin: { useAsTitle: 'email', defaultColumns: ['email', 'name', 'phone', 'createdAt'], group: 'Khách hàng & Form' },
   auth: {
     tokenExpiration: 60 * 60 * 24 * 30,
     maxLoginAttempts: 10,
@@ -46,7 +46,7 @@ export const Customers: CollectionConfig = {
 export const Bookings: CollectionConfig = {
   slug: 'bookings',
   labels: { singular: 'Đặt chỗ', plural: 'Đặt chỗ' },
-  admin: { useAsTitle: 'id', defaultColumns: ['customer', 'event', 'seats', 'status', 'createdAt'], group: 'Khách hàng' },
+  admin: { useAsTitle: 'id', defaultColumns: ['customer', 'event', 'seats', 'status', 'createdAt'], group: 'Khách hàng & Form' },
   custom: { builder: { label: 'Đặt chỗ (của tôi)', expose: ['event', 'seats', 'status', 'note', 'createdAt'], ownerField: 'customer' } },
   access: {
     create: ({ req: { user } }) => !!user,

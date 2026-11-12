@@ -6,7 +6,7 @@ export const Users: CollectionConfig = {
   slug: 'users',
   labels: { singular: 'Người dùng', plural: 'Người dùng' },
   auth: true,
-  admin: { useAsTitle: 'email', defaultColumns: ['email', 'name', 'role'] },
+  admin: { group: 'Hệ thống', useAsTitle: 'email', defaultColumns: ['email', 'name', 'role'] },
   access: {
     read: loggedIn,
     create: isAdmin,

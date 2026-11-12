@@ -16,6 +16,7 @@ export const MyBlocks: CollectionConfig = {
   slug: 'my-blocks',
   labels: { singular: 'My Block', plural: 'My Blocks' },
   admin: {
+    group: 'Website',
     useAsTitle: 'name',
     defaultColumns: ['name', 'scope', 'owner', 'updatedAt'],
     description: 'Phần tử/vùng đã dựng trong Visual Builder được lưu lại để dùng ở nhiều trang (bản sao hoặc liên kết).',

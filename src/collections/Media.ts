@@ -5,6 +5,7 @@ import { revalidatePages } from '../lib/revalidate'
 export const Media: CollectionConfig = {
   slug: 'media',
   labels: { singular: 'Media', plural: 'Media' },
+  admin: { group: 'Website' },
   access: {
     read: () => true,
     create: canEdit,

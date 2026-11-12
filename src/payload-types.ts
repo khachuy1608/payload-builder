@@ -63,23 +63,18 @@ export type SupportedTimezones =
 
 export interface Config {
   auth: {
-    users: UserAuthOperations;
     customers: CustomerAuthOperations;
+    users: UserAuthOperations;
   };
   blocks: {};
   collections: {
     pages: Page;
     'my-blocks': MyBlock;
+    media: Media;
     themes: Theme;
     'style-presets': StylePreset;
-    comments: Comment;
-    'form-submissions': FormSubmission;
-    'form-uploads': FormUpload;
     redirects: Redirect;
-    media: Media;
-    users: User;
-    customers: Customer;
-    bookings: Booking;
+    comments: Comment;
     categories: Category;
     posts: Post;
     products: Product;
@@ -87,6 +82,11 @@ export interface Config {
     faqs: Faq;
     testimonials: Testimonial;
     'team-members': TeamMember;
+    customers: Customer;
+    bookings: Booking;
+    'form-submissions': FormSubmission;
+    'form-uploads': FormUpload;
+    users: User;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
@@ -97,16 +97,11 @@ export interface Config {
   collectionsSelect: {
     pages: PagesSelect<false> | PagesSelect<true>;
     'my-blocks': MyBlocksSelect<false> | MyBlocksSelect<true>;
+    media: MediaSelect<false> | MediaSelect<true>;
     themes: ThemesSelect<false> | ThemesSelect<true>;
     'style-presets': StylePresetsSelect<false> | StylePresetsSelect<true>;
-    comments: CommentsSelect<false> | CommentsSelect<true>;
-    'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
-    'form-uploads': FormUploadsSelect<false> | FormUploadsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
-    media: MediaSelect<false> | MediaSelect<true>;
-    users: UsersSelect<false> | UsersSelect<true>;
-    customers: CustomersSelect<false> | CustomersSelect<true>;
-    bookings: BookingsSelect<false> | BookingsSelect<true>;
+    comments: CommentsSelect<false> | CommentsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
@@ -114,6 +109,11 @@ export interface Config {
     faqs: FaqsSelect<false> | FaqsSelect<true>;
     testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>;
     'team-members': TeamMembersSelect<false> | TeamMembersSelect<true>;
+    customers: CustomersSelect<false> | CustomersSelect<true>;
+    bookings: BookingsSelect<false> | BookingsSelect<true>;
+    'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
+    'form-uploads': FormUploadsSelect<false> | FormUploadsSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -134,7 +134,7 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User | Customer;
+  user: Customer | User;
   jobs: {
     tasks: {
       schedulePublish: TaskSchedulePublish;
@@ -146,7 +146,7 @@ export interface Config {
     workflows: unknown;
   };
 }
-export interface UserAuthOperations {
+export interface CustomerAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -164,7 +164,7 @@ export interface UserAuthOperations {
     password: string;
   };
 }
-export interface CustomerAuthOperations {
+export interface UserAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -495,68 +495,6 @@ export interface StylePreset {
   createdAt: string;
 }
 /**
- * Bình luận trên phần tử của trang trong Visual Builder.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "comments".
- */
-export interface Comment {
-  id: number;
-  page: number | Page;
-  /**
-   * id node trong nội dung trang; "root" là cả trang.
-   */
-  nodeId: string;
-  text: string;
-  author?: (number | null) | User;
-  resolved?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Dữ liệu người dùng gửi qua block Form trong Visual Builder.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "form-submissions".
- */
-export interface FormSubmission {
-  id: number;
-  form: string;
-  page?: string | null;
-  data:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * File do khách tải lên qua block Form.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "form-uploads".
- */
-export interface FormUpload {
-  id: number;
-  form?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-}
-/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -576,83 +514,21 @@ export interface Redirect {
   createdAt: string;
 }
 /**
+ * Bình luận trên phần tử của trang trong Visual Builder.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "customers".
+ * via the `definition` "comments".
  */
-export interface Customer {
+export interface Comment {
   id: number;
-  name: string;
-  phone?: string | null;
-  avatar?: (number | null) | Media;
-  note?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  resetPasswordRequestedAt?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
-  collection: 'customers';
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "bookings".
- */
-export interface Booking {
-  id: number;
-  customer: number | Customer;
-  event: number | Event;
-  seats: number;
-  status?: ('pending' | 'confirmed' | 'cancelled') | null;
-  note?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "events".
- */
-export interface Event {
-  id: number;
-  title: string;
+  page: number | Page;
   /**
-   * Để trống sẽ tự tạo từ tiêu đề.
+   * id node trong nội dung trang; "root" là cả trang.
    */
-  slug: string;
-  published?: boolean | null;
-  startAt: string;
-  endAt?: string | null;
-  location?: string | null;
-  capacity?: number | null;
-  price?: number | null;
-  summary?: string | null;
-  cover?: (number | null) | Media;
-  description?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  nodeId: string;
+  text: string;
+  author?: (number | null) | User;
+  resolved?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -758,6 +634,43 @@ export interface Product {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "events".
+ */
+export interface Event {
+  id: number;
+  title: string;
+  /**
+   * Để trống sẽ tự tạo từ tiêu đề.
+   */
+  slug: string;
+  published?: boolean | null;
+  startAt: string;
+  endAt?: string | null;
+  location?: string | null;
+  capacity?: number | null;
+  price?: number | null;
+  summary?: string | null;
+  cover?: (number | null) | Media;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "faqs".
  */
 export interface Faq {
@@ -826,6 +739,93 @@ export interface TeamMember {
     | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers".
+ */
+export interface Customer {
+  id: number;
+  name: string;
+  phone?: string | null;
+  avatar?: (number | null) | Media;
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  resetPasswordRequestedAt?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'customers';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "bookings".
+ */
+export interface Booking {
+  id: number;
+  customer: number | Customer;
+  event: number | Event;
+  seats: number;
+  status?: ('pending' | 'confirmed' | 'cancelled') | null;
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Dữ liệu người dùng gửi qua block Form trong Visual Builder.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "form-submissions".
+ */
+export interface FormSubmission {
+  id: number;
+  form: string;
+  page?: string | null;
+  data:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * File do khách tải lên qua block Form.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "form-uploads".
+ */
+export interface FormUpload {
+  id: number;
+  form?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -952,6 +952,10 @@ export interface PayloadLockedDocument {
         value: number | MyBlock;
       } | null)
     | ({
+        relationTo: 'media';
+        value: number | Media;
+      } | null)
+    | ({
         relationTo: 'themes';
         value: number | Theme;
       } | null)
@@ -960,36 +964,12 @@ export interface PayloadLockedDocument {
         value: number | StylePreset;
       } | null)
     | ({
-        relationTo: 'comments';
-        value: number | Comment;
-      } | null)
-    | ({
-        relationTo: 'form-submissions';
-        value: number | FormSubmission;
-      } | null)
-    | ({
-        relationTo: 'form-uploads';
-        value: number | FormUpload;
-      } | null)
-    | ({
         relationTo: 'redirects';
         value: number | Redirect;
       } | null)
     | ({
-        relationTo: 'media';
-        value: number | Media;
-      } | null)
-    | ({
-        relationTo: 'users';
-        value: number | User;
-      } | null)
-    | ({
-        relationTo: 'customers';
-        value: number | Customer;
-      } | null)
-    | ({
-        relationTo: 'bookings';
-        value: number | Booking;
+        relationTo: 'comments';
+        value: number | Comment;
       } | null)
     | ({
         relationTo: 'categories';
@@ -1018,16 +998,36 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'team-members';
         value: number | TeamMember;
+      } | null)
+    | ({
+        relationTo: 'customers';
+        value: number | Customer;
+      } | null)
+    | ({
+        relationTo: 'bookings';
+        value: number | Booking;
+      } | null)
+    | ({
+        relationTo: 'form-submissions';
+        value: number | FormSubmission;
+      } | null)
+    | ({
+        relationTo: 'form-uploads';
+        value: number | FormUpload;
+      } | null)
+    | ({
+        relationTo: 'users';
+        value: number | User;
       } | null);
   globalSlug?: string | null;
   user:
     | {
-        relationTo: 'users';
-        value: number | User;
-      }
-    | {
         relationTo: 'customers';
         value: number | Customer;
+      }
+    | {
+        relationTo: 'users';
+        value: number | User;
       };
   updatedAt: string;
   createdAt: string;
@@ -1040,12 +1040,12 @@ export interface PayloadPreference {
   id: number;
   user:
     | {
-        relationTo: 'users';
-        value: number | User;
-      }
-    | {
         relationTo: 'customers';
         value: number | Customer;
+      }
+    | {
+        relationTo: 'users';
+        value: number | User;
       };
   key?: string | null;
   value?:
@@ -1115,6 +1115,58 @@ export interface MyBlocksSelect<T extends boolean = true> {
   tree?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        large?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1213,48 +1265,6 @@ export interface StylePresetsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "comments_select".
- */
-export interface CommentsSelect<T extends boolean = true> {
-  page?: T;
-  nodeId?: T;
-  text?: T;
-  author?: T;
-  resolved?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "form-submissions_select".
- */
-export interface FormSubmissionsSelect<T extends boolean = true> {
-  form?: T;
-  page?: T;
-  data?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "form-uploads_select".
- */
-export interface FormUploadsSelect<T extends boolean = true> {
-  form?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects_select".
  */
 export interface RedirectsSelect<T extends boolean = true> {
@@ -1267,121 +1277,14 @@ export interface RedirectsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
+ * via the `definition` "comments_select".
  */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
-  sizes?:
-    | T
-    | {
-        thumbnail?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        card?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        large?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-      };
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users_select".
- */
-export interface UsersSelect<T extends boolean = true> {
-  role?: T;
-  name?: T;
-  title?: T;
-  bio?: T;
-  avatar?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  email?: T;
-  resetPasswordToken?: T;
-  resetPasswordExpiration?: T;
-  salt?: T;
-  hash?: T;
-  resetPasswordRequestedAt?: T;
-  loginAttempts?: T;
-  lockUntil?: T;
-  sessions?:
-    | T
-    | {
-        id?: T;
-        createdAt?: T;
-        expiresAt?: T;
-      };
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "customers_select".
- */
-export interface CustomersSelect<T extends boolean = true> {
-  name?: T;
-  phone?: T;
-  avatar?: T;
-  note?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  email?: T;
-  resetPasswordToken?: T;
-  resetPasswordExpiration?: T;
-  salt?: T;
-  hash?: T;
-  resetPasswordRequestedAt?: T;
-  loginAttempts?: T;
-  lockUntil?: T;
-  sessions?:
-    | T
-    | {
-        id?: T;
-        createdAt?: T;
-        expiresAt?: T;
-      };
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "bookings_select".
- */
-export interface BookingsSelect<T extends boolean = true> {
-  customer?: T;
-  event?: T;
-  seats?: T;
-  status?: T;
-  note?: T;
+export interface CommentsSelect<T extends boolean = true> {
+  page?: T;
+  nodeId?: T;
+  text?: T;
+  author?: T;
+  resolved?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1514,6 +1417,103 @@ export interface TeamMembersSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers_select".
+ */
+export interface CustomersSelect<T extends boolean = true> {
+  name?: T;
+  phone?: T;
+  avatar?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  resetPasswordRequestedAt?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "bookings_select".
+ */
+export interface BookingsSelect<T extends boolean = true> {
+  customer?: T;
+  event?: T;
+  seats?: T;
+  status?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "form-submissions_select".
+ */
+export interface FormSubmissionsSelect<T extends boolean = true> {
+  form?: T;
+  page?: T;
+  data?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "form-uploads_select".
+ */
+export interface FormUploadsSelect<T extends boolean = true> {
+  form?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users_select".
+ */
+export interface UsersSelect<T extends boolean = true> {
+  role?: T;
+  name?: T;
+  title?: T;
+  bio?: T;
+  avatar?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  resetPasswordRequestedAt?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1666,12 +1666,12 @@ export interface TaskSchedulePublish {
     global?: string | null;
     user?:
       | ({
-          relationTo: 'users';
-          value: number | User;
-        } | null)
-      | ({
           relationTo: 'customers';
           value: number | Customer;
+        } | null)
+      | ({
+          relationTo: 'users';
+          value: number | User;
         } | null);
   };
   output?: unknown;

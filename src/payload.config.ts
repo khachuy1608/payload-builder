@@ -43,11 +43,15 @@ export default buildConfig({
       graphics: { Logo: '/components/admin/Brand#BrandLogo', Icon: '/components/admin/Brand#BrandIcon' },
       beforeLogin: ['/components/admin/LoginAside#LoginAside'],
       afterLogin: ['/components/admin/LoginAside#LoginFooter'],
+      // menu admin: thương hiệu + lối tắt ở đầu, thẻ người dùng ở cuối
+      beforeNavLinks: ['/components/admin/Nav#NavHeader'],
+      afterNavLinks: ['/components/admin/Nav#NavUser'],
     },
   },
   // admin tiếng Việt (vẫn chọn được tiếng Anh trong Tài khoản)
   i18n: { supportedLanguages: { vi, en }, fallbackLanguage: 'vi' },
-  collections: [Pages, MyBlocks, Themes, StylePresets, Comments, FormSubmissions, FormUploads, Redirects, Media, Users, Customers, Bookings, ...CONTENT_COLLECTIONS],
+  // thứ tự = thứ tự nhóm trên menu admin: Website → Nội dung → Khách hàng & Form → Hệ thống
+  collections: [Pages, MyBlocks, Media, Themes, StylePresets, Redirects, Comments, ...CONTENT_COLLECTIONS, Customers, Bookings, FormSubmissions, FormUploads, Users],
   editor: lexicalEditor(),
   // Đa ngôn ngữ: trường localized có bản riêng cho từng ngôn ngữ, thiếu thì fallback về mặc định
   localization: { locales: LOCALES.map((l) => ({ code: l.code, label: l.label })), defaultLocale: DEFAULT_LOCALE, fallback: true },

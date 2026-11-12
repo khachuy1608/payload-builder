@@ -19,6 +19,7 @@ export const Pages: CollectionConfig = {
   slug: 'pages',
   labels: { singular: 'Trang', plural: 'Trang' },
   admin: {
+    group: 'Website',
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', '_status', 'updatedAt'],
     preview: (doc) => `${process.env.NEXT_PUBLIC_SERVER_URL || ''}/preview/enter?slug=${encodeURIComponent(String(doc?.slug ?? ''))}`,

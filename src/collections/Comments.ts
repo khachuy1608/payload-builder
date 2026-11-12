@@ -14,7 +14,7 @@ const authorOrAdmin: Access = ({ req: { user } }) => {
 export const Comments: CollectionConfig = {
   slug: 'comments',
   labels: { singular: 'Bình luận', plural: 'Bình luận' },
-  admin: { useAsTitle: 'text', defaultColumns: ['text', 'page', 'author', 'resolved', 'createdAt'], description: 'Bình luận trên phần tử của trang trong Visual Builder.' },
+  admin: { group: 'Website', useAsTitle: 'text', defaultColumns: ['text', 'page', 'author', 'resolved', 'createdAt'], description: 'Bình luận trên phần tử của trang trong Visual Builder.' },
   access: { read: loggedIn, create: loggedIn, update: authorOrAdmin, delete: authorOrAdmin },
   fields: [
     { name: 'page', label: 'Trang', type: 'relationship', relationTo: 'pages', required: true, index: true },

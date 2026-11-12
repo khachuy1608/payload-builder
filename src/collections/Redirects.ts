@@ -6,7 +6,7 @@ import { revalidatePages } from '../lib/revalidate'
 export const Redirects: CollectionConfig = {
   slug: 'redirects',
   labels: { singular: 'Chuyển hướng', plural: 'Chuyển hướng' },
-  admin: { useAsTitle: 'from', defaultColumns: ['from', 'to', 'permanent', 'updatedAt'] },
+  admin: { group: 'Website', useAsTitle: 'from', defaultColumns: ['from', 'to', 'permanent', 'updatedAt'] },
   access: { read: () => true, create: canEdit, update: canEdit, delete: canEdit },
   fields: [
     { name: 'from', label: 'Từ đường dẫn', type: 'text', required: true, unique: true, index: true, admin: { description: 'Ví dụ /gioi-thieu-cu' } },

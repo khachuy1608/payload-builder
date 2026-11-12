@@ -11,7 +11,7 @@ const MAX_BYTES = 10 * 1024 * 1024
 export const FormUploads: CollectionConfig = {
   slug: 'form-uploads',
   labels: { singular: 'File đính kèm form', plural: 'File đính kèm form' },
-  admin: { group: 'Form', description: 'File do khách tải lên qua block Form.' },
+  admin: { group: 'Khách hàng & Form', description: 'File do khách tải lên qua block Form.' },
   access: { create: () => true, read: loggedIn, update: () => false, delete: loggedIn },
   upload: {
     staticDir: 'media/form-uploads',

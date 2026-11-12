@@ -5,6 +5,7 @@ import { revalidatePages } from '../lib/revalidate'
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
   label: 'Cài đặt site',
+  admin: { group: 'Hệ thống' },
   access: { read: loggedIn, update: isAdmin },
   hooks: {
     afterChange: [

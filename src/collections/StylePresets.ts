@@ -6,7 +6,7 @@ import { canEdit, loggedIn, ownerOrAdmin } from '../lib/access'
 export const StylePresets: CollectionConfig = {
   slug: 'style-presets',
   labels: { singular: 'Gợi ý kiểu', plural: 'Gợi ý kiểu' },
-  admin: { useAsTitle: 'name', defaultColumns: ['name', 'blockType', 'scope', 'owner', 'updatedAt'], description: 'Kiểu người dùng lưu từ Visual Builder (tab Gợi ý) để dùng lại cho block cùng loại.' },
+  admin: { group: 'Website', useAsTitle: 'name', defaultColumns: ['name', 'blockType', 'scope', 'owner', 'updatedAt'], description: 'Kiểu người dùng lưu từ Visual Builder (tab Gợi ý) để dùng lại cho block cùng loại.' },
   access: { read: loggedIn, create: canEdit, update: ownerOrAdmin, delete: ownerOrAdmin },
   fields: [
     { name: 'name', label: 'Tên', type: 'text', required: true, maxLength: 80 },

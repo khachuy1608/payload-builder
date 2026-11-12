@@ -37,7 +37,7 @@ async function verifyTurnstile(token: unknown, ip: string): Promise<boolean> {
 export const FormSubmissions: CollectionConfig = {
   slug: 'form-submissions',
   labels: { singular: 'Bài gửi form', plural: 'Bài gửi form' },
-  admin: { useAsTitle: 'form', defaultColumns: ['form', 'page', 'createdAt'], description: 'Dữ liệu người dùng gửi qua block Form trong Visual Builder.' },
+  admin: { group: 'Khách hàng & Form', useAsTitle: 'form', defaultColumns: ['form', 'page', 'createdAt'], description: 'Dữ liệu người dùng gửi qua block Form trong Visual Builder.' },
   access: {
     create: () => true,
     read: canEdit,

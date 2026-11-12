@@ -19,6 +19,7 @@ export const Themes: CollectionConfig = {
   slug: 'themes',
   labels: { singular: 'Theme', plural: 'Themes' },
   admin: {
+    group: 'Website',
     useAsTitle: 'name',
     defaultColumns: ['name', 'isPreset', 'owner', 'updatedAt'],
     description: 'Bộ màu, font, bo góc và kiểu nút cho cả site. Theme preset chỉ đọc – hãy nhân bản trong Visual Builder để chỉnh.',
