@@ -113,7 +113,9 @@ body.ed-body :is(h1, h2, h3, h4, .ed-label, .ed-help, .ed-warn, .ed-toast, .ed-t
   border: 1px solid var(--ed-line-strong); border-radius: 8px; background: var(--ed-panel); cursor: grab; color: var(--ed-ink);
   transition: border-color .15s, box-shadow .15s, color .15s;
 }
-.ed-tile svg { color: var(--ed-ink-2); }
+.ed-tile svg { color: var(--ed-ink-2); flex: none; }
+/* tên block: tối đa 2 dòng, dài hơn thì "…" (tên đầy đủ ở tooltip) */
+.ed-tile > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; max-width: 100%; padding: 0 8px; font-size: 12.5px; line-height: 1.3; text-align: center; overflow-wrap: anywhere; text-wrap: balance; }
 .ed-tile:hover { border-color: var(--ed-accent); box-shadow: 0 2px 8px rgba(79, 70, 229, .12); }
 .ed-tile:hover svg { color: var(--ed-accent); }
 .ed-tile:active { cursor: grabbing; }

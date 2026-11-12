@@ -74,7 +74,9 @@ function ElementsPanel() {
                     key={b.type}
                     className="ed-tile"
                     draggable
-                    title="Kéo vào trang, hoặc bấm để thêm"
+                    // tên dài bị cắt còn 2 dòng (…) – tooltip luôn hiện tên đầy đủ
+                    title={`${b.label}\nKéo vào trang, hoặc bấm để thêm`}
+                    aria-label={b.label}
                     onDragStart={(e) => {
                       e.dataTransfer.setData('text/plain', b.type)
                       e.dataTransfer.effectAllowed = 'copy'
