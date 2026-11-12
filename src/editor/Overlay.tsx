@@ -119,6 +119,11 @@ export function Overlay({ doc }: { doc: Document }) {
   /** tỉ lệ thu nhỏ của khung canvas – huy hiệu được phóng ngược lại để luôn đọc được */
   const [zoom, setZoom] = useState(1)
 
+  // rời chế độ Bình luận: bỏ vị trí huy hiệu cũ để lần bật sau không hiện lại dữ liệu cũ
+  useEffect(() => {
+    if (!commenting) setPins((prev) => (prev.length ? [] : prev))
+  }, [commenting])
+
   useEffect(() => {
     let raf = 0
     const tick = () => {
@@ -172,6 +177,7 @@ export function Overlay({ doc }: { doc: Document }) {
       {commenting &&
         pins.map((p) => {
           const open = comments.filter((c) => !c.resolved && c.nodeId === p.id)
+          if (!open.length) return null
           const authors = commentAuthors(open)
           const shown = authors.slice(0, 3)
           // neo tại chỗ đã bấm khi tạo luồng (bình luận cũ nhất có vị trí); bình luận cũ chưa có vị trí -> góc trên-phải
@@ -183,8 +189,8 @@ export function Overlay({ doc }: { doc: Document }) {
               type="button"
               className={`ed-cpin ${pinPlace(at, zoom, doc.documentElement.clientWidth, !anchor)}${commentPop?.nodeId === p.id ? ' is-active' : ''}`}
               data-comment-pin={p.id}
-              title={`${authors.map((a) => a.name || 'Ẩn danh').join(', ')} · ${p.count} bình luận – bấm để xem`}
-              aria-label={`${p.count} bình luận của ${authors.map((a) => a.name || 'Ẩn danh').join(', ')}`}
+              title={`${authors.map((a) => a.name || 'Ẩn danh').join(', ')} · ${open.length} bình luận – bấm để xem`}
+              aria-label={`${open.length} bình luận của ${authors.map((a) => a.name || 'Ẩn danh').join(', ')}`}
               style={{ transform: pinTransform(at, zoom, doc.documentElement.clientWidth, !anchor) }}
               onClick={(e) => s.openCommentPop({ nodeId: p.id, x: e.clientX, y: e.clientY, anchor })}
             >
@@ -199,7 +205,7 @@ export function Overlay({ doc }: { doc: Document }) {
               </span>
               <span className="ed-cpin-count">
                 <MessageSquare size={11} />
-                {p.count}
+                {open.length}
               </span>
             </button>
           )
