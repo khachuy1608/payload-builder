@@ -48,7 +48,7 @@ export function normalizeValue(prop: string, raw: string): string {
 const SHORTHANDS = new Set(['margin', 'padding', 'border', 'borderWidth', 'borderStyle', 'borderColor', 'borderRadius', 'background', 'flex', 'inset', 'font', 'overflow'])
 
 /** Các "thuộc tính ảo" của editor được biên dịch thành nhiều khai báo CSS */
-const VIRTUAL_PROPS = new Set(['lineClamp', 'overlayColor', 'focusRing'])
+const VIRTUAL_PROPS = new Set(['lineClamp', 'overlayColor', 'focusRing', 'stripeOdd', 'stripeEven', 'stripeHover'])
 
 export function declarations(map: StyleMap | undefined): string {
   if (!map) return ''
@@ -72,6 +72,20 @@ export function declarations(map: StyleMap | undefined): string {
   return out.join(';')
 }
 
+/** Nền xen kẽ cho các con trực tiếp (Danh sách dữ liệu): áp lên phần tử con nên ghi đè được nền riêng của thẻ */
+function stripeRules(sel: string, map: StyleMap | undefined): string[] {
+  if (!map) return []
+  const out: string[] = []
+  const color = (v: unknown) => (v == null ? '' : sanitizeCssValue(String(v)))
+  const odd = color(map.stripeOdd)
+  const even = color(map.stripeEven)
+  const hover = color(map.stripeHover)
+  if (odd) out.push(`${sel}>:nth-child(odd){background-color:${odd}}`)
+  if (even) out.push(`${sel}>:nth-child(even){background-color:${even}}`)
+  if (hover) out.push(`${sel}>:hover{background-color:${hover}}`)
+  return out
+}
+
 export function compileTreeCss(root: BuilderNode): string {
   const base: string[] = []
   const hover: string[] = []
@@ -87,6 +101,7 @@ export function compileTreeCss(root: BuilderNode): string {
       const s = node.styles ?? {}
       const d = declarations(s.desktop)
       if (d) base.push(`${sel}{${d}}`)
+      base.push(...stripeRules(sel, s.desktop))
       const h = declarations(s.hover)
       if (h) hover.push(`${sel}:hover{${h}}`)
       // Focus ring (:focus-visible) cho điều hướng bàn phím
@@ -100,8 +115,10 @@ export function compileTreeCss(root: BuilderNode): string {
       }
       const t = declarations(s.tablet)
       if (t) tablet.push(`${sel}{${t}}`)
+      tablet.push(...stripeRules(sel, s.tablet))
       const m = declarations(s.mobile)
       if (m) mobile.push(`${sel}{${m}}`)
+      mobile.push(...stripeRules(sel, s.mobile))
       const hide = (node.props as AdvancedProps)?.hide
       if (hide?.desktop) hideDesktop.push(sel)
       if (hide?.tablet) hideTablet.push(sel)

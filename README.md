@@ -158,6 +158,12 @@ npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redir
 npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
 ```
 
+## Khi bấm, nền xen kẽ, thẻ đều nhau
+
+- **Khi bấm** (tab *Nâng cao* của Div, Flexbox, Card, phần tử mẫu trong Danh sách dữ liệu, Image, Heading…): *Mở liên kết* (gắn được `{{trường}}`, ví dụ `/thanh-vien/{{id}}`, tuỳ chọn tab mới), *Cuộn tới phần tử* (theo CSS ID), *Mở hộp thoại* / *Hiện thông báo* (chọn block Dialog / Toast trên trang, CSS ID tự đặt). Cả phần tử thành vùng bấm: con trỏ tay, Tab tới được, Enter mở (Space với nút), Ctrl/chuột giữa mở tab mới, có mô tả cho trình đọc màn hình. Nút/link nằm bên trong vẫn chạy riêng. Trên canvas bấm chỉ để chọn; thử bằng *Xem trước*.
+- **Nền xen kẽ:** chọn Danh sách dữ liệu → tab *Kiểu* → *Phần tử trong danh sách*: nền phần tử lẻ, chẵn và khi rê chuột (chỉnh riêng theo thiết bị). Màu này đè lên nền riêng của thẻ. Gợi ý có sẵn: *Danh sách kẻ sọc*, *Lưới 3 cột, nền xen kẽ*. Với lưới nhiều cột, xen kẽ tính theo thứ tự phần tử.
+- **Thẻ đều nhau:** Danh sách dữ liệu mặc định *Kéo giãn* (`align-items: stretch`), thẻ trong cùng hàng cao bằng nhau kể cả khi bản ghi thiếu dữ liệu. Muốn thẻ cao theo nội dung thì đặt *Căn trục phụ* = *Đầu* ở tab Kiểu → Bố cục.
+
 ## Tiện ích nhỏ (đợt 6)
 
 - **Form:** email thông báo mỗi bài gửi tới *Email nhận thông báo* trong Cài đặt site (reply-to là email người gửi nếu có; cần `SMTP_*`, không có thì in ra console). Xuất CSV: `/api/builder/form-submissions.csv?form=<tên>&from=&to=` (nhân sự CMS). Trường **Tệp đính kèm** (ảnh/PDF/tài liệu ≤ 10MB, collection `form-uploads`, khách tải lên được, chỉ nhân sự đọc). **Form nhiều bước:** thêm trường loại “Bước mới” làm mốc; trang thật tự gom thành các bước với thanh tiến trình, Tiếp tục / Quay lại và kiểm tra bắt buộc từng bước.

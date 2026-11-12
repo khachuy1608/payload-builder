@@ -198,6 +198,15 @@ export const STYLE_GROUPS: Record<string, StyleGroup> = {
       { key: 'zIndex', label: 'Lớp (z-index)', kind: 'unit', placeholder: '0' },
     ],
   },
+  list: {
+    id: 'list',
+    label: 'Phần tử trong danh sách',
+    fields: [
+      { key: 'stripeOdd', label: 'Nền phần tử lẻ (1, 3, 5…)', kind: 'color' },
+      { key: 'stripeEven', label: 'Nền phần tử chẵn (2, 4, 6…)', kind: 'color' },
+      { key: 'stripeHover', label: 'Nền khi rê chuột', kind: 'color' },
+    ],
+  },
   background: {
     id: 'background',
     label: 'Nền',

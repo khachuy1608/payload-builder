@@ -182,6 +182,8 @@ Object.assign(PRESETS, {
     P('grid-3', 'Lưới 3 cột', {}, { desktop: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '24px' }, mobile: { gridTemplateColumns: '1fr' } }),
     P('grid-2', 'Lưới 2 cột', {}, { desktop: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '24px' }, mobile: { gridTemplateColumns: '1fr' } }),
     P('list', 'Danh sách dọc', {}, { desktop: { display: 'flex', flexDirection: 'column', gap: '12px' } }),
+    P('striped', 'Danh sách kẻ sọc', {}, { desktop: { display: 'flex', flexDirection: 'column', gap: '0px', stripeOdd: 'var(--color-background)', stripeEven: 'var(--color-surface)', stripeHover: 'color-mix(in srgb, var(--color-primary) 8%, var(--color-background))', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' } }),
+    P('grid-striped', 'Lưới 3 cột, nền xen kẽ', {}, { desktop: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '20px', stripeOdd: 'var(--color-surface)', stripeEven: 'color-mix(in srgb, var(--color-primary) 10%, var(--color-background))' }, mobile: { gridTemplateColumns: '1fr' } }),
     P('scroll', 'Cuộn ngang', {}, { desktop: { display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' } }),
   ],
   masonry: [P('2', '2 cột', { columns: '2', gap: '16' }), P('3', '3 cột', { columns: '3', gap: '16' }), P('4', '4 cột sát', { columns: '4', gap: '8' }), P('airy', '3 cột thoáng', { columns: '3', gap: '32' })],

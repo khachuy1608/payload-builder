@@ -53,6 +53,8 @@ export interface AdvancedProps {
   hide?: Partial<Record<Device, boolean>>
   /** Hiệu ứng (xem effects.ts) */
   fx?: import('./effects').FxProps
+  /** Hành động khi bấm (xem click.ts) */
+  click?: import('./click').ClickProps
 }
 
 export interface MediaValue {

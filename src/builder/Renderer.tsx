@@ -7,6 +7,7 @@ import { BuilderRuntime } from './blocks/Runtime'
 import type { NodeAttrs, RenderMode } from './blocks/types'
 import { compileTreeCss } from './css'
 import { type DataLookup, type DataMap, type DataRecord, resolveData, type UrlParams } from './data'
+import { clickAttrs } from './click'
 import { normalizeFx } from './effects'
 import type { BlockLookup } from './refs'
 import { resolveRefs } from './refs'
@@ -40,6 +41,8 @@ function buildAttrs(node: BuilderNode, mode: RenderMode): NodeAttrs {
     if (fx.hideOnScroll) attrs['data-fx-hide'] = ''
     if (fx.hover === 'spotlight') attrs['data-fx-hover'] = 'spotlight'
   }
+  const click = clickAttrs((node.props as { click?: unknown }).click)
+  if (click) Object.assign(attrs, click)
   if (mode === 'editor') {
     if (node.props.condHidden === true) attrs['data-cond-hidden'] = ''
     if (node.linked === 'inner') {

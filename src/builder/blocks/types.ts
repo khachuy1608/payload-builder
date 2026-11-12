@@ -20,6 +20,14 @@ export interface NodeAttrs {
   'data-fx-hide'?: string
   'data-fx-hover'?: string
   'data-cond-hidden'?: string
+  /** Hành động khi bấm (click.ts) */
+  'data-click'?: string
+  'data-click-href'?: string
+  'data-click-target'?: string
+  'data-click-newtab'?: string
+  role?: string
+  tabIndex?: number
+  'aria-label'?: string
   style?: Record<string, string>
 }
 

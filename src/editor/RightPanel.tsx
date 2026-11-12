@@ -12,7 +12,8 @@ import { sanitizeRichText } from '@/builder/sanitize'
 import { BLOCKS, getBlock } from '@/builder/registry'
 import { COLOR_TOKEN_LABELS, tokenOptionsFor } from '@/builder/theme'
 import { SITE_PART_LABELS, type SitePart, sitePartOf } from '@/builder/siteParts'
-import { findNode, genId, getAncestors } from '@/builder/tree'
+import { CLICK_ACTIONS, type ClickAction, type ClickProps, canHaveClick } from '@/builder/click'
+import { findNode, genId, getAncestors, walk } from '@/builder/tree'
 import type { AdvancedProps, BuilderNode, Device, MediaValue, StyleMap } from '@/builder/types'
 import { slugify } from '@/lib/slug'
 import { Icon, ICON_LABELS, ICONS } from '@/builder/blocks/helpers'
@@ -1581,6 +1582,98 @@ function ColorInput({ value, placeholder, onChange }: { value: string; placehold
   )
 }
 
+// ======================= Khi bấm =======================
+
+/** Hành động khi bấm vào cả phần tử: mở liên kết (gắn được {{trường}}), cuộn tới, mở Dialog, hiện Toast */
+function ClickPanel({ node }: { node: BuilderNode }) {
+  const root = useEditor((s) => s.root)
+  const click = (node.props as AdvancedProps).click
+  const action = click?.action ?? ''
+  const set = (patch: Partial<ClickProps> | null, key?: string) => {
+    const next = patch === null ? undefined : ({ ...(click ?? { action: 'link' }), ...patch } as ClickProps)
+    useEditor.getState().updateProps(node.id, { click: next }, key)
+  }
+  // đích: phần tử có CSS ID (cuộn) hoặc block Dialog / Toast (tự gán CSS ID nếu chưa có)
+  const targets: { id: string; cssId: string; label: string }[] = []
+  walk(root, (n) => {
+    if (n.id === node.id || n.type === 'root') return
+    const cssId = (n.props as AdvancedProps).cssId ?? ''
+    if (action === 'dialog' && n.type !== 'dialog') return
+    if (action === 'toast' && n.type !== 'toast') return
+    if (action === 'scroll' && !cssId) return
+    targets.push({ id: n.id, cssId, label: nodeLabel(n) })
+  })
+  const pickTarget = (nodeId: string) => {
+    const t = targets.find((x) => x.id === nodeId)
+    if (!t) return set({ target: undefined })
+    let cssId = t.cssId
+    if (!cssId) {
+      cssId = `${action === 'dialog' ? 'dlg' : 'toast'}-${t.id}`.replace(/[^A-Za-z0-9_-]/g, '')
+      useEditor.getState().updateProps(t.id, { cssId })
+    }
+    set({ target: cssId })
+  }
+  const current = targets.find((t) => t.cssId && t.cssId === click?.target)
+  return (
+    <section className="ed-group" style={{ margin: '0 -12px', borderTop: '1px solid var(--ed-line)' }}>
+      <div className="ed-fields" style={{ padding: '10px 12px' }}>
+        <span className="ed-label">Khi bấm vào phần tử</span>
+        <select
+          className="ed-input"
+          data-field="clickAction"
+          value={action}
+          onChange={(e) => (e.target.value ? set({ action: e.target.value as ClickAction, ...(e.target.value === click?.action ? {} : { target: undefined }) }) : set(null))}
+        >
+          <option value="">— Không làm gì —</option>
+          {CLICK_ACTIONS.map((a) => (
+            <option key={a.value} value={a.value}>
+              {a.label}
+            </option>
+          ))}
+        </select>
+        {action === 'link' && (
+          <>
+            <Field label="Liên kết" help="Ví dụ /lien-he, #bang-gia, https://… Trong Danh sách dữ liệu bấm ⚡ để ghép trường, ví dụ /thanh-vien/{{id}}." picker={<BindPicker node={node} onPick={(t) => set({ href: (click?.href ?? '') + t }, undefined)} />}>
+              <input className="ed-input" data-field="clickHref" value={click?.href ?? ''} placeholder="/duong-dan hoặc https://…" onChange={(e) => set({ href: e.target.value }, `click:${node.id}:href`)} />
+            </Field>
+            <label className="ed-toggle">
+              <input type="checkbox" checked={!!click?.newTab} onChange={(e) => set({ newTab: e.target.checked || undefined })} />
+              <span className="ed-toggle-ui" />
+              <span>Mở trong tab mới</span>
+            </label>
+          </>
+        )}
+        {(action === 'scroll' || action === 'dialog' || action === 'toast') && (
+          <Field
+            label={action === 'scroll' ? 'Cuộn tới' : action === 'dialog' ? 'Hộp thoại cần mở' : 'Thông báo cần hiện'}
+            help={
+              action === 'scroll'
+                ? 'Chỉ liệt kê phần tử đã có CSS ID (đặt ở tab Nâng cao của phần tử đích).'
+                : `Chọn block ${action === 'dialog' ? 'Dialog' : 'Toast'} trên trang; CSS ID được tự đặt nếu chưa có. Có thể ẩn nút mở mặc định của block đó.`
+            }
+          >
+            <select className="ed-input" data-field="clickTarget" value={current?.id ?? ''} onChange={(e) => pickTarget(e.target.value)}>
+              <option value="">— Chọn —</option>
+              {targets.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                  {t.cssId ? ` (#${t.cssId})` : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {action && (
+          <Field label="Mô tả cho trình đọc màn hình (tuỳ chọn)">
+            <input className="ed-input" value={click?.label ?? ''} placeholder="Ví dụ: Xem hồ sơ {{name}}" onChange={(e) => set({ label: e.target.value || undefined }, `click:${node.id}:label`)} />
+          </Field>
+        )}
+        {action && <span className="ed-help">Trên canvas bấm vẫn chỉ để chọn phần tử; bấm “Xem trước” để thử hành động. Nút/link nằm bên trong vẫn hoạt động riêng.</span>}
+      </div>
+    </section>
+  )
+}
+
 // ======================= Advanced =======================
 
 function AdvancedTab({ node }: { node: BuilderNode }) {
@@ -1611,6 +1704,7 @@ function AdvancedTab({ node }: { node: BuilderNode }) {
           <span className="ed-help">Trong editor phần tử bị ẩn sẽ biến mất khi xem ở thiết bị tương ứng.</span>
         </div>
       )}
+      {canHaveClick(node.type) && <ClickPanel node={node} />}
       {node.type !== 'root' && <ShowPanel node={node} />}
       <p className="ed-hint">ID phần tử: <code>{node.id}</code></p>
     </div>

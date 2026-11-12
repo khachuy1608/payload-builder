@@ -105,7 +105,7 @@ const BLOCK_LIST: BlockDefinition[] = [
       { type: 'custom', component: 'data' },
       { type: 'custom', component: 'children' },
     ],
-    styleGroups: CONTAINER_GROUPS,
+    styleGroups: ['list', ...CONTAINER_GROUPS],
     Render: ({ node, attrs, children, mode }) => (
       <div {...attrs} className={attrs.className + ' b-data-list'}>
         {children}

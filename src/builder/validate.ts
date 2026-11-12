@@ -5,6 +5,7 @@
 import { normalizeDataSource, normalizeShow } from './data'
 import { normalizeFx } from './effects'
 import { BLOCK_REF_TYPE, refBlockId } from './refs'
+import { canHaveClick, normalizeClick } from './click'
 import { canContain, canSaveAsBlock, getSchema, ID_PATTERN, MAX_DEPTH, MAX_NODES } from './schema'
 import { sanitizeRichText, sanitizeSvg } from './sanitize'
 import type { BuilderNode, NodeStyles, PageContent, StyleMap } from './types'
@@ -78,6 +79,11 @@ export function validateContent(input: unknown): PageContent {
       const fx = normalizeFx(props.fx)
       if (fx) props.fx = fx
       else delete props.fx
+    }
+    if ('click' in props) {
+      const click = canHaveClick(raw.type) ? normalizeClick(props.click) : undefined
+      if (click) props.click = click
+      else delete props.click
     }
     if (raw.type === BLOCK_REF_TYPE) {
       // blockRef chỉ giữ id block và tên hiển thị; cờ `linked`/`refError` của cây render không bao giờ được lưu

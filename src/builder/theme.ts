@@ -297,6 +297,7 @@ img,svg,video,iframe{display:block;max-width:100%}
 .b-tabs-btn[aria-selected=true]{color:var(--color-primary);border-bottom-color:var(--color-primary);font-weight:600}
 
 .b-tabs-panel[hidden]{display:none}
+[data-click]{cursor:pointer}[data-click]:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
 .b-rich{line-height:1.7}
 .b-rich h1,.b-rich h2,.b-rich h3,.b-rich h4{font-family:var(--font-heading);line-height:1.25;margin:1.4em 0 .5em;color:var(--color-secondary)}
 .b-rich h1{font-size:var(--text-3xl)}.b-rich h2{font-size:var(--text-2xl)}.b-rich h3{font-size:var(--text-xl)}

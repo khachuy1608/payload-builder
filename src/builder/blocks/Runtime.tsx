@@ -217,6 +217,72 @@ export function BuilderRuntime({ mode }: { mode: RenderMode }) {
     doc.addEventListener('pointerdown', onPointerDown, true)
     cleanups.push(() => doc.removeEventListener('pointerdown', onPointerDown, true))
 
+    // ---------- Hành động "Khi bấm" (props.click): link / cuộn / mở dialog / hiện toast ----------
+    const INTERACTIVE = 'a[href], button, input, select, textarea, label, summary, [contenteditable], [data-click]'
+    /** Phần tử data-click được bấm (bỏ qua khi bấm vào link/nút/ô nhập nằm bên trong nó) */
+    const clickHost = (t: HTMLElement): HTMLElement | null => {
+      const host = t.closest<HTMLElement>('[data-click]')
+      if (!host) return null
+      const inner = t.closest<HTMLElement>(INTERACTIVE)
+      return inner === host ? host : null
+    }
+    const runClick = (host: HTMLElement, forceNewTab = false) => {
+      const action = host.dataset.click
+      if (action === 'link') {
+        const href = host.dataset.clickHref
+        if (!href) return
+        if (href.startsWith('#')) {
+          doc.getElementById(href.slice(1))?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+          return
+        }
+        if (forceNewTab || host.hasAttribute('data-click-newtab')) win.open(href, '_blank', 'noopener')
+        else win.location.href = href
+        return
+      }
+      const target = host.dataset.clickTarget ? doc.getElementById(host.dataset.clickTarget) : null
+      if (!target) return
+      if (action === 'scroll') target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+      else if (action === 'dialog') target.querySelector<HTMLDialogElement>('dialog[data-dialog]')?.showModal()
+      else if (action === 'toast') {
+        const toastHost = target.matches('[data-toast]') ? target : target.querySelector<HTMLElement>('[data-toast]')
+        if (toastHost) showToast(toastHost)
+      }
+    }
+    if (!editor) {
+      const onClickAction = (e: MouseEvent) => {
+        const host = clickHost(e.target as HTMLElement)
+        if (!host) return
+        e.preventDefault()
+        runClick(host, e.ctrlKey || e.metaKey)
+      }
+      // chuột giữa: mở link trong tab mới như thẻ <a>
+      const onAux = (e: MouseEvent) => {
+        if (e.button !== 1) return
+        const host = clickHost(e.target as HTMLElement)
+        if (host?.dataset.click === 'link') {
+          e.preventDefault()
+          runClick(host, true)
+        }
+      }
+      const onKeyAction = (e: KeyboardEvent) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        const host = e.target as HTMLElement
+        if (!host.matches?.('[data-click]')) return
+        // role=link chỉ phản hồi Enter (giống thẻ a); role=button nhận cả Space
+        if (e.key === ' ' && host.dataset.click === 'link') return
+        e.preventDefault()
+        runClick(host, e.ctrlKey || e.metaKey)
+      }
+      doc.addEventListener('click', onClickAction)
+      doc.addEventListener('auxclick', onAux)
+      doc.addEventListener('keydown', onKeyAction)
+      cleanups.push(() => {
+        doc.removeEventListener('click', onClickAction)
+        doc.removeEventListener('auxclick', onAux)
+        doc.removeEventListener('keydown', onKeyAction)
+      })
+    }
+
     const onClick = (e: MouseEvent) => {
       const t = e.target as HTMLElement
       const hit = (sel: string) => t.closest<HTMLElement>(sel)
