@@ -28,7 +28,7 @@ export type ContentControl =
   | { type: 'icon'; prop: string; label: string; help?: string }
   /** Danh sách mục lặp lại: mỗi mục là object với các trường `fields` */
   | { type: 'list'; prop: string; label: string; itemLabel?: string; fields: ListField[]; max?: number; help?: string }
-  | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' | 'children' | 'data' | 'textStyle' }
+  | { type: 'custom'; component: 'tabs' | 'page' | 'blockRef' | 'children' | 'data' | 'textStyle' | 'listTarget' }
 
 export type StyleFieldKind = 'unit' | 'select' | 'color' | 'text' | 'box'
 

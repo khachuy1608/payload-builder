@@ -1,5 +1,5 @@
 import type { CollectionConfig, Field, Payload } from 'payload'
-import { buildWhere, collectDataNodes, type DataMap, type DataRecord, type DataSource, pageFromParams, type SourceInfo, type UrlParams } from '../builder/data'
+import { buildWhere, collectDataNodes, type DataMap, type DataRecord, type DataSource, pageFromParams, scopedParams, type SourceInfo, type UrlParams } from '../builder/data'
 import type { BuilderNode } from '../builder/types'
 import { DEFAULT_LOCALE } from './locale'
 import { lexicalToHtml } from './richtext'
@@ -180,7 +180,7 @@ export function isOwnedSource(source: DataSource, cfg: BuilderSourceConfig | nul
 export function effectiveLimit(source: DataSource, params: UrlParams | undefined): number {
   if (source.mode === 'one') return 1
   const base = source.limit ?? 12
-  const take = source.urlParams ? parseInt(params?.take ?? '', 10) : NaN
+  const take = source.urlParams ? parseInt(scopedParams(params, source.paramKey).take ?? '', 10) : NaN
   return Number.isFinite(take) && take > base ? Math.min(take, MAX_TAKE) : base
 }
 
@@ -194,7 +194,7 @@ export async function loadDataForTree(payload: Payload, root: BuilderNode, param
       if (source.collection === SEARCH_SOURCE) {
         if (opts.onlyOwned) return
         const limit = effectiveLimit(source, params)
-        const r = await siteSearch(payload, source.urlParams ? (params.q ?? '') : '', limit, opts.locale)
+        const r = await siteSearch(payload, source.urlParams ? (scopedParams(params, source.paramKey).q ?? '') : '', limit, opts.locale)
         map[id] = { records: r.records, total: r.total, page: 1, totalPages: 1, limit }
         return
       }
@@ -209,8 +209,10 @@ export async function loadDataForTree(payload: Payload, root: BuilderNode, param
       try {
         const find = payload.find as unknown as (args: Record<string, unknown>) => Promise<{ docs: Record<string, unknown>[]; totalDocs: number; page?: number; totalPages?: number }>
         const limit = effectiveLimit(source, params)
-        const page = source.urlParams ? pageFromParams(params) : 1
-        const where = buildWhere(source, source.urlParams ? params : undefined, cfg.expose) ?? { and: [] }
+        // mỗi danh sách chỉ đọc tham số URL của riêng nó (mã tham số), xem builder/data.ts scopedParams
+        const own = scopedParams(params, source.paramKey)
+        const page = source.urlParams ? pageFromParams(own) : 1
+        const where = buildWhere(source, source.urlParams ? own : undefined, cfg.expose) ?? { and: [] }
         if (owned && opts.user) (where as { and: Record<string, unknown>[] }).and = [...((where as { and?: Record<string, unknown>[] }).and ?? []), { [cfg.ownerField!]: { equals: opts.user.id } }]
         const res = await find({
           collection: source.collection,

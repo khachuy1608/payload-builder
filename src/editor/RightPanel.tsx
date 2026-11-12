@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Database, ExternalLink, EyeOff, Globe, Monit
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentControl, ListField, StyleField } from '@/builder/controls'
 import { STYLE_GROUPS } from '@/builder/controls'
-import { type DataFilter, type DataSource, FILTER_OPS, SHOW_OPS, type ShowCondition, type SourceInfo, dataSourceOf, fieldPaths, normalizeDataSource, showOf } from '@/builder/data'
+import { type DataFilter, type DataSource, FILTER_OPS, SHOW_OPS, type ShowCondition, type SourceInfo, dataSourceOf, fieldPaths, freeParamKey, listTargets, normalizeDataSource, showOf } from '@/builder/data'
 import { EASING_OPTIONS, type FxProps, HOVER_OPTIONS, REVEAL_OPTIONS, TEXT_FX_OPTIONS, DEFAULT_SPRING, springEasing } from '@/builder/effects'
 import { canContain, getSchema } from '@/builder/schema'
 import { refBlockId } from '@/builder/refs'
@@ -119,6 +119,7 @@ function ContentField({ node, control }: { node: BuilderNode; control: ContentCo
       if (control.component === 'children') return <p className="ed-hint" style={{ margin: 0 }}>Nội dung bên trong là các phần tử con – kéo block vào hoặc chọn trong cây Cấu trúc.</p>
       if (control.component === 'data') return <DataSourcePanel node={node} />
       if (control.component === 'textStyle') return <TextStyleField node={node} />
+      if (control.component === 'listTarget') return <ListTargetField node={node} />
       return <PageSettings />
     case 'text':
     case 'url':
@@ -743,12 +744,42 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
           {source.mode === 'list' && (
             <div className="ed-field">
               <label className="ed-toggle">
-                <input type="checkbox" checked={!!source.urlParams} onChange={(e) => set({ urlParams: e.target.checked || undefined })} />
+                <input
+                  type="checkbox"
+                  checked={!!source.urlParams}
+                  onChange={(e) => {
+                    if (!e.target.checked) return set({ urlParams: undefined })
+                    // trang đã có danh sách khác bật -> cấp mã riêng để hai danh sách phân trang độc lập
+                    const key = source.paramKey ?? freeParamKey(root, node.id)
+                    set({ urlParams: true, ...(key ? { paramKey: key } : {}) })
+                  }}
+                />
                 <span className="ed-toggle-ui" />
                 Nhận tham số URL (?page, ?q, ?trường=giá trị)
               </label>
               {source.urlParams && (
                 <>
+                  <Field label="Mã tham số URL" help={`Dùng khi trang có nhiều danh sách. ${source.paramKey ? `Danh sách này dùng ?${source.paramKey}_page=2, ?${source.paramKey}_q=…, ?${source.paramKey}_take=…` : 'Trống: dùng ?page=2, ?q=…, ?take=…'}`}>
+                    <input
+                      className="ed-input"
+                      data-field="paramKey"
+                      value={source.paramKey ?? ''}
+                      placeholder="trống = page, q, take"
+                      maxLength={10}
+                      onChange={(e) => {
+                        const v = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^[0-9]+/, '')
+                        set({ paramKey: v || undefined })
+                      }}
+                    />
+                  </Field>
+                  {(() => {
+                    const clash = listTargets(root).lists.filter((l) => l.id !== node.id && l.source.urlParams && (l.source.paramKey ?? '') === (source.paramKey ?? ''))
+                    return clash.length ? (
+                      <span className="ed-warn" data-warn="param-clash">
+                        Trùng mã tham số với danh sách khác trên trang – hai danh sách sẽ chuyển trang cùng nhau. Đặt mã khác (ví dụ “{freeParamKey(root, node.id) ?? 'b'}”).
+                      </span>
+                    ) : null
+                  })()}
                   <span className="ed-help">Trường tìm kiếm cho ?q= (chọn nhiều)</span>
                   <div className="ed-tokens">
                     {(info?.fields ?? []).filter((f) => f.name !== 'id').map((f) => {
@@ -760,7 +791,7 @@ function DataSourcePanel({ node }: { node: BuilderNode }) {
                       )
                     })}
                   </div>
-                  <span className="ed-help">Thêm block Pagination (bật “Theo nguồn dữ liệu”), Ô tìm kiếm và Toggle Group có tham số để điều khiển. Canvas luôn hiện trang 1.</span>
+                  <span className="ed-help">Thêm Pagination, Xem thêm hoặc Ô tìm kiếm để điều khiển (mỗi block chọn danh sách ở mục “Điều khiển danh sách”). Canvas luôn hiện trang 1.</span>
                 </>
               )}
             </div>
@@ -1549,7 +1580,7 @@ function TokenPicker({ prop, value, onPick }: { prop: string; value: string; onP
   const options = tokenOptionsFor(prop, theme)
   if (!options.length) return null
   return (
-    <select className="ed-token" value={options.some((o) => o.value === value) ? value : ''} title="Dùng token của theme" aria-label="Token" onChange={(e) => e.target.value && onPick(e.target.value)}>
+    <select className="ed-token-select" value={options.some((o) => o.value === value) ? value : ''} title="Dùng token của theme" aria-label="Token" onChange={(e) => e.target.value && onPick(e.target.value)}>
       <option value="">◆</option>
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -1612,6 +1643,50 @@ function ColorInput({ value, placeholder, onChange }: { value: string; placehold
             </button>
           </div>
         </Floating>
+      )}
+    </div>
+  )
+}
+
+// ======================= Điều khiển danh sách =======================
+
+/** Pagination / Xem thêm / Ô tìm kiếm: chọn Danh sách dữ liệu được điều khiển + cảnh báo khi danh sách chưa bật tham số URL */
+function ListTargetField({ node }: { node: BuilderNode }) {
+  const root = useEditor((s) => s.root)
+  const sources = useEditor((s) => s.sources)
+  const { lists, targetOf } = listTargets(root)
+  const explicit = typeof node.props.target === 'string' ? node.props.target : ''
+  const current = targetOf(node.id, explicit)
+  const labelOf = (l: { id: string; source: { collection: string; paramKey?: string; urlParams?: boolean } }) => {
+    const n = findNode(root, l.id)
+    const col = sources.find((s) => s.slug === l.source.collection)?.label ?? l.source.collection
+    return `${n ? nodeLabel(n) : l.id} · ${col}${l.source.urlParams ? (l.source.paramKey ? ` (?${l.source.paramKey}_…)` : ' (?page…)') : ' – chưa bật'}`
+  }
+  return (
+    <div className="ed-fields" style={{ gap: 6 }}>
+      <Field label="Điều khiển danh sách" help={lists.length > 1 ? 'Trang có nhiều danh sách: chọn danh sách mà block này phân trang / tìm kiếm.' : undefined}>
+        <select className="ed-input" data-field="listTarget" value={explicit && lists.some((l) => l.id === explicit) ? explicit : ''} onChange={(e) => useEditor.getState().updateProps(node.id, { target: e.target.value || undefined })}>
+          <option value="">Tự động{current && !explicit ? ` – ${labelOf(current)}` : ''}</option>
+          {lists.map((l) => (
+            <option key={l.id} value={l.id}>
+              {labelOf(l)}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {!lists.length && <span className="ed-warn" data-warn="no-list">Trang chưa có Danh sách dữ liệu nào để điều khiển.</span>}
+      {current && !current.source.urlParams && (
+        <div className="ed-warn" data-warn="unlinked">
+          Danh sách “{labelOf(current).split(' · ')[0]}” chưa bật “Nhận tham số URL” nên block này không hoạt động.
+          <button className="ed-btn ed-btn--sm" data-action="enable-list-params" onClick={() => useEditor.getState().enableListParams(current.id)}>
+            Bật cho danh sách này
+          </button>
+        </div>
+      )}
+      {current?.source.urlParams && (
+        <button className="ed-link" style={{ alignSelf: 'flex-start' }} onClick={() => useEditor.getState().select(current.id)}>
+          Mở cài đặt danh sách được điều khiển
+        </button>
       )}
     </div>
   )

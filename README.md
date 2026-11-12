@@ -158,6 +158,12 @@ npm run export -- ./backup      # pages, my-blocks, themes, style-presets, redir
 npm run import -- ./backup      # vào site khác: upsert theo slug/tên/filename, ánh xạ lại id theme, ảnh OG, blockRef
 ```
 
+## Nhiều danh sách trên một trang, trang đăng nhập
+
+- **Mã tham số URL cho từng danh sách:** Danh sách dữ liệu bật *Nhận tham số URL* có thêm ô *Mã tham số URL*. Danh sách đầu dùng `?page`, `?q`, `?take`; danh sách có mã `b` dùng `?b_page`, `?b_q`, `?b_take`, `?b_<trường>`. Bật tham số cho danh sách thứ hai trên trang sẽ tự cấp mã (b, c…); trùng mã thì panel cảnh báo.
+- **Điều khiển danh sách:** Pagination, Xem thêm và Ô tìm kiếm có mục *Điều khiển danh sách* (mặc định *Tự động*: danh sách đã bật gần nhất, ưu tiên phía trên). Chuyển trang / tìm kiếm của một danh sách giữ nguyên trạng thái của danh sách khác (Ô tìm kiếm gửi kèm tham số hiện có). Chèn các block này sẽ đặt ngay sau Danh sách dữ liệu (không lọt vào phần tử mẫu) và tự bật tham số URL cho danh sách gần nhất; danh sách được điều khiển chưa bật thì panel hiện cảnh báo kèm nút *Bật cho danh sách này*.
+- **Trang đăng nhập admin** (`/admin/login`): bố cục chia đôi (khối thương hiệu gradient + thẻ đăng nhập), logo và tên lấy từ *Cài đặt site*, ô nhập/nút mới, liên kết *Về trang web*, giao diện tối và điện thoại; các trang quên/đặt lại mật khẩu dùng cùng kiểu thẻ. Admin chuyển sang tiếng Việt (chọn lại tiếng Anh trong *Tài khoản*). Tuỳ biến tại `src/components/admin/` và `src/app/(payload)/custom.css`.
+
 ## Dán CSS / HTML, liên kết nội bộ, ô chọn mới
 
 - **Dán CSS vào phần tử:** tab *Kiểu* → *Dán CSS*. Khai báo thuần (`padding: 24px; border-radius: 16px`) áp cho thiết bị/trạng thái đang sửa; dán cả luật thì `:hover` vào Hover, `@media (max-width: …)` vào Tablet/Mobile. Có tuỳ chọn thay hẳn thay vì gộp; một lần dán là một bước Ctrl+Z. *Sao chép CSS* xuất style hiện có của phần tử.

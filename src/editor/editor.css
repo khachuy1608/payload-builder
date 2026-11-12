@@ -37,8 +37,10 @@ html, body.ed-body { margin: 0; height: 100%; overflow: hidden; }
 .ed-top-left, .ed-top-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .ed-top-right { justify-content: flex-end; }
 .ed-page-meta { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.ed-page-meta strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
-.ed-page-meta span { color: var(--ed-ink-3); font-size: 12px; }
+.ed-page-meta strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; min-width: 0; }
+.ed-page-meta > span { color: var(--ed-ink-3); font-size: 12px; }
+.ed-page-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ed-page-title .ed-badge { flex: none; line-height: 16px; }
 .ed-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; font-weight: 600; }
 .ed-badge--ok { background: #d1fae5; color: #065f46; }
 .ed-badge--warn { background: #fef3c7; color: #92400e; }
@@ -265,7 +267,7 @@ select.ed-input + .ed-reset { right: 26px; }
 }
 .ed-tokens { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .ed-token { display: flex; align-items: center; gap: 6px; border: 1px solid transparent; background: none; border-radius: 4px; padding: 3px 4px; cursor: pointer; font-size: 12px; text-align: left; }
-.ed-token:hover, .ed-token.is-active { border-color: var(--ed-accent); }
+.ed-token:hover, .ed-token.is-active { border-color: var(--ed-accent); background: var(--ed-accent-soft); color: var(--ed-accent-ink); }
 .ed-token span { width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, .1); flex: none; }
 .ed-popover input[type='color'] { width: 40px; height: 30px; border: 1px solid var(--ed-line-strong); border-radius: 4px; padding: 0 2px; background: var(--ed-panel); }
 
@@ -453,8 +455,8 @@ select.ed-input + .ed-reset { right: 26px; }
 .ed-left > .ed-tabs button:not([title]) > svg { display: none; }
 
 /* ---------- Token & kiểu chữ đặt tên ---------- */
-.ed-token { width: 22px; height: 28px; border: 1px solid var(--ed-line); border-radius: 6px; background: var(--ed-panel); color: #7c3aed; font-size: 11px; padding: 0; text-align: center; cursor: pointer; flex: none; }
-.ed-token:hover { border-color: #7c3aed; }
+select.ed-token-select { appearance: none; -webkit-appearance: none; width: 24px; height: 28px; border: 1px solid var(--ed-line); border-radius: 6px; background: var(--ed-panel); color: #7c3aed; font-size: 11px; padding: 0; text-align: center; text-align-last: center; cursor: pointer; flex: none; }
+select.ed-token-select:hover { border-color: #7c3aed; background: var(--ed-accent-soft); }
 .ed-ts-list { display: flex; flex-direction: column; gap: 6px; }
 .ed-ts { border: 1px solid var(--ed-line); border-radius: 8px; background: var(--ed-panel); }
 .ed-ts-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 8px 10px; background: none; border: 0; cursor: pointer; text-align: left; font: inherit; }
@@ -547,3 +549,7 @@ select.ed-input + .ed-reset { right: 26px; }
 .ed-field-wrap { position: relative; }
 .ed-field-wrap > .ed-field-pickers { position: absolute; top: -1px; right: 0; display: inline-flex; gap: 4px; z-index: 1; }
 .ed-field-wrap > .ed-field > .ed-label { padding-right: 52px; }
+
+/* ---------- Cảnh báo trong panel ---------- */
+.ed-warn { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 10px; border-radius: 6px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12px; line-height: 1.45; }
+[data-ed-theme='dark'] .ed-warn { background: #3b2412; border-color: #7c2d12; color: #fed7aa; }

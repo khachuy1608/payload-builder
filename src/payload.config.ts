@@ -1,6 +1,8 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { en } from '@payloadcms/translations/languages/en'
+import { vi } from '@payloadcms/translations/languages/vi'
 import path from 'path'
 import { buildConfig } from 'payload'
 import sharp from 'sharp'
@@ -36,7 +38,15 @@ export default buildConfig({
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' – Page Builder' },
+    // trang đăng nhập & thương hiệu admin (logo/tên lấy từ Cài đặt site) – giao diện ở app/(payload)/custom.css
+    components: {
+      graphics: { Logo: '/components/admin/Brand#BrandLogo', Icon: '/components/admin/Brand#BrandIcon' },
+      beforeLogin: ['/components/admin/LoginAside#LoginAside'],
+      afterLogin: ['/components/admin/LoginAside#LoginFooter'],
+    },
   },
+  // admin tiếng Việt (vẫn chọn được tiếng Anh trong Tài khoản)
+  i18n: { supportedLanguages: { vi, en }, fallbackLanguage: 'vi' },
   collections: [Pages, MyBlocks, Themes, StylePresets, Comments, FormSubmissions, FormUploads, Redirects, Media, Users, Customers, Bookings, ...CONTENT_COLLECTIONS],
   editor: lexicalEditor(),
   // Đa ngôn ngữ: trường localized có bản riêng cho từng ngôn ngữ, thiếu thì fallback về mặc định

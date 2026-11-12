@@ -411,7 +411,8 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     icon: MoreHorizontal,
     defaults: () => ({ props: { auto: true, pages: '8', current: '1', variant: 'numbers', hrefPattern: '?page={n}', showPrevNext: true }, styles: {} }),
     contentControls: [
-      { type: 'toggle', prop: 'auto', label: 'Theo nguồn dữ liệu trên trang', help: 'Lấy số trang/trang hiện tại từ nguồn dữ liệu có bật “Nhận tham số URL” (canvas hiện trang 1).' },
+      { type: 'toggle', prop: 'auto', label: 'Theo nguồn dữ liệu trên trang', help: 'Lấy số trang/trang hiện tại từ Danh sách dữ liệu được điều khiển (canvas hiện trang 1).' },
+      { type: 'custom', component: 'listTarget' },
       { type: 'number', prop: 'pages', label: 'Tổng số trang (khi không tự động)', min: 1, max: 999 },
       { type: 'number', prop: 'current', label: 'Trang hiện tại', min: 1 },
       { type: 'select', prop: 'variant', label: 'Kiểu', options: [{ value: 'numbers', label: 'Số trang' }, { value: 'dots', label: 'Chấm (page control)' }] },
@@ -648,14 +649,21 @@ export const LAYOUT_BLOCKS: BlockDefinition[] = [
     contentControls: [
       { type: 'text', prop: 'placeholder', label: 'Placeholder' },
       { type: 'text', prop: 'buttonText', label: 'Nút (trống = chỉ icon)' },
-      { type: 'toggle', prop: 'showTotal', label: 'Hiện số kết quả', help: 'Gửi ?q= tới chính trang này; nguồn dữ liệu bật “Nhận tham số URL” và chọn trường tìm sẽ lọc theo.' },
+      { type: 'toggle', prop: 'showTotal', label: 'Hiện số kết quả', help: 'Gửi ?q= (hoặc ?<mã>_q=) tới chính trang này; danh sách được điều khiển lọc theo các trường tìm kiếm đã chọn.' },
+      { type: 'custom', component: 'listTarget' },
     ],
     styleGroups: ['size', 'spacing', 'typography', 'effects', 'position', 'child'],
     Render: ({ node, attrs }) => (
       <form {...attrs} className={`${attrs.className} b-search`} method="get" role="search">
         <div className="b-search-row">
           <SearchIcon size={18} className="b-search-icon" />
-          <input type="search" name="q" className="b-input b-search-input" placeholder={text(node.props.placeholder)} defaultValue={text(node.props.value)} aria-label={text(node.props.placeholder) || 'Tìm kiếm'} />
+          <input type="search" name={/^[a-z][a-z0-9]{0,9}_q$/.test(text(node.props.paramName)) ? text(node.props.paramName) : 'q'} className="b-input b-search-input" placeholder={text(node.props.placeholder)} defaultValue={text(node.props.value)} aria-label={text(node.props.placeholder) || 'Tìm kiếm'} />
+          {/* giữ tham số của các danh sách khác trên trang (trang, bộ lọc…) khi tìm */}
+          {(Array.isArray(node.props.keep) ? (node.props.keep as [string, string][]) : [])
+            .filter(([k, v]) => typeof k === 'string' && /^[A-Za-z_][A-Za-z0-9_.-]{0,40}$/.test(k) && typeof v === 'string')
+            .map(([k, v]) => (
+              <input key={k} type="hidden" name={k} value={v} />
+            ))}
           <button type="submit" className="b-button b-search-btn" aria-label="Tìm">
             {text(node.props.buttonText) || <Icon name="search" size={16} />}
           </button>

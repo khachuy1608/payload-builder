@@ -100,8 +100,8 @@ test('tham số URL: tìm kiếm, lọc theo trường cho phép, phân trang, l
   ]
   const out = resolveData(root, (id) => (id === 'list' ? { records: [users[0]], total: 7, page: 3, totalPages: 4, limit: 2 } : undefined), { params: { q: 'bo', title: 'Thiết kế', page: '3' } })
   assert.equal(out.children![0].children![0].props.text, 'An (3/4, 7)')
-  assert.deepEqual(out.children![1].props, { auto: true, pages: '4', current: '3', hrefPattern: '?q=bo&title=Thi%E1%BA%BFt+k%E1%BA%BF&page={n}' })
-  assert.deepEqual(out.children![2].props, { value: 'bo', total: '7' })
+  assert.deepEqual(out.children![1].props, { auto: true, pages: '4', current: '3', hrefPattern: '?q=bo&title=Thi%E1%BA%BFt+k%E1%BA%BF&page={n}', unlinked: false })
+  assert.deepEqual(out.children![2].props, { value: 'bo', total: '7', paramName: 'q', keep: [['title', 'Thiết kế']], unlinked: false })
   assert.equal(out.children![3].props.currentValue, 'Thiết kế')
   assert.equal(out.children![3].props.baseQuery, '?q=bo')
 })

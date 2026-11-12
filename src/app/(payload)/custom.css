@@ -1,0 +1,127 @@
+/*
+ * Giao diện trang đăng nhập admin (và các trang tối giản: quên mật khẩu, đặt lại mật khẩu, tạo người dùng đầu tiên).
+ * CSS mặc định của Payload nằm trong @layer payload-default nên luật ở đây (không layer) luôn ghi đè.
+ */
+:root {
+  --pb-accent: #6366f1;
+  --pb-accent-2: #a855f7;
+  --pb-ink: #0f172a;
+  --pb-muted: #64748b;
+  --pb-line: #e2e8f0;
+  --pb-card: #ffffff;
+  --pb-bg: #f8fafc;
+  --pb-input: #ffffff;
+}
+html[data-theme='dark'] {
+  --pb-ink: #e2e8f0;
+  --pb-muted: #94a3b8;
+  --pb-line: #273244;
+  --pb-card: #0f172a;
+  --pb-bg: #0b1120;
+  --pb-input: #111a2e;
+}
+
+/* ---- thương hiệu (logo) ---- */
+.pb-brand { display: inline-flex; align-items: center; gap: 12px; }
+.pb-brand__img { height: 40px; width: auto; border-radius: 10px; }
+.pb-brand__name { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; color: var(--pb-ink); }
+.pb-mark { display: inline-flex; align-items: center; justify-content: center; flex: none; background: linear-gradient(135deg, #6366f1, #a855f7); box-shadow: 0 6px 16px -6px rgba(99, 102, 241, .6); }
+
+/* ---- khung trang tối giản (quên/đặt lại mật khẩu, tạo người dùng đầu tiên…): thẻ giống trang đăng nhập ---- */
+.template-minimal { background: radial-gradient(900px 420px at 50% -10%, color-mix(in srgb, var(--pb-accent) 14%, transparent), transparent 70%), var(--pb-bg); min-height: 100vh; }
+.template-minimal__wrap {
+  width: calc(100% - 32px); max-width: 440px !important; padding: 36px 32px 28px; background: var(--pb-card);
+  border: 1px solid var(--pb-line); border-radius: 20px; box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 24px 48px -12px rgba(15, 23, 42, .12);
+}
+.template-minimal h1 { color: var(--pb-ink); font-size: 26px; font-weight: 750; letter-spacing: -0.02em; margin-bottom: 6px; }
+.template-minimal__wrap > form > p, .template-minimal__wrap > p { color: var(--pb-muted); }
+.template-minimal__wrap a:not(.btn):not(.pb-login-foot__back) { color: var(--pb-accent); font-weight: 500; text-decoration: none; }
+.template-minimal__wrap a:not(.btn):not(.pb-login-foot__back):hover { text-decoration: underline; }
+
+/* ---- trang đăng nhập: chia đôi trên desktop ---- */
+.login.template-minimal {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; padding: 0;
+  background: var(--pb-bg);
+}
+.login .template-minimal__wrap {
+  grid-column: 2; justify-self: center; width: calc(100% - 48px); margin: 48px 24px; padding: 40px 36px 32px;
+  background: var(--pb-card); border: 1px solid var(--pb-line); border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 24px 48px -12px rgba(15, 23, 42, .12);
+  animation: pb-rise .5s cubic-bezier(.2, .8, .2, 1) both;
+}
+/* chỉ đổi độ mờ: transform trên thẻ sẽ biến thẻ thành khung chứa của khối trái */
+@keyframes pb-rise { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .login .template-minimal__wrap { animation: none; } }
+
+.login__brand { display: flex; justify-content: flex-start !important; margin-bottom: 28px !important; }
+.pb-login-head { margin: 0 0 24px; }
+.pb-login-head h1 { margin: 0 0 6px; font-size: 28px; line-height: 1.2; font-weight: 750; letter-spacing: -0.02em; color: var(--pb-ink); }
+.pb-login-head p { margin: 0; color: var(--pb-muted); font-size: 14.5px; line-height: 1.55; }
+
+/* ---- form ---- */
+.login__form .login__form__inputWrap { display: flex; flex-direction: column; gap: 16px; margin-bottom: 8px; }
+.template-minimal .field-type { margin-bottom: 0; }
+.template-minimal .field-label { font-size: 13px; font-weight: 600; color: var(--pb-ink); margin-bottom: 6px; }
+.template-minimal .field-type input {
+  height: 46px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--pb-line); background: var(--pb-input);
+  color: var(--pb-ink); font-size: 15px; box-shadow: 0 1px 2px rgba(15, 23, 42, .04); transition: border-color .15s, box-shadow .15s;
+}
+.template-minimal .field-type input:hover { border-color: color-mix(in srgb, var(--pb-accent) 45%, var(--pb-line)); }
+.template-minimal .field-type input:focus, .template-minimal .field-type input:focus-visible {
+  outline: none; border-color: var(--pb-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pb-accent) 18%, transparent);
+}
+.template-minimal .field-type.error input { border-color: #ef4444; }
+/* quên mật khẩu: canh phải, màu nhấn */
+.login__form > a { display: inline-block; margin: 4px 0 0; font-size: 13px; font-weight: 500; color: var(--pb-accent); text-decoration: none; float: right; }
+.login__form > a:hover { text-decoration: underline; }
+.template-minimal .form-submit { clear: both; padding-top: 18px; }
+.template-minimal .form-submit .btn, .template-minimal .btn--style-primary {
+  width: 100%; height: 48px; margin: 0; border-radius: 12px; border: 0; font-size: 15px; font-weight: 600;
+  background: linear-gradient(135deg, var(--pb-accent), var(--pb-accent-2)); color: #fff;
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--pb-accent) 70%, transparent); transition: transform .15s, box-shadow .15s, filter .15s;
+}
+.template-minimal .form-submit .btn:hover, .template-minimal .btn--style-primary:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 14px 28px -10px color-mix(in srgb, var(--pb-accent) 75%, transparent); }
+.template-minimal .form-submit .btn:active { transform: none; }
+.template-minimal .form-submit .btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--pb-accent) 45%, transparent); outline-offset: 2px; }
+
+/* ---- chân trang ---- */
+.pb-login-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--pb-line); font-size: 13px; color: var(--pb-muted); }
+.pb-login-foot__back { color: var(--pb-muted); text-decoration: none; font-weight: 500; }
+.pb-login-foot__back:hover { color: var(--pb-accent); }
+
+/* ---- khối thương hiệu bên trái ---- */
+.pb-login-aside {
+  position: absolute; inset: 0 50% 0 0; overflow: hidden; color: #fff;
+  background: radial-gradient(1200px 600px at -10% -10%, #818cf8 0%, transparent 55%), radial-gradient(900px 600px at 110% 110%, #c084fc 0%, transparent 55%), linear-gradient(135deg, #312e81 0%, #4338ca 45%, #6d28d9 100%);
+}
+.pb-login-aside__grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px); background-size: 44px 44px; mask-image: radial-gradient(ellipse at 30% 40%, #000 30%, transparent 75%); }
+.pb-login-aside__glow { position: absolute; width: 420px; height: 420px; right: -120px; top: 18%; border-radius: 50%; background: rgba(255, 255, 255, .18); filter: blur(80px); }
+.pb-login-aside__inner { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 48px 56px; max-width: 640px; }
+.pb-login-aside__brand { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 700; }
+.pb-login-aside__brand img { height: 36px; border-radius: 10px; background: #fff; }
+.pb-login-aside__title { margin: 0 0 28px; font-size: clamp(30px, 3.2vw, 44px); line-height: 1.12; font-weight: 800; letter-spacing: -0.025em; }
+.pb-login-aside__title span { background: linear-gradient(90deg, #e0e7ff, #f5d0fe); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pb-login-aside__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.pb-login-aside__list li { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; line-height: 1.5; color: rgba(255, 255, 255, .82); }
+.pb-login-aside__list b { display: block; color: #fff; font-weight: 650; }
+.pb-login-aside__check { flex: none; width: 26px; height: 26px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .25); font-size: 13px; font-weight: 700; }
+.pb-login-aside__mock { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18); backdrop-filter: blur(6px); max-width: 420px; }
+.pb-mock-bar { display: flex; gap: 6px; }
+.pb-mock-bar i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .45); }
+.pb-mock-hero { height: 64px; border-radius: 10px; background: linear-gradient(90deg, rgba(255,255,255,.35), rgba(255,255,255,.12)); }
+.pb-mock-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pb-mock-row span { height: 44px; border-radius: 8px; background: rgba(255, 255, 255, .2); }
+
+/* desktop: khối trái đã có logo + tên site -> không lặp lại trong thẻ */
+@media (min-width: 1024px) { .login .login__brand { display: none !important; } }
+
+/* ---- màn hình hẹp: một cột, ẩn khối trái ---- */
+@media (max-width: 1023px) {
+  .login.template-minimal { grid-template-columns: 1fr; background: radial-gradient(800px 400px at 50% -10%, color-mix(in srgb, var(--pb-accent) 18%, transparent), transparent 70%), var(--pb-bg); }
+  .login .template-minimal__wrap { grid-column: 1; }
+  .pb-login-aside { display: none; }
+}
+@media (max-width: 520px) {
+  .login .template-minimal__wrap { width: calc(100% - 32px); margin: 16px; padding: 28px 20px 22px; border-radius: 16px; }
+  .pb-login-head h1 { font-size: 24px; }
+}

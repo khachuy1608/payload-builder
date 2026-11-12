@@ -399,7 +399,8 @@ const BLOCK_LIST: BlockDefinition[] = [
     contentControls: [
       { type: 'text', prop: 'text', label: 'Chữ trên nút' },
       { type: 'number', prop: 'step', label: 'Mỗi lần thêm (bản ghi)', min: 1, max: 100 },
-      { type: 'text', prop: 'doneText', label: 'Khi đã hết', help: 'Nút lấy số đã tải/tổng từ nguồn dữ liệu có bật “Nhận tham số URL” (?take=N). Không cần JS.' },
+      { type: 'text', prop: 'doneText', label: 'Khi đã hết', help: 'Nút lấy số đã tải/tổng từ danh sách được điều khiển (?take=N). Không cần JS.' },
+      { type: 'custom', component: 'listTarget' },
     ],
     styleGroups: ['layout', 'spacing', 'typography'],
     Render: ({ node, attrs, mode }) => {

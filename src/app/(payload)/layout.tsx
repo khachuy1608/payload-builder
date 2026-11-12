@@ -1,6 +1,7 @@
 /* Boilerplate của Payload 3 – thường không cần sửa */
 import config from '@payload-config'
 import '@payloadcms/next/css'
+import './custom.css'
 import type { ServerFunctionClient } from 'payload'
 import { handleServerFunctions, RootLayout } from '@payloadcms/next/layouts'
 import React from 'react'

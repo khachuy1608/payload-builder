@@ -35,6 +35,8 @@ export interface DataSource {
   searchFields?: string[]
   /** Chỉ bản ghi của người đang đăng nhập (collection có ownerField) */
   ownerOnly?: boolean
+  /** Mã tham số URL khi trang có nhiều danh sách: 'b' -> ?b_page, ?b_q, ?b_take, ?b_<trường> (trống = page, q, take) */
+  paramKey?: string
 }
 
 /** Bản ghi đã lọc trường công khai */
@@ -71,24 +73,105 @@ export function pageFromParams(params: UrlParams | undefined): number {
   return isFinite(n) && n > 0 ? Math.min(n, 10000) : 1
 }
 
-/** Link giữ nguyên tham số hiện tại (bỏ ?page), thay/bỏ một tham số */
-export function withParam(params: UrlParams | undefined, key: string, value: string | null): string {
+export const PARAM_KEY_PATTERN = /^[a-z][a-z0-9]{0,9}$/
+
+/** Tên tham số URL của một danh sách: paramName('b', 'page') = 'b_page'; không có mã -> 'page' */
+export function paramName(key: string | undefined, base: string): string {
+  return key ? `${key}_${base}` : base
+}
+
+/**
+ * Tham số URL dành cho một danh sách: có mã -> chỉ lấy các tham số `<mã>_…` và bỏ tiền tố;
+ * không mã -> toàn bộ tham số (tham số có tiền tố của danh sách khác không trùng tên trường nên bị bỏ qua khi lọc).
+ */
+export function scopedParams(params: UrlParams | undefined, key: string | undefined): UrlParams {
+  if (!params) return {}
+  if (!key) return params
+  const pre = key + '_'
+  const out: UrlParams = {}
+  for (const [k, v] of Object.entries(params)) if (k.startsWith(pre) && k.length > pre.length) out[k.slice(pre.length)] = v
+  return out
+}
+
+/** Link giữ nguyên tham số hiện tại (bỏ tham số trang của danh sách – mặc định ?page), thay/bỏ một tham số */
+export function withParam(params: UrlParams | undefined, key: string, value: string | null, pageKey = 'page'): string {
   const q = new URLSearchParams()
-  for (const [k, v] of Object.entries(params ?? {})) if (k !== key && k !== 'page') q.set(k, v)
+  for (const [k, v] of Object.entries(params ?? {})) if (k !== key && k !== pageKey) q.set(k, v)
   if (value !== null && value !== '') q.set(key, value)
   const str = q.toString()
   return str ? `?${str}` : '?'
 }
 
-/** Mẫu link phân trang giữ tham số hiện tại: "?q=x&page={n}" ({n} không bị mã hoá) */
-export function pageHrefPattern(params: UrlParams | undefined): string {
-  const base = withParam(params, 'page', null)
-  return base === '?' ? '?page={n}' : `${base}&page={n}`
+/** Mẫu link phân trang giữ tham số hiện tại: "?q=x&page={n}" ({n} không bị mã hoá); có mã danh sách -> b_page */
+export function pageHrefPattern(params: UrlParams | undefined, key?: string): string {
+  const pn = paramName(key, 'page')
+  const base = withParam(params, pn, null, pn)
+  return base === '?' ? `?${pn}={n}` : `${base}&${pn}={n}`
 }
 
-/** Link “Xem thêm”: giữ các tham số hiện tại, đặt ?take=N (bỏ ?page) */
-export function takeHref(params: UrlParams | undefined, take: number): string {
-  return withParam(params, 'take', String(take))
+/** Link “Xem thêm”: giữ các tham số hiện tại, đặt ?take=N (bỏ tham số trang của danh sách) */
+export function takeHref(params: UrlParams | undefined, take: number, key?: string): string {
+  return withParam(params, paramName(key, 'take'), String(take), paramName(key, 'page'))
+}
+
+/**
+ * Mã tham số chưa dùng cho danh sách `listId` khi bật “Nhận tham số URL”:
+ * danh sách đầu tiên dùng mặc định (trống); các danh sách sau lấy b, c, d…
+ */
+export function freeParamKey(root: BuilderNode, listId: string): string | undefined {
+  const used = new Set<string>()
+  const visit = (n: BuilderNode) => {
+    const s = dataSourceOf(n)
+    if (n.id !== listId && s?.urlParams) used.add(s.paramKey ?? '')
+    n.children?.forEach(visit)
+  }
+  visit(root)
+  if (!used.has('')) return undefined
+  for (const k of 'bcdefghijklmnopqrstuvwxyz') if (!used.has(k)) return k
+  return undefined
+}
+
+/** Block điều khiển danh sách theo URL */
+export const LIST_CONTROL_TYPES = ['pagination', 'loadMore', 'searchBox'] as const
+
+export interface ListInfo {
+  id: string
+  source: DataSource
+  order: number
+}
+
+/**
+ * Danh sách mà một block điều khiển (Pagination / Xem thêm / Ô tìm kiếm) gắn vào:
+ * props.target nếu chỉ định; không thì danh sách đã bật tham số URL gần nhất (ưu tiên phía trên, rồi phía dưới);
+ * không có danh sách nào bật thì danh sách gần nhất (để editor cảnh báo).
+ */
+export function listTargets(root: BuilderNode): { lists: ListInfo[]; targetOf: (controlId: string, explicit?: unknown) => ListInfo | undefined; nearestOf: (controlId: string) => ListInfo | undefined } {
+  const lists: ListInfo[] = []
+  const order = new Map<string, number>()
+  let i = 0
+  const visit = (n: BuilderNode) => {
+    order.set(n.id, i++)
+    const source = dataSourceOf(n)
+    if (source && source.mode === 'list') lists.push({ id: n.id, source, order: order.get(n.id)! })
+    n.children?.forEach(visit)
+  }
+  visit(root)
+  const targetOf = (controlId: string, explicit?: unknown) => {
+    if (typeof explicit === 'string' && explicit) {
+      const hit = lists.find((l) => l.id === explicit)
+      if (hit) return hit
+    }
+    const enabled = lists.filter((l) => l.source.urlParams)
+    return nearestIn(enabled.length ? enabled : lists, controlId)
+  }
+  const nearestIn = (pool: ListInfo[], controlId: string) => {
+    const at = order.get(controlId) ?? 0
+    const before = pool.filter((l) => l.order < at)
+    return before.length ? before[before.length - 1] : pool.find((l) => l.order > at)
+  }
+  /** Danh sách gần nhất (đã bật hay chưa) – dùng khi vừa chèn block điều khiển */
+  const nearestOf = (controlId: string) => nearestIn(lists, controlId)
+  return { lists, targetOf, nearestOf }
 }
 
 export const DATA_LIST_TYPE = 'dataList'
@@ -201,6 +284,7 @@ export function normalizeDataSource(input: unknown): DataSource | undefined {
     if (fields.length) out.searchFields = fields
   }
   if (src.ownerOnly === true) out.ownerOnly = true
+  if (typeof src.paramKey === 'string' && PARAM_KEY_PATTERN.test(src.paramKey)) out.paramKey = src.paramKey
   return out
 }
 
@@ -220,7 +304,7 @@ export function buildWhere(source: DataSource, params?: UrlParams, allowedFields
     const q = (params.q ?? '').trim()
     if (q && source.searchFields?.length) and.push({ or: source.searchFields.map((f) => ({ [f]: { like: q } })) })
     for (const [k, v] of Object.entries(params)) {
-      if (k === 'q' || k === 'page' || !v || !FIELD_PATTERN.test(k)) continue
+      if (k === 'q' || k === 'page' || k === 'take' || !v || !FIELD_PATTERN.test(k)) continue
       if (allowedFields && !allowedFields.includes(k.split('.')[0])) continue
       and.push({ [k]: { equals: v } })
     }
@@ -363,8 +447,13 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
   const user = ctx.user ?? null
   const keepHidden = !!ctx.keepHidden
   const base = { user }
-  const primaryId = collectDataNodes(root).find((n) => n.source.urlParams)?.id
-  const primary = primaryId ? lookup(primaryId) : undefined
+  const targets = listTargets(root)
+  /** Danh sách mà block điều khiển gắn vào + kết quả + tham số URL riêng của nó */
+  const controlCtx = (n: BuilderNode) => {
+    const list = targets.targetOf(n.id, n.props.target)
+    const key = list?.source.paramKey
+    return { list, key, result: list?.source.urlParams ? lookup(list.id) : undefined, scoped: scopedParams(params, list?.source.urlParams ? key : undefined) }
+  }
   // nguồn nằm trong bản sao của danh sách (id có hậu tố _n) dùng chung dữ liệu với bản mẫu
   const find = (id: string): DataResult | undefined => lookup(id) ?? (/_\d+$/.test(id) ? find(id.replace(/_\d+$/, '')) : undefined)
   const visit = (node: BuilderNode): BuilderNode => {
@@ -391,9 +480,16 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
     if (usesUser(node.props)) return visitChildren({ ...node, props: bindValue(node.props, {}, base) as Record<string, unknown> })
     // block điều khiển theo URL
     if (node.type === 'pagination' && node.props.auto === true) {
-      return { ...node, props: { ...node.props, pages: String(primary?.totalPages ?? 1), current: String(primary?.page ?? pageFromParams(params)), hrefPattern: pageHrefPattern(params) } }
+      const { list, key, result, scoped } = controlCtx(node)
+      return { ...node, props: { ...node.props, pages: String(result?.totalPages ?? 1), current: String(result?.page ?? pageFromParams(scoped)), hrefPattern: pageHrefPattern(params, key), unlinked: !list?.source.urlParams } }
     }
-    if (node.type === 'searchBox') return { ...node, props: { ...node.props, value: params.q ?? '', total: primary ? String(primary.total) : '' } }
+    if (node.type === 'searchBox') {
+      const { list, key, result, scoped } = controlCtx(node)
+      const qName = paramName(key, 'q')
+      // giữ tham số của danh sách khác khi gửi form tìm kiếm; bỏ q/trang/take của chính danh sách này
+      const keep = Object.entries(params).filter(([k]) => k !== qName && k !== paramName(key, 'page') && k !== paramName(key, 'take'))
+      return { ...node, props: { ...node.props, value: scoped.q ?? '', total: result ? String(result.total) : '', paramName: qName, keep, unlinked: !list?.source.urlParams } }
+    }
     if (node.type === 'languageSwitcher') {
       const cur = ctx.locale ?? DEFAULT_LOCALE
       const path = ctx.path ?? '/'
@@ -408,10 +504,11 @@ export function resolveData(root: BuilderNode, lookup: DataLookup, ctx: ResolveC
       return visitChildren({ ...node, props: { ...(bindValue(node.props, {}, base) as Record<string, unknown>), userId: str(u.id), userCollection: str(u.collection), name: str(u.name), phone: str(u.phone), email: str(u.email) } })
     }
     if (node.type === 'loadMore') {
-      const loaded = primary?.records.length ?? 0
-      const total = primary?.total ?? 0
+      const { list, key, result } = controlCtx(node)
+      const loaded = result?.records.length ?? 0
+      const total = result?.total ?? 0
       const step = Math.max(1, Math.min(100, Number(node.props.step) || 8))
-      return { ...node, props: { ...node.props, loaded: String(loaded), total: String(total), href: takeHref(params, Math.min(100, loaded + step)), done: primary ? loaded >= total : false } }
+      return { ...node, props: { ...node.props, loaded: String(loaded), total: String(total), href: takeHref(params, Math.min(100, loaded + step), key), done: result ? loaded >= total : false, unlinked: !list?.source.urlParams } }
     }
     if (node.type === 'toggleGroup' && typeof node.props.param === 'string' && node.props.param) {
       const key = node.props.param

@@ -40,13 +40,15 @@ export function TopBar() {
             <ArrowLeft size={18} />
           </a>
           <div className="ed-page-meta">
-            <strong>
-              <LayoutTemplate size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />
-              {title || 'Block chưa đặt tên'}
-            </strong>
+            <div className="ed-page-title">
+              <strong>
+                <LayoutTemplate size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />
+                {title || 'Block chưa đặt tên'}
+              </strong>
+              <span className={`ed-badge ed-badge--${badge.cls}`}>{badge.text}</span>
+            </div>
             <span>Bản gốc My Block – các trang dùng liên kết sẽ tự cập nhật</span>
           </div>
-          <span className={`ed-badge ed-badge--${badge.cls}`}>{badge.text}</span>
         </div>
         <DeviceSwitch device={device} />
         <div className="ed-top-right">
@@ -87,10 +89,13 @@ export function TopBar() {
           <ArrowLeft size={18} />
         </a>
         <div className="ed-page-meta">
-          <strong>{title || 'Chưa đặt tên'}</strong>
+          {/* trạng thái nằm cùng hàng với tiêu đề, đường dẫn ở hàng dưới */}
+          <div className="ed-page-title">
+            <strong>{title || 'Chưa đặt tên'}</strong>
+            <span className={`ed-badge ed-badge--${badge.cls}`}>{badge.text}</span>
+          </div>
           <span>/{slug === 'home' ? '' : slug}</span>
         </div>
-        <span className={`ed-badge ed-badge--${badge.cls}`}>{badge.text}</span>
         <Presence list={presence} />
       </div>
 

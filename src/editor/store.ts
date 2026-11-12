@@ -12,20 +12,12 @@ import type { Role } from '@/lib/access'
 import type { CommentDoc, PresenceUser } from './api'
 import { BLOCK_REF_TYPE, type BlockLookup, expandRef, reachesBlock, refBlockId } from '@/builder/refs'
 import { getBlock } from '@/builder/registry'
+import { freeParamKey, LIST_CONTROL_TYPES, listTargets } from '@/builder/data'
 import { canContain, getSchema } from '@/builder/schema'
 import { autoBind, type DataMap, type DataRecord, type SourceInfo } from '@/builder/data'
 import { applyPreset as applyPresetToNode, type BlockPreset } from '@/builder/presets'
 import { defaultTheme, type ThemeTokens } from '@/builder/theme'
-import {
-  cloneWithNewIds,
-  findNode,
-  findParent,
-  genId,
-  insertNode,
-  isInSubtree,
-  moveNode,
-  removeNode,
-} from '@/builder/tree'
+import { cloneWithNewIds, findNode, findParent, genId, insertNode, isInSubtree, moveNode, removeNode, getAncestors } from '@/builder/tree'
 import type { BuilderNode, Device, DropTarget, MediaValue, NodeStyles, StyleBucket, StyleState } from '@/builder/types'
 
 export type DragPayload =
@@ -296,6 +288,8 @@ export interface EditorActions {
   restoreVersion(data: { root: BuilderNode; title: string; slug: string }): void
 
   insertBlock(type: string, target?: DropTarget): string | null
+  /** Bật “Nhận tham số URL” cho danh sách (tự cấp mã tham số nếu trang đã có danh sách khác bật) */
+  enableListParams(listId: string): void
   insertNode(node: BuilderNode, target: DropTarget): boolean
   move(id: string, target: DropTarget): boolean
   remove(id: string): void
@@ -856,7 +850,16 @@ export const useEditor = create<Store>()(
 
       insertBlock: (type, target) => {
         const state = get()
-        const t = target ?? defaultTarget(state.root, state.selectedId, type)
+        let t = target ?? defaultTarget(state.root, state.selectedId, type)
+        // Pagination / Xem thêm / Ô tìm kiếm không bao giờ nằm trong phần tử mẫu của Danh sách dữ liệu (sẽ bị lặp theo bản ghi):
+        // đặt ngay sau danh sách ngoài cùng chứa vị trí chèn
+        if (t && (LIST_CONTROL_TYPES as readonly string[]).includes(type)) {
+          const parent = findNode(state.root, t.parentId)
+          const chain = parent ? [...getAncestors(state.root, parent.id), parent] : []
+          const outer = chain.find((n) => n.type === 'dataList')
+          const loc = outer ? findParent(state.root, outer.id) : null
+          if (outer && loc) t = { parentId: loc.parent.id, index: loc.index + 1 }
+        }
         const node = createNodeFromBlock(type)
         if (!t || !node) {
           get().toast('error', 'Không thể đặt phần tử ở vị trí này.')
@@ -867,7 +870,25 @@ export const useEditor = create<Store>()(
         set((s) => {
           s.selectedId = node.id
         })
+        // Pagination / Xem thêm / Ô tìm kiếm: tự bật tham số URL cho danh sách mà nó điều khiển
+        if ((LIST_CONTROL_TYPES as readonly string[]).includes(type)) {
+          const list = listTargets(get().root).nearestOf(node.id)
+          if (list && !list.source.urlParams) {
+            get().enableListParams(list.id)
+            get().toast('info', 'Đã bật “Nhận tham số URL” cho Danh sách dữ liệu gần nhất để block này hoạt động.')
+          }
+        }
         return node.id
+      },
+
+      enableListParams: (listId) => {
+        const key = freeParamKey(get().root, listId)
+        commit((root) => {
+          const list = findNode(root, listId)
+          const data = list?.props.data as Record<string, unknown> | undefined
+          if (!list || !data) return
+          list.props.data = { ...data, urlParams: true, ...(key && !data.paramKey ? { paramKey: key } : {}) }
+        })
       },
 
       insertNode: (node, target) => {
