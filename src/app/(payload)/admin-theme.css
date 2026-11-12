@@ -78,6 +78,17 @@ body { text-wrap: pretty; }
 /* breadcrumb không rớt mũi tên / chữ cuối xuống dòng riêng */
 .step-nav { flex-wrap: nowrap; min-width: 0; white-space: nowrap; }
 .step-nav > * { min-width: 0; }
+/* bỏ logo + dấu "/" đầu breadcrumb (đã có thương hiệu ở menu); chữ chỉ cắt "…" khi thật sự hết chỗ
+   (Payload mặc định cắt mọi đoạn ở 160px) */
+.step-nav__home, .step-nav__home + span { display: none !important; }
+.app-header__step-nav-wrapper { min-width: 0; overflow: hidden; }
+.step-nav { width: 100%; }
+.step-nav span { max-width: none; }
+.step-nav > a { flex: 0 0 auto; max-width: 40%; overflow: hidden; }
+.step-nav > a > span { overflow: hidden; text-overflow: ellipsis; }
+.step-nav > span:not(.step-nav__last) { flex: none; }
+.step-nav__last { flex: 0 1 auto; min-width: 0; }
+.step-nav::after { display: none; }
 .step-nav__last, .dashboard-breadcrumb-select .rs__single-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-breadcrumb-select .rs__control { flex-wrap: nowrap; }
 .dashboard-breadcrumb-select .rs__value-container { flex-wrap: nowrap; overflow: hidden; }
